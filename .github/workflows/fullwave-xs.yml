@@ -4,7 +4,8 @@
 # versions, about 40 min without the cache); the shards then run the cases of validation/cst_xs/fullwave_plan.json in
 # parallel (at most 15 at a time, 4-vCPU runners, one node process per vCPU). Results come back as workflow
 # artifacts only (`gh run download <run> -p 'fullwave-*'`), nothing is committed by the workflow; cases whose result
-# is already in validation/cst_xs/fullwave/ are skipped.
+# is already in validation/cst_xs/fullwave/ (same geometry, settings and upstream revision) are skipped. `collect`
+# compares the run's results with the committed ones (fullwave_diff.py, in the summary and as committed_diff.md).
 #
 # Long: manual only (Actions → fullwave-xs → Run workflow, or `gh workflow run fullwave-xs --ref <branch>` once the
 # workflow is on the default branch), never on main.
@@ -140,10 +141,17 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           pattern: fullwave-[0-9]*
-          path: validation/cst_xs/fullwave
+          path: fullwave_new
           merge-multiple: true
           run-id: ${{ needs.build.outputs.results_run || github.run_id }}
           github-token: ${{ github.token }}
+      - name: Against the committed results (what this run moved)
+        run: |
+          python3 validation/cst_xs/fullwave_diff.py validation/cst_xs/fullwave fullwave_new --md diff.md --max-pct 0.001 \
+            || touch moved.flag
+          cat diff.md >> "$GITHUB_STEP_SUMMARY"
+          cp fullwave_new/*.json validation/cst_xs/fullwave/
+          cp diff.md validation/cst_xs/fullwave/committed_diff.md
       - name: Summary against CST and the FDM backend
         run: |
           ls validation/cst_xs/fullwave | wc -l
@@ -156,3 +164,5 @@ jobs:
           name: fullwave-results
           path: validation/cst_xs/fullwave
           retention-days: 30
+      - name: "Check: impedances and εeff as committed (within 0.001 %; red = this run moved them, see the summary)"
+        run: test ! -f moved.flag

@@ -17,8 +17,8 @@ Kinds (each a node process of its own, fullwave_driver.mjs → web/solver/backen
          a pair
 The geometry is the one CST solved: `cst_text` where a case has one (trapezoids of the etch group), else `text`.
 
-Results already in --out or validation/cst_xs/fullwave/ for the same geometry and settings are skipped
-(--force runs them again). --deadline-min stops starting new tasks (CI shards). The runner's CPU, node version,
+Results already in --out or validation/cst_xs/fullwave/ for the same geometry, settings and upstream revision
+(third_party/UPSTREAM_REV) are skipped (--force runs them again). --deadline-min stops starting new tasks (CI shards). The runner's CPU, node version,
 the WASM build and the wall time of every task are stored in each result.
 """
 import argparse, json, os, platform, re, subprocess, sys, tempfile, threading, time
@@ -78,12 +78,12 @@ def load(path):
         return None
 
 
-def done_kinds(case, dirs, settings):
-    """kinds with a valid result for this geometry and settings in one of dirs → (doc, set)"""
+def done_kinds(case, dirs, settings, upstream_rev):
+    """kinds with a valid result for this geometry, settings and upstream revision in one of dirs → (doc, set)"""
     th = text_hash(case.get("cst_text") or case["text"])
     for d in dirs:
         doc = load(os.path.join(d, case["id"] + ".json"))
-        if doc and doc.get("text_hash") == th and doc.get("settings") == settings:
+        if doc and doc.get("text_hash") == th and doc.get("settings") == settings and doc.get("upstream_rev") == upstream_rev:
             return doc, {k for k, v in doc.get("results", {}).items() if v.get("ok")}
     return None, set()
 
@@ -165,7 +165,7 @@ def main():
 
     docs, todo = {}, []
     for c in cases:
-        prev, have = (None, set()) if a.force else done_kinds(c, [a.out, DEFAULT_OUT], settings)
+        prev, have = (None, set()) if a.force else done_kinds(c, [a.out, DEFAULT_OUT], settings, upstream_rev)
         th = text_hash(c.get("cst_text") or c["text"])
         doc = prev if prev else {
             "id": c["id"], "group": c["group"], "tier": c["tier"], "n_signals": c.get("n_signals", 1),

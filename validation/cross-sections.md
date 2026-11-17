@@ -177,6 +177,7 @@ case group: `make_cases.py` (and its `GROUPS` in `make_viewer.py`), then CST, FW
 | `run_fullwave.py`, `fullwave_driver.mjs`, `fullwave_plan.json`, `fullwave/` | the full-wave backend |
 | `run_kisi.py`, `kisi.json`, `kisi_loss.json` | kisi's formula, field and line-model results |
 | `compare.py`, `fullwave_compare.py` | the comparison |
+| `fullwave_diff.py` | two sets of full-wave results against each other (what an upstream update or a new build moved; the workflow's `collect` job against the committed results) |
 | `mqs_check.py`, `mqs_check.json`, `uncertainty.py` | the independent conductor-loss check, the CST uncertainty |
 | `fit_coplanar.py`, `coplanar_fit.json` | the coplanar formulas' constants |
 | `probes/pcie_fingers/` | the asymmetric edge-finger pair made symmetric in CST and kisi |

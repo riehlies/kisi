@@ -1,0 +1,26 @@
+{
+ "version": 1,
+ "about": "What the viewer's \"Fields…\" hands to the field page with the cross-section's geometry (web/src/field-views.js, docs/reference.md \"Field views\").",
+ "frequency": {
+  "fallback_ghz": 1.0,
+  "sources": [
+   { "kind": "kisi", "text": "A lane is shown at the Nyquist frequency of its interface profile (data/interfaces.json); a net without a profile at 1 GHz, which the page's title says." }
+  ]
+ },
+ "excitation": {
+  "single_v": 1.0,
+  "pair_odd_vdiff": 1.0,
+  "pair_even_vcm": 1.0,
+  "sources": [
+   { "kind": "kisi", "text": "Peak values. Single-ended 1 V; a pair 1 V between the conductors (odd mode, ±0.5 V) or 1 V common mode (even mode, +1 V on both). Every view scales with it; the field shapes do not depend on it." }
+  ]
+ },
+ "copper": {
+  "sigma_s_m": 5.8e7,
+  "rq_um": { "Smooth": 0.0, "Hvlp": 0.27, "Standard": 0.66 },
+  "sources": [
+   { "kind": "standard", "text": "Annealed copper, IEC 60028: 5.8e7 S/m, as kisi's line models." },
+   { "kind": "kisi", "text": "RMS roughness for the page's gradient model (Grujić, IEEE T-MTT 70(4), 2022) fitted to kisi's Huray presets (kisi_si::rf::Roughness: HVLP r 0.5 µm SR 0.5, standard r 1 µm SR 1) in the loss factor, 1-20 GHz least squares: HVLP 0.27 µm (3 % rms), standard 0.66 µm (9 % rms). Estimates." }
+  ]
+ }
+}

@@ -48,7 +48,7 @@ function showTip(i, mx, my) {
   const isPad = S.padSet && S.padSet.has(pc.track[i]);
   tip.innerHTML = `<div class="t1">${esc(S.scene.nets[net] || "(no net)")}${isPad ? " · Pad" : ""}</div><div class="muted">${esc(cls)}${netUnused(net) ? " · not used in this assembly variant (only parts not fitted)" : ""}</div>
     ${S.an.skeleton ? `<div class="kv"><span>Layer</span><span>${esc(S.scene.stackup.copper[pc.layer[i]].name)}</span><span>Width</span><span>${fmt(pc.w[i] * 1000, 0)} µm</span><span>Type</span><span>${xs.kind === "Stripline" ? "stripline" : "microstrip"} (by layer)</span></div><div class="muted">impedance not estimated yet (step 2)</div>`
-      : `<div class="kv">${xsRows(xs).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>${devChip(xs, net)}${tipBand(i)}${flags}`}`;
+      : `<div class="kv">${xsRows(xs).map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join("")}</div>${devChip(xs, net)}${tipBand(i)}${flags}${fvTip(i)}`}`;
   tip.hidden = false;
   const r = $("stage").getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
   let x = mx + 16, y = my + 16;
@@ -169,12 +169,14 @@ function selectNet(net, zoom = true) {
     <div class="dstats"><span>Length <b>${fmt(st?.length, 1)} mm</b></span><span>Target <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/mean/max <b title="${esc(zAccTitle(st?.z_unc_pct, st?.field_share))}">${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b>${zSpread(netBand(st))}</span>${t && st?.within5 != null ? `<span>within ±5 % of target <b>${pct(st.within5)}</b></span>` : ""}</div>
     ${pathLine(net)}
+    ${fvRow(net)}
     <div class="tabs" role="tablist" aria-label="Net view">
       ${tabs.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;
   $("closeDetail").onclick = () => selectNet(-1);
+  fvWire(net);
   d.querySelectorAll("[data-pm]").forEach((b) => b.onclick = () => { S.pairMode = b.dataset.pm; selectNet(net, false); });
   const pf = $("path-flip");
   if (pf) pf.onclick = () => { setPathFlip(net, !pathFlipped(net)); S.rfCache = null; S.pathCursor = null; selectNet(net, false); };

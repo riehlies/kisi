@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Bundle the viewer into one self-contained HTML file.
 
-Usage: bundle.py [--advanced | --advanced-inline kisi-advanced.html] <index.html> <kisi_wasm.wasm> <kisi_sparse.wasm>
-                 <out.html> [key name pcb pro]...
+Usage: bundle.py <index.html> <kisi_wasm.wasm> <kisi_sparse.wasm> <out.html> [key name pcb pro]...
 
 * kisi_wasm.wasm   extraction core, gzip + base64
 * kisi_sparse.wasm sparse solver for the field solver backend, gzip + base64
@@ -14,10 +13,6 @@ Usage: bundle.py [--advanced | --advanced-inline kisi-advanced.html] <index.html
   <board>.notice.txt next to the board file (source and licence, tools/fetch_examples.sh)
 * viewer: web/index.html (markup), web/fonts (embedded fonts), web/css/kisi.css, web/src/*.js in the order
   of web/src/manifest.json (one shared scope, concatenated), data/*.json as DATA (not corpus.json)
-* --advanced (prototype, docs/research/advanced-solvers.md): also web/src/advanced.js (the option "Advanced
-  solvers": a cross-section opened in the field views of kisi-advanced.html or the fork's hosted page);
-  --advanced-inline FILE: the same with FILE (tools/advanced_bundle.py) built in, gzip + base64. Without either
-  flag the output is the same as before the option existed.
 """
 import base64, gzip, json, os, re, sys
 
@@ -25,14 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from solver_bundle import solver_bundle, upstream_rev as read_upstream_rev  # noqa: E402
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-argv = sys.argv[1:]
-advanced, adv_inline = False, None
-if argv and argv[0] == "--advanced":
-    advanced, argv = True, argv[1:]
-elif argv and argv[0] == "--advanced-inline":
-    advanced, adv_inline, argv = True, argv[1], argv[2:]
-src, wasm, sparse, out = argv[0:4]
-rest = argv[4:]
+src, wasm, sparse, out = sys.argv[1:5]
+rest = sys.argv[5:]
 
 # --- solver backend as one classic script (tools/solver_bundle.py) -------------------
 solver_src, n_modules = solver_bundle(root)
@@ -78,16 +67,10 @@ html = re.sub(r"<!-- @css (\S+) -->\n<link [^>]*>", inline_css, html)
 
 def inline_scripts(m):
     manifest = json.load(open(os.path.join(root, m.group(1)), encoding="utf-8"))
-    scripts = manifest["scripts"]
-    if advanced:  # the option's script, after everything it wraps (net-detail, interaction), before main
-        scripts = scripts[:scripts.index("main.js")] + ["advanced.js"] + scripts[scripts.index("main.js"):]
     parts = []
-    for f in scripts:
+    for f in manifest["scripts"]:
         code = open(os.path.join(web, "src", f), encoding="utf-8").read()
         code = code.removeprefix('"use strict";\n')
-        if f == "advanced.js":
-            inline = gzb64(open(adv_inline, "rb").read()) if adv_inline else ""
-            code = f'const ADV_INLINE_GZ = "{inline}";\n' + code
         parts.append(f"// ---- src/{f}\n" + code)
     return '<script>\n"use strict";\n' + "\n".join(parts).replace("</script", "<\\/script") + "</script>"
 

@@ -20,6 +20,10 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   views' edits into the draft, a stale dismissal; light run: the acceptance run on the bare ThunderScope –
   its kisi.json entered through the forms, saved, reloaded)
 * --accept BOARD REF [--accept-dismiss GAP=REASON …]: the acceptance run on another bare board (light run)
+* the option "Advanced solvers: field views" (light run, also with --quick): off by default; on, the Fields row in a
+  net's detail and its tooltip line; "Fields…" with no field page next to the file: the field window closed again and
+  the one line that names kisi-advanced.html and kisi-advanced-lite.html (with a field page next to the file: only
+  the row – tools/check_advanced.py checks the hand-over); off again, no row
 * the channel check in parallel (workers with engines of their own) gives the same rows as on one thread
   (light run; the timings are printed as a note)
 * uses the embedded example boards if the build has them, else --board; on a board without impedance
@@ -405,6 +409,51 @@ def prepare_page(pg, tag, step):
     pg.click("#view-si"); pg.wait_for_timeout(300)
     if pg.evaluate("S.prep.open || getComputedStyle(document.querySelector('.stage')).display === 'none'"):
         problems.append(f"{tag}: prepare: back to the impedance view failed")
+
+
+def field_views(pg, tag, step):
+    """the option "Advanced solvers: field views" (field-views.js)"""
+    here = os.path.dirname(os.path.abspath(a.html))
+    present = [n for n in ("kisi-advanced.html", "kisi-advanced-lite.html") if os.path.exists(os.path.join(here, n))]
+    if pg.evaluate("FV.on || !!document.getElementById('fv-go')"):
+        problems.append(f"{tag}: field views: the option is on by default")
+    if not pg.evaluate("$('fs-opts').open"):
+        pg.click("#fs-opts > summary")
+    pg.check("#fv-on")
+    n = pg.evaluate("(() => { const pc = S.pieces; for (let i = 0; i < pc.n; i++) if (S.an.cross_sections[pc.xs[i]].geom != null && classTarget(pc.net[i])) return pc.net[i]; return -1; })()")
+    if n < 0:
+        notes.append(f"{tag}: field views: no net with a cross-section geometry")
+        return
+    pg.evaluate(f"selectNet({n})"); pg.wait_for_timeout(300)
+    if not pg.evaluate("!!document.getElementById('fv-go') && document.getElementById('fv-xs').options.length > 0"):
+        problems.append(f"{tag}: field views: no Fields row with cross-sections in the net detail")
+        return
+    tip = pg.evaluate(f"(() => {{ const pc = S.pieces; for (let i = 0; i < pc.n; i++) if (pc.net[i] === {n} && S.an.cross_sections[pc.xs[i]].geom != null) {{ showTip(i, 50, 50); return $('tip').textContent; }} return ''; }})()")
+    pg.evaluate("showTip(-1)")
+    if "Fields…" not in tip:
+        problems.append(f"{tag}: field views: the tooltip lacks the Fields line: {tip[-160:]!r}")
+    if present:
+        notes.append(f"{tag}: field views: {', '.join(present)} next to the viewer – the not-found line not checked (tools/check_advanced.py checks the hand-over)")
+    else:
+        pg.evaluate("FV.probeMs = 1000")
+        with pg.context.expect_page(timeout=30000) as pinfo:
+            pg.click("#fv-go")
+        try:
+            pg.wait_for_function("/No field page next to this file/.test(document.getElementById('fv-msg').textContent)", timeout=30000)
+        except Exception:
+            problems.append(f"{tag}: field views: no not-found line: {pg.inner_text('#fv-msg')!r}")
+        msg = pg.inner_text("#fv-msg")
+        if "kisi-advanced.html" not in msg or "kisi-advanced-lite.html" not in msg or not pg.evaluate("document.getElementById('fv-msg').classList.contains('err')"):
+            problems.append(f"{tag}: field views: the not-found line {msg!r}")
+        pg.wait_for_timeout(300)
+        if not pinfo.value.is_closed():
+            problems.append(f"{tag}: field views: the empty field window was not closed")
+        pg.locator("#fv-go").scroll_into_view_if_needed()
+        step("fields_not_found")
+    pg.uncheck("#fv-on"); pg.wait_for_timeout(200)
+    if pg.evaluate("!!document.getElementById('fv-go')"):
+        problems.append(f"{tag}: field views: the Fields row stays with the option off")
+    pg.evaluate("selectNet(-1)")
 
 
 def board_box(pg):
@@ -1195,6 +1244,8 @@ def run(pg, tag, desktop):
         notes.append(f"{tag}: no nets with a target impedance – net detail, couplings and field solver steps skipped")
     else:
         stackup_panel(pg, tag, step)
+        if tag == "light":
+            field_views(pg, tag, step)
     if desktop and not a.quick and targets:
         pg.click(".net >> nth=0"); pg.wait_for_timeout(400)
         for t in ["loss", "tdr", "via", "xt"]:

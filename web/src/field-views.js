@@ -9,7 +9,7 @@ const FV_LITE = ["potential", "efield"];
 const FVD = DATA.field_views;
 // per browser: on, first view, the file that answered last; per session: the window, its page and build
 const FV = Object.assign({ on: false, view: "sfield", file: null }, lsGet("kisi.fields.v1") || {},
-  { win: null, base: null, build: null, n: 0, msg: "", err: false, note: "", probeMs: 6000, waiters: [] });
+  { win: null, base: null, build: null, n: 0, msg: "", msgNet: -1, err: false, note: "", probeMs: 6000, waiters: [] });
 const fvSave = () => lsSet("kisi.fields.v1", { on: FV.on, view: FV.view, file: FV.file });
 const fvOn = () => FV.on && S.tab === "si" && S.an && !S.an.skeleton;
 const fvWeb = () => /^https?:$/.test(location.protocol);
@@ -37,7 +37,7 @@ function fvRow(net) {
     `<option value="${x.xi}">${esc((x.hit ? "clicked: " : "") + fvXsLabel(S.an.cross_sections[x.xi]) + ` · ${fmt(x.len, 1)} mm`)}</option>`).join("")}</select>` +
     `<select id="fv-view" aria-label="First view">${FV_VIEWS.map(([v, t]) => `<option value="${v}"${v === FV.view ? " selected" : ""}>${t}${lite && !FV_LITE.includes(v) ? " (not in lite)" : ""}</option>`).join("")}</select>` +
     `<button class="btn small" id="fv-go" title="The cross-section's fields in the field page next to this file (a new window, reused)">Fields…</button></div>` +
-    `<p class="note fv-msg${FV.err ? " err" : ""}" id="fv-msg"${FV.msg ? "" : " hidden"}>${FV.msg}</p>`;
+    `<p class="note fv-msg${FV.err ? " err" : ""}" id="fv-msg"${FV.msg && FV.msgNet === net ? "" : " hidden"}>${FV.msgNet === net ? FV.msg : ""}</p>`;
 }
 function fvWire(net) {
   if (!$("fv-go")) return;
@@ -47,7 +47,7 @@ function fvWire(net) {
 const fvTip = (i) => fvOn() && S.an.cross_sections[S.pieces.xs[i]].geom != null ? `<div class="muted">Click: “Fields…” in the net's detail shows its fields</div>` : "";
 function fvStatus(html, err = false) {
   Object.assign(FV, { msg: html, err });
-  const el = $("fv-msg");
+  const el = S.selNet === FV.msgNet && $("fv-msg");
   if (el) { el.innerHTML = html; el.hidden = !html; el.classList.toggle("err", err); }
 }
 
@@ -111,6 +111,7 @@ async function fvConnect(w, reload) {
   return false;
 }
 async function fvOpen(net, xi) {
+  FV.msgNet = net;   // the status line belongs to this net's detail
   // the window inside the click (pop-up blockers): a new one is about:blank, one of an earlier session shows a page
   let w = FV.win && !FV.win.closed ? FV.win : null, fresh = false;
   if (!w) {

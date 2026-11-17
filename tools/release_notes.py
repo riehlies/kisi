@@ -7,7 +7,7 @@ Usage: release_notes.py build-info <BUILD_INFO.json> <kisi-advanced.html> <kisi-
 build-info: the fork's pin and kisi's patches (with their SHA-256), what the full-wave modules were built from
 (tools/build_forsten_fullwave.sh's BUILD_INFO.json: upstream revision, submodules, OCCT, Emscripten SDK, the modules'
 SHA-256) and each field page's size, build and SHA-256 (the release workflow builds each twice and compares them).
-notes: .github/release-notes.md with those values – the corresponding source of the GPL-3.0 field pages.
+notes: .github/release-notes.md.in with those values – the corresponding source of the GPL-3.0 field pages.
 """
 import hashlib, json, os, re, sys
 

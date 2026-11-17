@@ -278,7 +278,7 @@ if a.md:
     for r in results:
         z = f"{r['z0']}" if r.get("z0_odd") is None else f"{r['z0_odd']}, {r['z0_even']}"
         lines.append(f"| {r['run']} | {r['segment']} | {(r['solve_ms'] or 0) / 1000:.2f} | {(r['shown_ms'] or 0) / 1000:.2f} | {r['wall_s']} | {z} | "
-                     f"{r['first_view_title'][:120]} |")
+                     f"{r['first_view_title'][:120].replace('|', chr(92) + '|')} |")
     lines += ["", f"Problems: {len(problems)}"] + [f"* {p}" for p in problems]
     open(a.md, "w").write("\n".join(lines) + "\n")
 print(f"screenshots: {out}")

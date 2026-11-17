@@ -21,7 +21,7 @@
 #                        validation/cst_xs/make_viewer.py, from the committed results only)
 #                        – each reference page built here, not kept in the repository, and attached only when its
 #                        cases or its page builder changed since the previous release
-# The release notes get the corresponding source of the field pages (.github/release-notes.md, tools/release_notes.py).
+# The release notes get the corresponding source of the field pages (.github/release-notes.md.in, tools/release_notes.py).
 # Publish the viewers, both field pages and the documentation PDF (not the reference pages) with the landing page
 # (web/pages/index.html) on GitHub Pages
 # (repository settings: Pages → Source "GitHub Actions"; needs a public repository on the free plan).
@@ -275,7 +275,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 tools/release_notes.py notes .github/release-notes.md dist/kisi-advanced.build-info.json "$GITHUB_REF_NAME" > notes.md
+          python3 tools/release_notes.py notes .github/release-notes.md.in dist/kisi-advanced.build-info.json "$GITHUB_REF_NAME" > notes.md
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             # a release made by hand keeps its text; the source offer is added once
             gh release view "$GITHUB_REF_NAME" --json body -q .body > body.md

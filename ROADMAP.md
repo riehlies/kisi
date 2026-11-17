@@ -71,7 +71,8 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   limit per rail (a kisi guide value in `data/`, shown in the Power view too, then highlighted in the report); the
   viewer's own results in the report (edits kept in the browser, the check already computed) instead of running
   `kisi report` again; the PDN impedance (`--pdn`) and the crosstalk scan as report sections; a CSV of the net
-  detail tabs.
+  detail tabs; the report as Markdown as well (`--md FILE`, from the same renderer) for automation pipelines that
+  store it with their outputs (KiCad forum request, 2026-11-12).
 - **Smaller downloads:** separate WASM builds for viewer and CLI (the viewer does not need the CLI commands).
 - **Faster field solver in the CLI:** better scheduling across threads, optional larger time budget presets.
 - **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server; revised 2026-11-05 for saving) –

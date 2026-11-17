@@ -17,17 +17,26 @@ python3 tools/bundle.py web/index.html ... dist/kisi-examples.html \
   vna LibreVNA examples/VNA.kicad_pcb examples/VNA.kicad_pro
 python3 tools/bundle_cli.py target/wasm32-unknown-unknown/release/kisi_wasm.wasm \
   target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi.mjs   # Node CLI with field solver
+sh tools/fetch_fork.sh target/js2d-fork                 # the js_2d_fields fork, pinned, with web/advanced/fork-patches
+python3 tools/advanced_bundle.py target/js2d-fork \
+  target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi-advanced-lite.html  # field page, quasi-static
+bash tools/build_forsten_fullwave.sh target/forsten-fw  # full-wave WASM modules (emsdk, OCCT, gmsh; 30-40 min cold)
+python3 tools/advanced_bundle.py target/js2d-fork \
+  target/wasm32-unknown-unknown/release/kisi_sparse.wasm dist/kisi-advanced.html --fw target/forsten-fw/dist  # field page, full-wave
 python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references-3d.html  # 3D reference cases page
 python3 validation/cst_xs/make_viewer.py validation/cst_xs dist/kisi-references-2d.html  # 2D cross-section cases page
 python3 tools/docs_pdf.py dist/kisi-docs.pdf             # docs/ as one PDF (pip: markdown playwright pypdf)
-python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs  # KiCad plugin → dist/kisi-kicad-<version>.zip + PCM entry (pip: jsonschema)
+python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --advanced dist/kisi-advanced.html  # KiCad plugin → dist/kisi-kicad-<version>.zip + PCM entry (pip: jsonschema)
 ```
 Releases: a tag `v*` runs `.github/workflows/release.yml`; it attaches `kisi.html`, `kisi-examples.html`,
-`kisi.mjs`, `kisi-docs.pdf`, the KiCad plugin `kisi-kicad-<version>.zip` with its PCM repository entry
-`kisi-kicad-<version>.metadata.json` (the merge request to gitlab.com/kicad/addons/metadata is made by hand) and –
-each when its cases changed since the previous release – the reference pages `kisi-references-3d.html` (3D via
-cases; up to v0.3.1 `kisi-references.html`) and `kisi-references-2d.html` (cross-sections; built from the committed
-results, no full-wave build), both built, not kept in the repository, and publishes the live demo on GitHub Pages. The example
+`kisi.mjs`, `kisi-docs.pdf`, the field pages `kisi-advanced.html` (full-wave; the release builds the WASM modules,
+cached) and `kisi-advanced-lite.html` with `kisi-advanced.build-info.json` (their corresponding source goes into the
+release notes, `.github/release-notes.md.in`), the KiCad plugin `kisi-kicad-<version>.zip` (with `kisi-advanced.html`)
+with its PCM repository entry `kisi-kicad-<version>.metadata.json` (the merge request to gitlab.com/kicad/addons/metadata
+is made by hand) and – each when its cases changed since the previous release – the reference pages
+`kisi-references-3d.html` (3D via cases; up to v0.3.1 `kisi-references.html`) and `kisi-references-2d.html`
+(cross-sections; built from the committed results, no full-wave build), both built, not kept in the repository, and
+publishes the live demo on GitHub Pages (with both field pages). The example
 boards (ThunderScope CERN-OHL-P-2.0, LibreVNA GPL-3.0) are not in the repository; `tools/fetch_examples.sh` fetches
 them at fixed commits and shrinks them; their power trees are `web/samples/{ts,vna}.kisi.json`.
 
@@ -43,13 +52,18 @@ Locally, before pushing a branch, run the quick checks for what you changed:
 * Viewer (`web/`, `kisi-wasm`): `python3 tools/check_viewer.py dist/kisi-examples.html --quick` (loads the
   boards, all three views, no console errors; `--board`/`--config` for builds without example boards), plus a
   short headless test of the controls you changed.
+* Field pages (`web/advanced/`, the fork patches, `tools/advanced_bundle.py`, `web/src/field-views.js`):
+  `python3 tools/check_advanced.py dist/kisi-examples.html dist/kisi-advanced-lite.html` ("Fields…" for a segment and
+  a pair, every view, light and dark; add `dist/kisi-advanced.html` when you have the full-wave build – else run the
+  `fullwave-xs` workflow with `only_advanced` on the branch). The fork itself is never changed from here: kisi's
+  changes to it are patches (`web/advanced/fork-patches/README.md`).
 * CLI or `kisi_core::commands`: `python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples`
   (Node CLI with `--formula` against the native `kisi` on both example boards).
 * Field solver chain (`web/solver/`, the cross-section geometry, `tools/bundle.py`): `sh tools/validate_field.sh`
   (against HFSS/baseline, needs node).
 * KiCad plugin (`kicad-plugin/`, `tools/build_kicad_pcm.py`): `python3 -m unittest discover -s kicad-plugin/tests`
   (pip: jsonschema, optionally kicad-python==0.8.0 for the tests against its classes), then with fresh bundles
-  `python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs && python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip
+  `python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --advanced dist/kisi-advanced-lite.html && python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip
   examples/Thunderscope_Rev5.3.kicad_pcb --config web/samples/ts.kisi.json` (the package installed as KiCad's PCM
   does, its page in headless Chromium). No KiCad runs in CI: a change of the plugin's KiCad side needs a test in KiCad.
   The agent guide `kicad-plugin/agent/KISI-AGENT-GUIDE.md` is generated: after editing the kisi-prepare skill's

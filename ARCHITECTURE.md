@@ -83,11 +83,18 @@ to one thread.
   in the top bar: the tables of the view shown as CSV – one reader of the page's tables, units into the headers –,
   and `kisi report` in Web Workers through the CLI's calls `kisi_cli_project`, `kisi_cli_check_part`, `kisi_cli_run`
   with the browser's field results, so the result is the CLI's; the printable report from it, `kisi_report_html`) ·
-  `main`
-  (start-up, files, hand-over). Only in a build with `tools/bundle.py --advanced` (prototype,
-  `docs/research/advanced-solvers.md`): `advanced` before `main` – the option "Advanced solvers", "Fields…" in a
-  net's detail, the cross-section handed to `kisi-advanced.html` (`tools/advanced_bundle.py`, `web/advanced/`) or the
-  fork's hosted page.
+  `field-views` (the option "Advanced solvers: field views": the row "Fields" that `net-detail` draws, the clicked
+  segment from `interaction`; the cross-section handed to the field page next to the file – `kisi-advanced.html`, else
+  `kisi-advanced-lite.html` – in the fork's link form in the URL fragment, with the values of `data/field_views.json`;
+  the page's answers by `postMessage`) · `main` (start-up, files, hand-over).
+* The field pages (`tools/advanced_bundle.py`): the page of the js_2d_fields fork (pinned in
+  `third_party/js_2d_fields_fork.json`, fetched and patched with `web/advanced/fork-patches/` by `tools/fetch_fork.sh`,
+  not vendored) and its modules as one file that runs from disk: `web/advanced/runtime.js` serves the embedded files
+  (gzip + base64) to `fetch` and the module worker, the modules run as one classic script from a `blob:` URL,
+  kisi-sparse stands in for the original's Eigen solves; with the full-wave modules of
+  `tools/build_forsten_fullwave.sh` → `kisi-advanced.html`, without → `kisi-advanced-lite.html` (quasi-static). Its
+  first script tells the opener its build; the fork's `handover.js` (patch 0002) solves and shows the handed-over
+  cross-section and reports each step. Upstream's `third_party/js_2d_fields` is not part of it.
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
   script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example
   boards (`tools/fetch_examples.sh`) with their configuration `web/samples/<key>.kisi.json` → `kisi-examples.html`.
@@ -96,8 +103,8 @@ to one thread.
   (`tools/solver_bundle.py`, shared with the viewer) for Node; reads files, runs the field solver in worker
   threads with a disk cache and the rows of `check` in worker threads with engines of their own, everything else
   through `kisi_core::commands`.
-* GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html`, `kisi-examples.html` and
-  `kisi-docs.pdf`; the screenshots in `docs/img/` come from `tools/screenshots.py`.
+* GitHub Pages (release workflow): `web/pages/index.html` (landing page) with `kisi.html`, `kisi-examples.html`,
+  `kisi-advanced.html`, `kisi-advanced-lite.html` and `kisi-docs.pdf`; the screenshots in `docs/img/` come from `tools/screenshots.py`.
 * Files come in by drag and drop or the file dialog; with the File System Access API (Chromium) the viewer keeps
   the file handles and “Reload” reads them again after saving in KiCad. A page made by the KiCad plugin carries the
   board's files in `KICAD_BOARD` (`index.html`) and loads them the same way (`main.js`, `loadKicadBoard` →

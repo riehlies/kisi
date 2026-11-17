@@ -21,11 +21,15 @@ Every [release](https://github.com/riehlies/kisi/releases/latest) carries:
 | `kisi-examples.html` | the same viewer with two example boards built in – ThunderScope Rev5.3 and LibreVNA – each with its power tree as a kisi.json |
 | `kisi.mjs` | the command line for scripts, CI and agents (Node.js ≥ 18), with the 2D field solver |
 | `kisi-docs.pdf` | this documentation as one PDF |
-| `kisi-kicad-<version>.zip` | the KiCad plugin: a button in KiCad's PCB editor that opens the board in the viewer ([below](#from-kicad-the-plugin)) |
+| `kisi-advanced.html` | the field page of the viewer's "Fields…": potential, \|E\|, \|H\|, current density, power flow and losses of a cross-section (full-wave, 9 MB); put it next to `kisi.html` ([Field views](reference.md#field-views)) |
+| `kisi-advanced-lite.html` | the same page without the full-wave solver: potential and \|E\| only (quasi-static, 3 MB); used when `kisi-advanced.html` is not there |
+| `kisi-advanced.build-info.json` | what the field pages were built from (versions, commits, SHA-256) |
+| `kisi-kicad-<version>.zip` | the KiCad plugin: a button in KiCad's PCB editor that opens the board in the viewer ([below](#from-kicad-the-plugin)), with `kisi-advanced.html` |
 | `kisi-references-3d.html` | 3D reference cases for vias, stubs, pairs, lines and plane cavities with field plots, and kisi's fast models against them (attached to the releases in which the cases changed; up to v0.3.1 named `kisi-references.html`, currently [v0.3.2](https://github.com/riehlies/kisi/releases/tag/v0.3.2)) |
 | `kisi-references-2d.html` | 620 cross-sections solved by CST, a full-wave FEM solver, kisi's field solver and kisi's formulas: impedance, εeff and loss per case and per line type (attached to the releases in which the cases changed, currently [v0.3.2](https://github.com/riehlies/kisi/releases/tag/v0.3.2)) |
 
-The [live version](https://riehlies.github.io/kisi/) serves the viewer and the example viewer from GitHub Pages.
+The [live version](https://riehlies.github.io/kisi/) serves the viewer, the example viewer and both field pages from
+GitHub Pages.
 
 ## The viewer
 Open `kisi.html` (or the live version) and drop the `.kicad_pcb` with the `.kicad_pro` – and the board's
@@ -52,6 +56,11 @@ they leave the path and included in loss and TDR as open stubs; hovering a chart
 The estimate also gives NEXT/FEXT for every net with a target: the Couplings card lists the critical nets (from
 1 %), the map mode "Crosstalk" marks the critical stretches, and per net a chart shows where along the path the
 crosstalk comes from. The field solver refines only the critical couplings (on by default).
+
+With the option *Advanced solvers: field views* (field solver → Solver options; off by default) a net's detail gets
+a row **Fields**: "Fields…" opens the clicked segment's cross-section in the field page `kisi-advanced.html` next to
+the viewer – potential, |E|, |H| with field lines, current density, power flow with the ∫S dA check and the losses
+split into signal conductor, ground and dielectric, at the lane's Nyquist frequency ([Field views](reference.md#field-views)).
 
 ### 2. Channel
 ![The channel view: interfaces and lanes with their verdicts](img/channel.png)
@@ -184,14 +193,16 @@ in *Preferences → PCB Editor → Plugins* (KiCad 10), where its environment ca
    folder `kisi report` and `kisi export` use. Each click writes it anew. If `analysis/` cannot be
    written (a read-only folder), the page goes to the plugin's own folder instead (the one with the log, see
    below). The copy works offline, like `kisi.html`; the card "From KiCad" names the board, its
-   folder, the page and what happened to the kisi.json. In a project under version control, add `analysis/` to
-   `.gitignore`.
+   folder, the page and what happened to the kisi.json. Next to it goes the field page `kisi-advanced.html` the plugin
+   carries (written when it is missing or of another version), for "Fields…" in the offline copy. In a project under
+   version control, add `analysis/` to `.gitignore`.
 5. It opens the viewer through a temporary local Python service in your default browser. The page and all
    calculations stay on your computer. The service is accessible only on `127.0.0.1`, has a new secret per
-   session and exposes only this viewer and this board's configuration. It needs no additional Python packages.
+   session and exposes only this viewer, this board's configuration and the field page (at
+   `/open/kisi-advanced.html`, next to the viewer's address). It needs no additional Python packages.
 
-Next to the board the plugin writes nothing but `<board>.kisi.json` and, in `analysis/`, the page and the backups;
-KiCad's files are never written or saved.
+Next to the board the plugin writes nothing but `<board>.kisi.json` and, in `analysis/`, the page, the field page and
+the backups; KiCad's files are never written or saved.
 
 **Saving kisi.json** – on the viewer's *Prepare PCB* page, "Save kisi.json" writes the file directly next to the
 board and loads it into the analyses. There is no download or folder dialog. The previous file is kept as a

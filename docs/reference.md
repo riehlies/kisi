@@ -311,3 +311,45 @@ dismissed.
   value).
 - The viewer exports Touchstone files per net and writes `<board>.kisi.json` from its Prepare PCB page
   ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)); its other edits stay in the browser.
+
+## Field views
+The viewer's option *Advanced solvers: field views* (impedance view, field solver → Solver options; off by default,
+kept in the browser) adds a row **Fields** to a net's detail: the net's cross-sections, the clicked segment's first,
+the first view to show, and "Fields…". It opens the cross-section in a field page – the field views of the fork
+[riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) of Henrik Forstén's js_2d_fields – in a second
+window, solves it there and shows the view; the next cross-section goes to the same window without a reload.
+
+**The field page is a second file next to the viewer** (the release carries both, GitHub Pages serves both next to
+the viewers, the KiCad plugin carries the full one):
+
+| File | Solver | Views |
+|---|---|---|
+| `kisi-advanced.html` (9 MB) | full-wave (FEM, gmsh) | potential, \|E\|, \|H\| with field lines, current density J, power flow S with the 50 / 90 / 99 % lines and the ∫S dA check, losses split into signal conductor, ground and dielectric |
+| `kisi-advanced-lite.html` (3 MB) | quasi-static | potential and \|E\|; the page says what it lacks |
+
+"Fields…" opens `kisi-advanced.html` next to the viewer; when it is not there, `kisi-advanced-lite.html`; the file
+that answered is tried first next time. From disk the page that answers decides (a page that does not answer within a
+few seconds counts as missing); over http(s) – GitHub Pages, the KiCad plugin's local host – the viewer asks the
+server first. When neither is there, the row says so in one line with the files to download from the
+[release](https://github.com/riehlies/kisi/releases/latest). The lite page is chosen by leaving the full one out (or
+by renaming the lite page to `kisi-advanced.html`). The browser must allow the viewer's pop-up window.
+
+**What goes along** (in the URL fragment, which never reaches a server; values with their sources in
+`data/field_views.json`):
+- the cross-section's geometry as kisi's field solver solves it (layer, widths, gaps, planes and their cut-outs,
+  solder mask) – with the active stackup, also a what-if one of the option "Fab stackups & tolerances", which the
+  title names;
+- the frequency: the Nyquist frequency of the net's interface profile (the one the channel check uses; the generic
+  profiles: 1 Gbit/s → 500 MHz), 1 GHz when the net has none – the title says which;
+- the excitation (peak values): a single trace 1 V; a pair 1 V between the conductors (odd mode, ±0.5 V) with the
+  pair's mode switch on *Differential*, 1 V common mode (even mode, +1 V on both) on *Common mode*;
+- the copper: 5.8·10⁷ S/m and the roughness preset of the channel settings as the page's RMS roughness (smooth 0,
+  HVLP 0.27 µm, standard ED 0.66 µm: fitted to kisi's Huray presets, **estimates**, marked so in the title);
+- kisi's light or dark theme; the page follows it (opened alone it follows the browser's preference).
+
+The page's title line names the net, the cross-section, the frequency and its origin, the excitation, the copper and
+the board. Everything else is the page's own (its mesh, tolerances, sweep); the impedance it shows comes from its own
+solve and can differ from kisi's field solver by up to about 1.5 % (a newer revision of the original, other mesh).
+The page loads nothing from the web; it is GPL-3.0 with its third-party notices (Plotly, gmsh, OpenCASCADE, Eigen,
+Spectra, Emscripten) and the build's versions in its About tab and in `kisi-advanced.build-info.json`; the release
+notes name its corresponding source.

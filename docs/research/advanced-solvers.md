@@ -1,27 +1,25 @@
-# Advanced solvers: field views of a segment (prototype)
+# Advanced solvers: field views of a segment
 
-Design note for the ROADMAP item "Field views of a selected segment or via", 2D part (2026-11-17, branch
-`feat/advanced-solvers`). Question: how does kisi show the field views of the fork
+Design note for the ROADMAP item "Field views of a selected segment or via", 2D part. The prototype (2026-11-17,
+branch `feat/advanced-solvers`) built and measured three ways of delivering the field views of the fork
 [riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) (`FORK.md` there) for a clicked line segment –
 potential, |E|, |H| with field lines, current density J, power flow S with the 50 / 90 / 99 % lines and the ∫S dA
-check, losses split into signal conductor, ground and dielectric, arrows, equipotentials, odd / even, one excitation –
-and what does each way of delivering them cost? The prototype builds and measures three variants.
+check, losses split into signal conductor, ground and dielectric. The numbers below are that prototype's; the
+user's decisions after it and what production (`feat/advanced-solvers-v2`) made of them follow at the end.
+How it works now, for users: [`docs/reference.md`, "Field views"](../reference.md#field-views).
 
-## What the prototype does
+## What the prototype did
 
-* **Option.** A viewer built with `tools/bundle.py --advanced` has the option *Advanced solvers (field views)* in
-  the field solver's *Solver options* (off by default; kept per browser). On, a net's detail gets a row *Fields*
-  with the net's cross-sections (the clicked segment's first) and a button *Fields…*; the board tooltip says so.
-  Settings: where to open (kisi-advanced.html next to the page, the fork's hosted page, or the copy built into the
-  file), the solver there (full-wave: all views; quasi-static: potential and |E|), the frequency (100 MHz – 10 GHz)
-  and the first view. Without `--advanced` the bundles are byte-identical to main (`cmp` in the prototype; the
-  golden files and the size budget do not move).
-* **Hand-over.** kisi writes the cross-section as js_2d_fields geometry text already (`xsgeom.rs`). *Fields…*
-  opens the field page with the original's own link form – `#params=` + the settings (`tl_type: custom`, the text,
-  the solver, one frequency) as deflate-raw + base64url, which the original applies on load and on every
-  `hashchange` – plus keys read by `web/advanced/handover.js`: `solve=1`, `view=`, `mode=`, `exc=`, `title=`,
-  `editor=hide`. The page solves and shows the chosen view without further clicks. The window is reused: the next
-  segment changes only its fragment (no reload). The fragments of the three test segments are 0.49–0.58 kB.
+* **Option.** A viewer built with `tools/bundle.py --advanced` had the option *Advanced solvers (field views)* in the
+  field solver's *Solver options*. On, a net's detail got a row *Fields* with the net's cross-sections (the clicked
+  segment's first) and a button *Fields…*. Settings: where to open (the second file, the fork's hosted page, or the
+  copy built into the file), the solver there, the frequency (100 MHz – 10 GHz) and the first view.
+* **Hand-over.** kisi writes the cross-section as js_2d_fields geometry text already (`xsgeom.rs`). *Fields…* opens
+  the field page with the original's own link form – `#params=` + the settings (`tl_type: custom`, the text, the
+  solver, one frequency) as deflate-raw + base64url, which the original applies on load and on every `hashchange` –
+  plus keys read by a hand-over script: `solve=1`, `view=`, `mode=`, `exc=`, `title=`, `editor=hide`. The page
+  solves and shows the chosen view without further clicks. The window is reused: the next segment changes only its
+  fragment (no reload). The fragments of the three test segments are 0.49–0.58 kB.
 * **kisi-advanced.html** (`tools/advanced_bundle.py`): the fork's page and its 68 modules as one file that also
   runs from disk. The fork is fetched at a pinned commit (`third_party/js_2d_fields_fork.json`,
   `tools/fetch_fork.sh`), not vendored. Its modules become one classic script (`tools/esm_classic.py`, as kisi's
@@ -29,17 +27,16 @@ and what does each way of delivering them cost? The prototype builds and measure
   blob and hands the worker its files on request (lazy: the 12 MB mesher is decoded only when the full-wave backend
   runs). Changed at build time, as in kisi.html: import/export statements, `import.meta.url` (a fixed URL per module),
   dynamic `import()` (resolved in the bundle), the page's stylesheet and Plotly loader and module tags (each
-  replacement must match exactly once, so a changed fork fails the build, not the page). Nothing in
-  `third_party/js_2d_fields` changes; the fork's original files and its `src/fork/` layer are used as they are.
+  replacement must match exactly once, so a changed fork fails the build, not the page).
 * **Stand-ins without the full-wave build.** The original needs Emscripten builds that are in no git: `solver.wasm`
   (Eigen; kisi already replaces it with kisi-sparse), `eigen_solver.wasm` (Eigen + Spectra) and `gmsh.wasm`
   (gmsh + OCCT). Since upstream b5ea9eb even the quasi-static plot fields solve a complex system through
   `eigen_solver` (`_plot_fields`, complex permittivity). `web/advanced/eigen_sparse_module.js` provides the two
   linear solves of that module from kisi-sparse (complex symmetric as the real 2N block system, LU), so a build
-  without `--fw` shows potential and |E|; the full-wave choice is disabled there. With `--fw DIR`
-  (`tools/build_forsten_fullwave.sh`) the real modules go in and every view works.
+  without `--fw` shows potential and |E|. With `--fw DIR` (`tools/build_forsten_fullwave.sh`) the real modules go in
+  and every view works.
 
-Measured with `tools/measure_advanced.py` (headless Chromium: a real click on the board, *Fields…*, the window, the
+Measured with the prototype's `tools/measure_advanced.py` (headless Chromium, removed in production: a real click on the board, *Fields…*, the window, the
 solve, the view; sizes; memory as the resident size of all browser processes). Local: 2 cores, quasi-static only.
 GitHub Actions (workflow `fullwave-xs`, input `only_advanced`, job `advanced`): with the full-wave modules.
 
@@ -126,7 +123,7 @@ cheapest; a split per view is not possible because Plotly (4.8 MB raw) and the a
 
 ### 3. Link-out to the hosted fork (measured with a stand-in)
 
-kisi.html opens `https://advpcb.davidriehl.de/tl/field_solver.html#params=…`. Nothing is bundled; works from disk,
+kisi.html would open the fork's page on its web host with `#params=…`. Nothing is bundled; works from disk,
 from the KiCad plugin's page and from GitHub Pages, but needs the internet (the hosted page could not be reached from
 the measuring machine – egress policy –, so `kisi-advanced.html` served over `http://127.0.0.1` stood in for it: the
 same hand-over from a `file://` viewer into another origin, the second segment by fragment only). How a geometry can
@@ -146,7 +143,7 @@ hosted page follows the fork's head, kisi's geometry text follows kisi's vendore
 b5ea9eb) – the text format has not changed between them, but nothing pins it. Licences: nothing is distributed by
 kisi. Privacy: the geometry stays in the browser (fragment), but the page itself comes from a third-party host.
 
-## Recommendation
+## Recommendation of the prototype
 
 **Variant 1, the second file, with the full-wave modules** – and variant 3 as the second choice in the same option.
 
@@ -173,20 +170,34 @@ kisi. Privacy: the geometry stays in the browser (fragment), but the page itself
 | Hand-over content: kisi's conductivity and roughness, the frequency from the lane's profile, pair mode and excitation (voltage between conductors for a pair), the what-if stackup; estimates marked | 1 |
 | KiCad plugin: ship `kisi-advanced.html` and serve it from `kisi_server` at one fixed path (an `http://127.0.0.1` page cannot open `file://`), the offline page next to it; a test in KiCad | 1 |
 
-## Open questions
+## Decisions (2026-11-17) and what production made of them
 
-1. Delivery: variant 1 with variant 3 as the fallback (recommended) – or variant 3 only (no size, but online and
-   version skew)?
-2. The release: the full-wave `kisi-advanced.html` (9.2 MB), the quasi-static one (3.1 MB), or both?
-3. KiCad plugin: carry `kisi-advanced.html` in the package (+≈ 6.8 MB in the zip, which is ≈ 6.4 MB now)?
-4. The fork: take `src/fork/handover.js` (patch in the review folder)? And offer `setView` / a fit as exports, so
-   that kisi's adapter needs no Plotly internals (now: the `plotly_buttonclicked` event of the menu named `view`, and
-   deleting the plot's axis ranges before the next draw)?
-5. Move kisi's vendored upstream to b5ea9eb (the fork's base), so that the impedance kisi shows and the field page's
-   come from one revision? The stripline above differs by 1.4 % between kisi's FDM and the page's quasi-static solve
-   at the same tolerance; that wants a look either way.
-6. The field page is dark only (the original's style); a light theme would be a change in the fork.
-7. Defaults handed over: 1 GHz and 1 V peak per conductor now; the lane's Nyquist frequency, a pair as voltage
-   between conductors, power instead of voltage?
-8. Should the hosted URL be configurable (a self-hosted copy of the fork)?
-9. The 3D part of the ROADMAP item (a via in kisi-fdtd with field output) is not touched here.
+The prototype's open questions, answered by the user, and where each answer went (`feat/advanced-solvers-v2`):
+
+1. **Delivery: variant 1 only**, the second file. Variant 3 (the hosted page) is gone completely – no URL in the
+   code, the docs or the pin file, no fallback; variant 2 (`bundle.py --advanced-inline`) and the prototype's
+   measuring script are gone too (their numbers stay above). The option is part of every `kisi.html`
+   (`web/src/field-views.js`, the row in `net-detail.js`, the clicked segment in `interaction.js`); +11.6 kB.
+2. **The release carries both builds**: `kisi-advanced.html` (full-wave) and `kisi-advanced-lite.html`
+   (quasi-static; its tab bar says what it lacks), on the release and on GitHub Pages. "Fields…" opens
+   `kisi-advanced.html` next to the viewer, else the lite page; the page announces itself and its build to the viewer
+   (`postMessage` as its first script), over http(s) a HEAD request finds it first; neither there: one line with the
+   files to download. The release builds the full-wave modules itself (job `fullwave`, cached as in `fullwave-xs`),
+   both pages twice (reproducible) with their SHA-256 in `kisi-advanced.build-info.json`; CI builds and checks the
+   lite page (`tools/check_advanced.py`), the full one in the release and the `fullwave-xs` workflow.
+3. **The KiCad plugin carries `kisi-advanced.html`**: written next to the offline page in `analysis/` (only when
+   missing or another version), served by `kisi_server.py` at `/open/kisi-advanced.html` under the host's
+   Content-Security-Policy (the page starts its modules from a `blob:` URL, no `eval`).
+4. **The fork is not changed automatically**: kisi keeps its changes as patches (`web/advanced/fork-patches/`,
+   README there), applied by `tools/fetch_fork.sh` to the pinned commit: the plot API (`forkPlot.setView`, `fit`),
+   the hand-over `src/fork/handover.js` (on that API: no Plotly menu event, no deleted axis ranges), the theme.
+5. Moving kisi's vendored upstream to b5ea9eb is another agent's work package; the WASM modules are built from
+   `third_party/UPSTREAM_REV` and follow it (the build cache's key contains it).
+6. **Light theme: yes**, as fork patch 0003 – the page follows kisi's theme (handed over) or the browser's.
+7. **Hand-over defaults**: the lane's Nyquist frequency from its profile (1 GHz without one, stated), a pair 1 V
+   between the conductors (±0.5 V) or 1 V common mode, a single trace 1 V; kisi's conductivity and roughness preset
+   (as the page's RMS roughness, an estimate), the what-if stackup through the geometry and in the title
+   (`data/field_views.json`).
+8. **No configurable URL.**
+9. The 3D part of the ROADMAP item (a via in kisi-fdtd with field output) is a work package of its own;
+   `kisi-advanced.html` does not stand in its way.

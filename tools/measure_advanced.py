@@ -93,7 +93,7 @@ class Browser:
         if not psutil:
             return 0
         # the browser process (its command line names the profile folder) and every process below it (renderers,
-        # GPU, utility); RSS counts shared pages once per process, so this is an upper bound
+        # GPU, utility); PSS (shared pages split between the processes that map them), RSS where PSS is not readable
         procs = set()
         for p in psutil.process_iter(["cmdline"]):
             try:
@@ -105,9 +105,12 @@ class Browser:
         tot = 0
         for p in procs:
             try:
-                tot += p.memory_info().rss
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                pass
+                tot += p.memory_full_info().pss
+            except (psutil.NoSuchProcess, psutil.AccessDenied, AttributeError):
+                try:
+                    tot += p.memory_info().rss
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
         return tot
 
     def sample(self):
@@ -194,12 +197,24 @@ def handover(br, pg, popup, seg, tag, view_shot=True):
                             timeout=1800000, polling=200)
     wall = time.time() - t
     h = popup.evaluate("({ ...window.__fieldHandover, request: undefined })")
-    popup.wait_for_timeout(1500)  # the field view's own drawing (H / J / S from the worker)
+    # the field drawn (a heatmap / contour trace; H, J, S and losses come from a worker job after the view switch)
+    try:
+        popup.wait_for_function("(document.getElementById('sim_canvas').data || []).some((t) => ['heatmap', 'contour'].includes(t.type))",
+                                timeout=60000, polling=200)
+    except Exception:
+        problems.append(f"{tag} {seg[0]}: no field drawn")
+    popup.wait_for_timeout(1000)
+    info = popup.evaluate("""() => { const gd = document.getElementById('sim_canvas'), log = document.getElementById('console_out').textContent;
+      const t = gd.layout && gd.layout.title; const last = (re) => { const m = [...log.matchAll(re)]; return m.length ? +m[m.length - 1][1] : null; };
+      return { title: String(t && (t.text || t) || '').replace(/<[^>]+>/g, ' ').slice(0, 240), field_warning: /Field views:/.test(log),
+               z0: last(/Z0:\s*([\d.]+)/g), z0_odd: last(/Z0_odd:\s*([\d.]+)/g), z0_even: last(/Z0_even:\s*([\d.]+)/g) }; }""")
+    if info["field_warning"]:
+        problems.append(f"{tag} {seg[0]}: the page logged a field view warning")
     if view_shot:
         popup.screenshot(path=os.path.join(shots, f"{tag}_{seg[0]}.png"))
     if h.get("phase") != "shown":
         problems.append(f"{tag} {seg[0]}: hand-over ended in {h.get('phase')}: {h.get('error')}")
-    return popup, {"wall_s": round(wall, 2), "solve_ms": h.get("solveMs"), "shown_ms": h.get("shownMs")}
+    return popup, {"wall_s": round(wall, 2), "solve_ms": h.get("solveMs"), "shown_ms": h.get("shownMs"), **info}
 
 
 def set_option(pg, target, backend, view, freq=1):

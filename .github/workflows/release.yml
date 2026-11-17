@@ -122,7 +122,8 @@ jobs:
           # each reference page only when its cases or builder changed since the previous release tag
           prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
           changed() { [ -z "$prev" ] || ! git diff --quiet "$prev" "$GITHUB_REF_NAME" -- "$@"; }
-          if changed validation/via_ref validation/fdtd/make_viewer.py validation/fdtd/viewer_template.html; then
+          if changed validation/via_ref validation/fdtd/results validation/fdtd/make_viewer.py validation/fdtd/viewer_template.html \
+              data/accuracy.json; then
             files="$files dist/kisi-references-3d.html"
           else
             echo "::notice::3D reference cases unchanged since $prev: kisi-references-3d.html not attached (it stays on an earlier release)"

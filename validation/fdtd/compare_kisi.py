@@ -2,8 +2,8 @@
 kisi computes the channel (`kisi net … --s2p/--s4p`, formula impedances), the result is compared
 with kisi-fdtd (validation/via_ref/<case>/kisi.sNp).
 
-Writes validation/via_ref/<case>/kisi_model.sNp and results/kisi_models.json (table for the
-viewer, metrics of validation/via_references.md section 6).
+Writes validation/via_ref/<case>/kisi_model.sNp and results/kisi_models.json (the scores of
+data/accuracy.json, the reference page's accuracy table; metrics: validation/vias.md section Scoring).
 
 usage: python3 compare_kisi.py kisi-binary|kisi.mjs [--only SUBSTR,...] [--out results/kisi_models.json]
 (kisi.mjs: the Node CLI with the 2D field solver; the native binary uses formula impedances)
@@ -62,7 +62,7 @@ def kisi_thru(key):
 
 def dtau_ps(f, sk, s3):
     """delay difference kisi − 3D from the S21 phase between 5 and 20 GHz (ps; positive: kisi slower), as
-    junction_fit.py"""
+    via_ladder.py"""
     m = f <= 20e9
     ph = np.unwrap(np.angle(sk[m])) - np.unwrap(np.angle(s3[m]))
     sel = f[m] >= 5e9
@@ -70,8 +70,8 @@ def dtau_ps(f, sk, s3):
 
 
 def tdr_errs(f, s3, sk):
-    """relative errors of the TDR minimum and maximum (25 ps, 80 ps window), % – as the reduced
-    via model in via_pbm / rust_models"""
+    """relative errors of the TDR minimum and maximum (25 ps, 80 ps window), % – as the via ladder
+    alone in via_ladder.py"""
     _, z3 = sparam.tdr(f, s3, rise=25e-12, tmax=80e-12)
     _, zk = sparam.tdr(f, sk, rise=25e-12, tmax=80e-12)
     return [round(abs(zk.min() / z3.min() - 1) * 100, 2), round(abs(zk.max() / z3.max() - 1) * 100, 2)]
@@ -170,13 +170,13 @@ for name in cases:
         # the via alone: kisi's channel de-embedded with kisi's own 2×thru against the 3D result
         # de-embedded with the 3D 2×thru (the full-channel TDR also holds the low-frequency offset
         # of the 3D lumped ports), both up to kisi's 25 GHz; both with the matched de-embedding
-        # (each fixture referred to its own line impedance first, TESTS.md section 19: the 3D lines'
-        # dielectric conductivity makes their Zc fall below 1 GHz, which the z0-referred NZC leaves
-        # in the via's TDR)
+        # (each fixture referred to its own line impedance first: the 3D lines' dielectric
+        # conductivity makes their Zc fall below 1 GHz, which a z0-referred NZC leaves in the via's
+        # TDR; validation/vias.md section De-embedding)
         th = [kisi_thru(f"thru_{c['meta']['stackup']}_{q['layer']}") for q in c["meta"].get("ports", [])]
         th3 = [os.path.join(REF, f"thru_{c['meta']['stackup']}_{q['layer']}", "kisi.s2p") for q in c["meta"].get("ports", [])]
-        # (the set of section 5: the single vias via_pbm.py de-embeds, i.e. not the D cap cases)
-        if g in "ABCDX" and os.path.exists(os.path.join(REF, cid, "kisi_deembedded.s2p")) and len(th) == 2 and all(th) and all(os.path.exists(t) for t in th3):
+        # (the single vias A–D and X without the GND → PWR cases D_s8_cap_*, the set of the scores)
+        if g in "ABCDX" and not cid.startswith("D_s8_cap") and len(th) == 2 and all(th) and all(os.path.exists(t) for t in th3):
             fk0, Sk0 = sparam.read_touchstone(ts)
             Dk = interp(fk0, sparam.deembed_matched(fk0, Sk0, th[0][1], th[1][1])[0], f)
             D3 = sparam.deembed_matched(f_3d, S_3d, *[sparam.read_touchstone(t)[1][: len(f_3d)] for t in th3])[0][: len(f)]
@@ -200,8 +200,8 @@ for name in cases:
         v["zdiff_max_3d"], v["zdiff_max_kisi"] = round(float(z3.max()), 1), round(float(zk.max()), 1)
         # the via pair alone: every port de-embedded with its 2×thru (kisi's own thru for kisi, the
         # 3D thru for 3D; the feeds are uncoupled single-ended lines), matched as for the single vias
-        # (before section 19: a first-order shift, which left the ports and the lines in the TDR),
-        # differential mode, 25 ps, up to 25 GHz
+        # (a first-order shift would leave the ports and the lines in the TDR), differential mode,
+        # 25 ps, up to 25 GHz
         th = [kisi_thru(f"thru_{c['meta']['stackup']}_{q['layer']}") for q in c["meta"].get("ports", [])]
         th3 = [os.path.join(REF, f"thru_{c['meta']['stackup']}_{q['layer']}", "kisi.s2p") for q in c["meta"].get("ports", [])]
         if g == "E" and len(th) == 4 and all(th) and all(os.path.exists(t) for t in th3):

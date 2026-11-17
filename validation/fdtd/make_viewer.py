@@ -1,6 +1,7 @@
 """Build dist/kisi-references-3d.html (not in the repository; built locally and by the release workflow):
-a self-contained page with the geometry and the results
-of every via reference case (validation/via_ref) and the solver checks (results/*.json).
+a self-contained page with the geometry and the results of every via reference case (validation/via_ref), the solver
+checks (results/openems_refs.json, results/cst_compare.json) and the accuracy of kisi's models (results/kisi_models.json,
+results/via_ladder.json, data/accuracy.json). Method: validation/vias.md.
 
 usage: python3 make_viewer.py [via_ref_dir] [out.html] [--fragment]
 """
@@ -25,7 +26,7 @@ def r2(a, d=2):
 
 
 def cst_mesh(name):
-    """the CST result shown for a case: its finest mesh (CST_MESHES, CST.md) → (file prefix, mesh key) or (None, None)"""
+    """the CST result shown for a case: its finest mesh (CST_MESHES) → (file prefix, mesh key) or (None, None)"""
     t = cst_tools(REF, name)
     return (t[0], dict(CST_MESHES)[t[0]]) if t else (None, None)
 
@@ -71,17 +72,17 @@ def curves(S, group="", f=None, z0=50.0):
             "Sdd21": r2(dm["dd"][:, 1, 0]), "Sdd11": r2(dm["dd"][:, 0, 0]), "Scd21": r2(dm["cd"][:, 1, 0]), "Scc21": r2(dm["cc"][:, 1, 0])}
 
 
-DEEMBED_MATCHED = ("2×thru per port, matched as in the accuracy scores (sparam.deembed_matched_nport, TESTS.md section 19): each port is "
+DEEMBED_MATCHED = ("2×thru per port, matched as in the accuracy scores (sparam.deembed_matched_nport; validation/vias.md): each port is "
                    "referred to its feed line's own impedance Zc(f) before the NZC fixture of its 2×thru is removed, because the 3D feed lines "
                    "are not 50 Ω at low frequency (their dielectric loss is a conductivity fixed at f_loss)")
 DEEMBED_SHIFT = ("2×thru, first order (feed delay and loss per port, no reflection): the feeds of a coupled line are the coupled line "
                  "itself, which the matched per-port de-embedding does not model")
-TDR_DE = dict(rise=25e-12, tmax=80e-12)  # the via alone: edge and window of the accuracy scores (rust_models.py, compare_kisi.py)
+TDR_DE = dict(rise=25e-12, tmax=80e-12)  # the via alone: edge and window of the accuracy scores (via_ladder.py, compare_kisi.py)
 
 
 def deembed(f, S, fixtures, group):
     """the case with each port's feed removed by its 2×thru → (D, label, Z∞ per port or None): the matched
-    de-embedding of the accuracy scores (rust_models.py, compare_kisi.py); the coupled lines of group T, whose feeds
+    de-embedding of the accuracy scores (via_ladder.py, compare_kisi.py); the coupled lines of group T, whose feeds
     are coupled, with the first-order shift"""
     T = [x[: len(f)] for x in fixtures]
     if S.shape[1] == 4 and group == "T":
@@ -99,128 +100,78 @@ def tdr_de(f, S, diff=False):
     return t * 1e12, z
 
 
-def model_check(nm, d):
-    """tables of the reduced-model comparisons"""
-    if nm == "via_pbm":
-        rows = []
-        for cid, v in sorted(d.items()):
-            if v.get("mode") == "odd":
-                rows.append([cid + " (differential)", v["dSdd21_max_db_20GHz"], "–", f"phase error max {v['dphase_max_deg_20GHz']}°", "–", "–"])
+def fmt3(v):
+    """[median, p90, max] → 'median / p90 / max'"""
+    return " / ".join(f"{x:g}" for x in v) if v else "–"
+
+
+def accuracy_check(km, vl, acc):
+    """the accuracy of kisi's models: data/accuracy.json's via numbers with the scores they come from
+    (results/kisi_models.json: kisi's channel, compare_kisi.py), the via ladder alone against the three solvers
+    (results/via_ladder.json, via_ladder.py), and kisi's channel per case"""
+    sm, av = km.get("summary") or {}, acc.get("vias", {})
+    rows = [["via ladder, single vias (" + str(sm.get("via_cases", "–")) + ")", "TDR error median / p90 (%)", f"{sm.get('via_tdr_err_pct_median')} / {sm.get('via_tdr_err_pct_p90')}",
+             f"{av.get('ladder_median_pct')} / {av.get('ladder_p90_pct')}", "results/kisi_models.json"],
+            ["", "max Δ|S21| to 20 GHz, median (dB)", sm.get("via_dS21_max_db_median"), "–", ""],
+            ["", "|Δτ| median (ps)", sm.get("via_abs_dtau_ps_median"), "–", ""],
+            ["", "stub notch", ", ".join(f"{k} {v:+.1f} %" for k, v in (sm.get("stub_err_pct") or {}).items()), "–", ""],
+            ["via ladder, pairs (" + str(sm.get("pair_cases", "–")) + ")", "Zdiff TDR error median / p90 (%)", f"{sm.get('pair_zdiff_err_pct_median')} / {sm.get('pair_zdiff_err_pct_p90')}",
+             f"{av.get('pair_median_pct')} / {av.get('pair_p90_pct')}", "results/kisi_models.json"],
+            ["", "max ΔSdd21 to 20 GHz, median (dB) · phase (°)", f"{sm.get('pair_dSdd21_max_db_median')} · {sm.get('pair_dphase_max_deg_median')}", "–", ""],
+            ["", "|Δτ| median (ps)", sm.get("pair_abs_dtau_ps_median"), "–", ""],
+            ["coaxial fallback (vias without a plane)", "TDR error median / p90 (%)", "not scored on the current references",
+             f"{av.get('coax_median_pct')} / {av.get('coax_p90_pct')}", "results/kisi_models_coax.json (the former references)"]]
+    text = ["kisi's channel model as kisi runs it (each case as a mini KiCad board, kisi_board.py, run through kisi net with formula "
+            "impedances) with the via alone cut out: kisi's channel de-embedded with kisi's own 2×thru, the 3D result (kisi-fdtd) with the 3D "
+            "2×thru, both with the matched de-embedding of the case pages; TDR with a 25 ps edge in an 80 ps window, minimum and maximum "
+            "pooled; |S21| and the phase up to 20 GHz. These scores are data/accuracy.json's via numbers (the column “data/accuracy.json”), "
+            "the uncertainty kisi states for its via models. Script: compare_kisi.py (CI: tools/golden.py vias); method: validation/vias.md.",
+            "The coaxial fallback is the former via model, now used only for vias that cross no plane; its numbers were scored against the "
+            "references and the de-embedding of that time and are kept as data/accuracy.json's source until it is scored again."]
+    out = [{"title": "Accuracy of kisi's via models", "text": text,
+            "cols": ["model", "metric", "now (kisi's channel)", "data/accuracy.json", "stored in"], "rows": rows}]
+    s = vl.get("summary") or {}
+    name = {"kisi": "kisi-fdtd", "openems": "openEMS (cell at metal halved)", "cst": "CST (finest mesh)"}
+    lrows = []
+    for tool in ("kisi", "openems", "cst"):
+        for st in ("single", "pairs"):
+            x = (s.get(tool) or {}).get(st)
+            if not x:
                 continue
-            rows.append([cid, v["dS21_max_db_20GHz"], v["dS11_max_20GHz"], f"{v['z_min_3d']} / {v['z_min_pbm']}", f"{v['z_max_3d']} / {v['z_max_pbm']}",
-                         f"{v['notch_3d_ghz'] or '–'} / {v['notch_pbm_ghz'] or '–'}" if (v["notch_3d_ghz"] or 0) < 39 else "–"])
-        return {"title": "Reduced via model (prototype) against the de-embedded 3D result",
-                "text": ["Physics-based ladder along the barrel: via–plate capacitances from an axisymmetric r–z Laplace solve (pads, antipads, "
-                         "layered εr), between the planes the parallel-plate impedance ωμd/4 · H0⁽²⁾(ka) with the GND vias as shorted ports, "
-                         "plane pairs split into ≤ 0.2 mm sections, the barrel above the outermost planes as a short coax to the antipad, stubs as "
-                         "the open rest of the ladder. Ports at the via; the 3D result is de-embedded with the 2×thru of each feed layer, "
-                         "here still with the prototype's own 50 Ω-referred NZC (pairs: first-order shift), unlike the curves of the cases and "
-                         "the table “Rust port”, which use the matched de-embedding (TESTS.md section 19). TDR with a 25 ps edge. Script: via_pbm.py.",
-                         "kisi now uses this ladder (Rust port kisi_si::via_pbm, see the tables “Rust port” and “kisi's fast channel model”); "
-                         "the former coax-section model is the fallback for vias without a plane."],
-                "cols": ["case", "max Δ|S21| to 20 GHz (dB)", "max |ΔS11| to 20 GHz", "TDR Z min 3D / model (Ω)", "TDR Z max 3D / model (Ω)", "stub notch 3D / model (GHz)"],
-                "rows": rows}
-    if nm == "pdn_loop":
-        rows = [[r["case"], r["dist_mm"], r["D_mm"], r["L50_nH"], r["R50_mOhm"], r["dL_3d_nH"], r.get("dL_model_nH", "–"), r["dL_formula_nH"]] for r in d["rows"]]
-        return {"title": "PDN loop (group H): loop inductance against the plane-spreading formula",
-                "text": [f"BGA pin field (4 × 4, 0.8 mm, pins shorted per net by two sheets above the board) to one 0402 capacitor (a short with 5 mΩ "
-                         f"on a 0.5 mm body loop), finite 8-layer board, 1 Ω port. Loop inductance Im(Z11)/ω at 50 MHz. The change with the distance "
-                         f"is compared with the finite-board plane-cavity model (double cosine series, height d_eff, 2.4 mm port at the pin field, the capacitor vias as a "
-                         f"shorted 0.2 mm port) and with the radial formula ΔL = μ0·d_eff/π·ln(D2/D1), d_eff = {d['d_eff_mm']} mm (PWR plane between two GND planes). "
-                         "The board is 7 mm wide, so beyond a few mm the current runs as in a strip and the radial formula underestimates ΔL. "
-                         "An earlier run with the planes reaching into the PML was wrong: the infinite plane pair bypassed the capacitor. Script: pdn_loop.py."],
-                "cols": ["case", "distance (mm)", "D centre (mm)", "L at 50 MHz (nH)", "R at 50 MHz (mΩ)", "ΔL 3D (nH)", "ΔL plane-cavity model (nH)", "ΔL radial formula (nH)"], "rows": rows}
-    if nm == "cavity_model":
-        rows = []
-        for cid, v in d.items():
-            for r in v["resonances_GHz_3d_model_errpct"]:
-                rows.append([cid, r[0], r[1], f"{r[2]:+.2f} %" if r[2] is not None else "–"])
-            rows.append([cid, "|Z11| / |Z21| model ÷ 3D below 1 GHz", f"{v['Z11_below_1GHz_mean_ratio']} / {v['Z21_below_1GHz_mean_ratio']}", ""])
-        return {"title": "Plane-cavity model against group G",
-                "text": ["Rectangular plane pair with magnetic walls (double cosine series, Okoshi), square ports of one cell, the same dielectric "
-                         "loss as in 3D (σ at f_loss). Resonances of |Z11| at the corner port. The frequency grid is 10 MHz (0.7 % at 1.45 GHz). "
-                         "Script: cavity_model.py."],
-                "cols": ["case", "resonance 3D (GHz)", "model (GHz)", "error"], "rows": rows}
-    if nm == "rust_models":
-        sm = d["summary"]
-        t = sm["via_time_ms_median"]
-        rows = [["Python prototype (via_pbm.py)", sm["python"]["single_tdr_err_pct_median"], sm["python"]["single_tdr_err_pct_p90"], sm["python"]["single_dS21_max_db_median"], sm["python"]["pairs_dS21_max_db_median"], "–", f"{t['python']} ms" if t.get("python") else "–"],
-                ["Rust, prototype model (uniform grid)", sm["rust"]["single_tdr_err_pct_median"], sm["rust"]["single_tdr_err_pct_p90"], sm["rust"]["single_dS21_max_db_median"], sm["rust"]["pairs_dS21_max_db_median"], f"parity {sm['parity_rust']['dS21_lin_max_max']}", f"{t['rust_build']} + {t['rust_eval']} ms"],
-                ["Rust, kisi's ladder (graded grid, equivalent antipad, junction)", sm["rust_graded"]["single_tdr_err_pct_median"], sm["rust_graded"]["single_tdr_err_pct_p90"], sm["rust_graded"]["single_dS21_max_db_median"], sm["rust_graded"]["pairs_dS21_max_db_median"], "model differs", f"{t['rust_graded_build']} + {t['rust_eval']} ms"]]
-        cv = sm.get("cavity", {})
-        text = ["The reduced models in Rust: the via ladder (kisi_si::via_pbm), the plane cavity and the PDN loop (kisi_pi::cavity_modal). "
-                "Same metrics as the prototype: TDR minimum and maximum (25 ps, 80 ps window) against the 3D result de-embedded as on the case pages "
-                "(matched: each port referred to its feed line's impedance first, TESTS.md section 19), both values "
-                "of every single-via case pooled; |S21| up to 20 GHz. Parity: largest |ΔS21| (linear) against the Python result over all via cases. "
-                "kisi's ladder adds to the prototype the junction model fitted to the 3D references (series inductance μ0/(2π)·pad radius where a trace "
-                "enters the via, the trace over the antipad scaled from its own line, striplines kept up to 2/3 of the pad radius from the via centre) and "
-                "the equivalent radius of non-round antipads. Time per via for 400 frequencies: build (r–z Laplace solve) + evaluation; the Laplace result is cached per via "
-                "geometry, so a board solves it once per via type. Script: rust_models.py.",
-                "This table and the curves “via ladder in kisi (Rust)” are regenerated with every model change (TESTS.md sections 18 and 19). "
-                f"Parity holds again since TESTS.md section 19 brought section 14's radial-line matrix and pair modes into the Python prototype: "
-                f"max |ΔS21| {sm['parity_rust']['dS21_lin_max_max']:g} (linear), phase {sm['parity_rust']['dphase21_max_deg_max']:.2f}° over all via cases; "
-                "what remains is the interpolation of Z/f on the 0.25 GHz grid (TESTS.md section 5)."]
-        if cv:
-            text.append(f"Cavity model: Rust within {cv['dZ_rel_max']:.1e} of Python; {cv['nf']} frequencies × {cv['modes']} modes in "
-                        f"{' / '.join(str(x) for x in cv['rust_eval_ms'])} ms (Python {' / '.join(str(x) for x in cv['python_ms'])} ms). "
-                        "PDN loop inductance: identical to 0.001 nH, about 1 ms per configuration.")
-        return {"title": "Rust port of the reduced models", "text": text,
-                "cols": ["model", "TDR error median (%)", "TDR error p90 (%)", "max Δ|S21| median, single (dB)", "max Δ|S21| median, pairs (dB)", "against Python", "time per via"],
-                "rows": rows}
-    if nm == "practice":
-        rows = []
-        for key, b in d["boards"].items():
-            bd, nc = b["board"], b["native_check_all"]
-            nd = b.get("node_check_all_field", {})
-            rows.append([key, f"{bd['file_mb']} MB", bd["vias"], f"{b['native_overview']['s']} s", f"{nc['coax_s']} → {nc['ladder_s']} s",
-                         f"{nc['ladder_vias']} / {nc['laplace_solves']}", f"{b.get('node_check_all_formula_old', {}).get('s', '–')} → {b.get('node_check_all_formula', {}).get('s', '–')} s",
-                         f"{nd.get('cold_s', '–')} / {nd.get('cached_s', '–')} s", len(b["verdicts"]["status_changed"])])
-        bk = d["bundle_kb"]
-        fd = d["fdtd"]
-        text = [f"Example boards on {d['machine']['cpus']} cores ({d['machine']['cpu']}). check --all: every lane of the board with eye, coax via model → "
-                "via ladder. Ladder vias / Laplace solves: vias of one type share the solve. The Node CLI runs the same Rust code as WebAssembly; "
-                "with the field solver cold (no cache) and cached. Script: practice.py.",
-                f"Bundles: kisi.html {bk.get('kisi.html_old')} → {bk.get('kisi.html')} kB, kisi.mjs {bk.get('kisi.mjs_old')} → {bk.get('kisi.mjs')} kB.",
-                "3D FDTD (kisi-fdtd, one thread per run): " + ", ".join(f"{g} {v['s_median']} s for {v['cells_median'] / 1e6:.2f} M cells" for g, v in fd["groups"].items()) +
-                (f"; memory {fd['measured']['bytes_per_cell']} bytes per cell." if fd.get("measured") else ".")]
-        return {"title": "Practical cost on the example boards", "text": text,
-                "cols": ["board", "file", "vias", "overview", "check --all (native)", "ladder vias / Laplace solves", "check --all (Node, formula)", "check --all with field solver: 120 s budget / from the cache", "verdicts changed"],
-                "rows": rows}
+            lrows.append([name[tool], f"{'single vias' if st == 'single' else 'pairs (Sdd)'} ({x['cases']})", fmt3(x["tdr_err_pct"]), f"{x['tdr_min_err_pct_signed_median']:+g}",
+                          fmt3(x["dS21_max_db"][:2]), fmt3(x["abs_dtau_ps"][:2])])
+    cg = s.get("cavity_G") or {}
+    ltext = ["The ladder alone (kisi_si::via_pbm as kisi builds it, ports at the via; `kisi-validate models`) against the de-embedded "
+             "result of each 3D solver, each with its own 2×thru fixtures and the matched de-embedding (pairs: the differential mode). "
+             "The spread between the three rows of a set is the uncertainty of the references themselves. Script: via_ladder.py."]
+    if cg:
+        ltext.append(f"kisi's plane-cavity model (kisi_pi::cavity_modal) on group G: the |Z11| resonances up to 4.5 GHz within "
+                     f"{cg['resonance_err_pct_max']} % of kisi-fdtd, |Z21| below 1 GHz {' / '.join(f'{x:g}' for x in cg['Z21_below_1GHz_mean_ratio'])} "
+                     "of the 3D value (curves on the G case pages).")
+    out.append({"title": "The via ladder alone against the three 3D solvers", "text": ltext,
+                "cols": ["reference", "set", "TDR error median / p90 / max (%)", "TDR minimum, signed median (%)", "max Δ|S21| to 20 GHz, median / p90 (dB)",
+                         "|Δτ| median / p90 (ps)"], "rows": lrows})
     rows = []
-    for v in d.get("rows", []):
+    for v in km.get("rows", []):
         if "next_3d_pct" in v:
             rows.append([v["case"], "NEXT / FEXT 3D (%)", f"{v['next_3d_pct']} / {v['fext_3d_pct']}", "kisi (%)", f"{v['next_kisi_pct']} / {v['fext_kisi_pct']}", ""])
         elif "zc_3d_5ghz" in v:
             rows.append([v["case"], "Zc at 5 GHz 3D / kisi (Ω)", f"{v['zc_3d_5ghz']} / {v['zc_kisi']}", "εeff 3D / kisi", f"{v['eeff_3d_5ghz']} / {v['eeff_kisi']}", f"kisi: {v.get('kisi_source', '')}"])
         elif "dSdd21_max_db" in v:
-            rows.append([v["case"], "max ΔSdd21 to 20 GHz", v["dSdd21_max_db"], "Zdiff min 3D / kisi", f"{v['zdiff_min_3d']} / {v['zdiff_min_kisi']}", f"Scd21 {v['Scd21_max_3d_db']} / {v['Scd21_max_kisi_db']} dB"])
+            via = f"via pair alone: Zdiff TDR error {v['via_zdiff_err_pct'][0]} / {v['via_zdiff_err_pct'][1]} %" if v.get("via_zdiff_err_pct") else ""
+            rows.append([v["case"], "max ΔSdd21 to 20 GHz", v["dSdd21_max_db"], "Zdiff min 3D / kisi", f"{v['zdiff_min_3d']} / {v['zdiff_min_kisi']}",
+                         "; ".join(x for x in (via, f"Scd21 {v['Scd21_max_3d_db']} / {v['Scd21_max_kisi_db']} dB") if x)])
         else:
             via = f"via alone: TDR error {v['via_tdr_err_pct'][0]} / {v['via_tdr_err_pct'][1]} %, max Δ|S21| {v['via_dS21_max_db']} dB" if v.get("via_tdr_err_pct") else ""
             rows.append([v["case"], f"max Δ|S21| to {v['f_limit_ghz']} GHz", v["dS21_max_db"], "TDR Z min/max 3D | kisi", f"{v['z_min_3d']}/{v['z_max_3d']} | {v['z_min_kisi']}/{v['z_max_kisi']}",
                          "; ".join(x for x in (via, f"stub notch 3D {v['stub_3d_ghz']} GHz, kisi {v.get('stub_kisi_ghz') or '–'} GHz" if v.get("stub_3d_ghz") else "", v.get("kisi_return") or "") if x)])
-    title = "kisi's fast channel model against the 3D result" + (" (Node CLI, 2D field solver)" if nm == "kisi_models_field" else " (formula impedances)")
-    text = ["Each case as a mini KiCad board (kisi_board.py), computed by `kisi net … --s2p/--s4p` (" +
-            ("the Node CLI kisi.mjs with the 2D field solver's impedances" if nm == "kisi_models_field" else "formula impedances") +
-            ", kisi's via model), ports at the ends of the feed lines as in 3D. TDR with a 35 ps edge; coupling as the peak of the step response "
-            "(35 ps) at the victim's near and far end. kisi exports S-parameters up to 25 GHz; the comparison stops there. Script: compare_kisi.py.",
-            "The full-channel TDR minimum also holds the low-frequency offset of the 3D lumped ports (a 49 Ω line shows 43–45 Ω after 100 ps), "
-            "so the via itself is compared de-embedded: kisi's channel with kisi's own 2×thru, 3D with the 3D 2×thru (TDR 25 ps, 80 ps window, up to 25 GHz)" +
-            (", both matched (each fixture referred to its own line impedance first, TESTS.md section 19)." if nm == "kisi_models" else
-             ". This table is a record of an earlier model version, kept as such (TESTS.md section 17): before the stripline feed trim (section 18) and "
-             "with the former de-embedding (50 Ω-referred NZC, pairs: first-order shift; section 19); it is not regenerated.")]
-    sm = d.get("summary") or {}
-    if sm.get("via_cases"):
-        old = d.get("_coax") or {}
-        text.append(f"Via alone, {sm['via_cases']} single vias: TDR error median {sm['via_tdr_err_pct_median']} %, 90th percentile {sm['via_tdr_err_pct_p90']} %, "
-                    f"max Δ|S21| median {sm['via_dS21_max_db_median']} dB" + (f" (former coax model, a record with the former de-embedding: {old['via_tdr_err_pct_median']} / {old['via_tdr_err_pct_p90']} %, {old['via_dS21_max_db_median']} dB)" if old else "") +
-                    ". Stub notch: " + ", ".join(f"{k} {v:+.1f} %" for k, v in (sm.get("stub_err_pct") or {}).items()) + ".")
-        if sm.get("pair_cases"):
-            text.append(f"Via pairs alone (differential mode, {sm['pair_cases']} cases): Zdiff TDR error median {sm['pair_zdiff_err_pct_median']} %, 90th percentile {sm['pair_zdiff_err_pct_p90']} %, "
-                        f"max ΔSdd21 median {sm['pair_dSdd21_max_db_median']} dB, phase {sm['pair_dphase_max_deg_median']}°" +
-                        (f" (former coax model, a record with the former de-embedding: {old.get('pair_zdiff_err_pct_median')} / {old.get('pair_zdiff_err_pct_p90')} %, {old.get('pair_dSdd21_max_db_median')} dB, {old.get('pair_dphase_max_deg_median')}°)" if old.get("pair_cases") else "") + ".")
-    return {"title": title,
-            "text": text,
-            "cols": ["case", "metric", "value", "metric", "3D / kisi", "note"], "rows": rows}
+    out.append({"title": "kisi's channel per case",
+                "text": ["Every case through kisi's channel (formula impedances, kisi's via model), ports at the ends of the feed lines as in 3D, up to "
+                         "kisi's 25 GHz. The full-channel TDR (35 ps edge) includes the low-frequency offset of the 3D lumped ports (a 49 Ω line reads "
+                         "43–45 Ω after 100 ps), which is why the via is scored alone (above). Coupling: the peak of the 35 ps step response at the "
+                         "victim's near and far end. Script: compare_kisi.py."],
+                "cols": ["case", "metric", "value", "metric", "3D / kisi", "note"], "rows": rows})
+    return out
 
 
 OK_THRU_DB, OK_DELAY_PS = 0.1, 1.0  # per-case agreement shown as "ok": mean through-path difference and delay difference
@@ -257,7 +208,7 @@ def agreement_cst(r, oe):
     lines = f" ({lines_text(r['mesh_lines'])})" if r.get("mesh_lines") else ""
     if "pdn_vs_kisi" in r:
         p = r["pdn_vs_kisi"]  # [CST, kisi-fdtd]
-        title = f"kisi-fdtd against CST Studio Suite (FIT, conformal metal) on its {mesh}{lines}; method and results: CST.md"
+        title = f"kisi-fdtd against CST Studio Suite (FIT, conformal metal) on its {mesh}{lines}; method: validation/vias.md"
         if "Z11_peaks_GHz" in p:
             pc, pk = p["Z11_peaks_GHz"][0][:3], p["Z11_peaks_GHz"][1][:3]
             dev = max((abs(a / b - 1) * 100 for a, b in zip(pk, pc)), default=0)
@@ -268,7 +219,7 @@ def agreement_cst(r, oe):
     if not s:
         return None
     title = (f"kisi-fdtd (conformal) against CST Studio Suite (FIT, conformal metal) on its {mesh}{lines}, up to the case's f max: mean / max difference "
-             f"of the through path, delay difference τ kisi-fdtd − τ CST; method and per-case results: CST.md")
+             f"of the through path, delay difference τ kisi-fdtd − τ CST; method: validation/vias.md")
     pair = (oe or {}).get("pair", False)
     key = "Sdd21" if pair and "dSdd21_mean_db" in s else "thru"
     mean, mx = (s["dSdd21_mean_db"], s["dSdd21_max_db"]) if key == "Sdd21" else (s["dS_thru_mean_db"], s["dS_thru_max_db"])
@@ -329,8 +280,8 @@ def cst_check(d, oe):
             f"per model box): {meshes}. A case is de-embedded with the 2×thru on its own mesh, or on the thru's finest where the thru "
             "lacks that mesh. Compared with kisi-fdtd's references as they are since "
             "the refined inner-layer exits, with the metrics of the openEMS table (through path S21, of a pair S31; Δτ = τ kisi-fdtd (or openEMS) − τ CST "
-            "from the phase above f max / 4; G: |Z11| resonances, H: loop inductance at 50 MHz). Method, mesh checks and per-case results: CST.md; summary: TESTS.md "
-            "sections 16 and 17."]
+            "from the phase above f max / 4; G: |Z11| resonances, H: loop inductance at 50 MHz). Script: cst_compare.py (results/cst_compare.json); "
+            "setup, meshes and findings: validation/vias.md."]
     return {"title": "Every reference case in CST", "text": text,
             "cols": ["group", "cases", "CST mesh (cases)", "Δ|S21| kisi-fdtd vs CST: median of the case means / largest mean / largest max (dB); G, H: as noted",
                      "Δτ kisi-fdtd − CST, median (ps)", "Δ|S21| openEMS fine vs CST: median of the case means / largest mean (dB)", "Δτ openEMS − CST, median (ps)"],
@@ -345,67 +296,22 @@ def openems_check(d):
     rows = []
     for g, s in d["summary"].items():
         a, b, c_, x = (s.get(k, {}) for k in ("kisi_vs_openems", "openems_base_vs_fine", "stair_vs_openems_base", "kisi_vs_openems_extrap"))
-        de = s.get("deembedded", {})
         rows.append([g, s["cases"], f"{a.get('dS_thru_mean_db')} / {a.get('dS_thru_mean_db_max')} / {a.get('dS_thru_max_db')}" if a else "–",
                      a.get("dtau_ps_median", "–"), f"{c_.get('dS_thru_mean_db')} / {c_.get('dS_thru_mean_db_max')}" if c_ else "–",
-                     b.get("dS_thru_mean_db", "–") if b else "–", x.get("dS_thru_mean_db", "–") if x else "–",
-                     f"{de.get('tdr_via_err_pct_median')} / {de.get('tdr_via_err_pct_max')} %" if de.get("tdr_via_err_pct_median") is not None else "–"])
-    lad = d.get("ladder", {})
+                     b.get("dS_thru_mean_db", "–") if b else "–", x.get("dS_thru_mean_db", "–") if x else "–"])
     text = ["Every reference case computed again with openEMS 0.37.0 (staircase metal, UPML) from the same case files: on the mesh of the "
             "kisi-fdtd run (“base”, together with kisi-fdtd staircase on it: the like-for-like check of the implementation) and with the cell at "
             "metal halved (“fine”: staircase converges at first order, so this halves openEMS' metal error and base → fine estimates what remains). "
             "kisi-fdtd's conformal reference is compared with openEMS fine; G and H (one-edge ports) on the base mesh. Through path: S21, of a pair S31; "
-            "Δτ = τ kisi-fdtd − τ openEMS from the phase above f max / 4. Script: openems_refs.py; method, outliers and causes: TESTS.md section 16."]
-    if lad.get("kisi") and lad.get("openems"):
-        k, o = lad["kisi"], lad["openems"]
-        text.append(f"kisi's via ladder judged against either 3D result, de-embedded as in this table (single vias: TDR error median / p90, max Δ|S21| median; "
-                    "pairs: max ΔSdd21 median): "
-                    f"kisi-fdtd {k['single_tdr_err_pct_median']} / {k['single_tdr_err_pct_p90']} %, {k['single_dS21_max_db_median']} dB, {k['pairs_dS21_max_db_median']} dB; "
-                    f"openEMS {o['single_tdr_err_pct_median']} / {o['single_tdr_err_pct_p90']} %, {o['single_dS21_max_db_median']} dB, {o['pairs_dS21_max_db_median']} dB. "
-                    "This table still uses the former de-embedding (50 Ω-referred NZC, pairs: first-order shift); the ladder's scores with the matched "
-                    "de-embedding of the case pages, against all three solvers: TESTS.md section 19.")
+            "Δτ = τ kisi-fdtd − τ openEMS from the phase above f max / 4. Script: openems_refs.py (results/openems_refs.json); method, outliers and causes: validation/vias.md."]
     inv = d.get("invalid") or {}
     if inv:
         text.append("Invalid openEMS runs (left out of the table, judged on the other mesh where it is valid): " +
                     "; ".join(f"{n} ({', '.join(f'{MESH_NAME.get(t, t)}: {w}' for t, w in v.items())})" for n, v in sorted(inv.items())) + ".")
     return {"title": "Every reference case in openEMS", "text": text,
             "cols": ["group", "cases", "Δ|S21| kisi-fdtd vs openEMS fine: median of the case means / largest mean / largest max (dB)", "Δτ median (ps)",
-                     "same mesh, both staircase: median / largest mean (dB)", "openEMS base → fine: median (dB)", "against openEMS extrapolated (2·fine − base): median (dB)",
-                     "TDR of the via alone (both de-embedded, 50 Ω-referred NZC): median / max difference"],
+                     "same mesh, both staircase: median / largest mean (dB)", "openEMS base → fine: median (dB)", "against openEMS extrapolated (2·fine − base): median (dB)"],
             "rows": rows}
-
-
-def cavity_check(cv):
-    rows = cv["rows"]
-    tab = []
-    for case in ("empty", "post"):
-        for cell in sorted({r["cell"] for r in rows if r["case"] == case}, reverse=True):
-            st = next((r for r in rows if r["case"] == case and r["cell"] == cell and r["metal"] == "staircase"), None)
-            co = next((r for r in rows if r["case"] == case and r["cell"] == cell and r["metal"] == "conformal"), None)
-            if not st or not co:
-                continue
-            tab.append([f"{'empty cavity' if case == 'empty' else 'with centre post'}", f"{cell:g}", f"{st['f_analytic_GHz']:.3f}",
-                        f"{st['f_fdtd_GHz']:.3f}", f"{st['error_pct']:+.2f} %", f"{co['f_fdtd_GHz']:.3f}", f"{co['error_pct']:+.2f} %"])
-    charts = []
-    series = []
-    for case, nm in (("empty", "empty"), ("post", "post")):
-        for metal, dash in (("staircase", True), ("conformal", False)):
-            rr = sorted((r for r in rows if r["case"] == case and r["metal"] == metal), key=lambda r: r["cell"])
-            series.append({"name": f"{nm}, {metal}", "y": [abs(r["error_pct"]) for r in rr], "x": [r["cell"] for r in rr], "dash": dash, "marks": True,
-                           "color": "var(--s1)" if case == "empty" else "var(--s2)"})
-    cells = sorted({r["cell"] for r in rows})
-    for s in series:  # align on the common cell list
-        s["y"] = [next((y for x, y in zip(s["x"], s["y"]) if x == c), None) for c in cells]
-        del s["x"]
-    charts.append({"title": "Resonance error against cell size", "x": cells, "series": series, "xlabel": "cell mm", "ylabel": "|error| %",
-                   "logx": True, "logy": True, "ymin": 0.01, "ymax": 5,
-                   "note": "Staircase converges at first order (error halves with the cell), conformal metal is 7–13 times closer at the same cell."})
-    return {"title": "Metal model: cylindrical cavity against the analytic resonance",
-            "text": [f"Cylindrical cavity R = {cv['R_mm']} mm, h = {cv['h_mm']} mm, εr {cv['er']}, tanδ {cv['tand']}, without and with a centre post of radius "
-                     f"{cv['post_mm']} mm (a via shorting both plates). TM010-type resonance: J0(kR) = 0, with the post J0(ka)Y0(kR) − J0(kR)Y0(ka) = 0. "
-                     "Excited by a 50 Ω lumped port between the plates; the resonance is the peak of Re(Z_in). Uniform meshes; the circle is either "
-                     "staircased or treated conformally (Dey–Mittra with a stable effective face area)."],
-            "cols": ["case", "cell (mm)", "analytic (GHz)", "staircase (GHz)", "error", "conformal (GHz)", "error"], "rows": tab, "charts": charts}
 
 
 def main():
@@ -442,11 +348,11 @@ def main():
             grp = c["meta"]["group"]
             z0 = c["ports"][0].get("r", 50.0)
             res = {"kisi": curves(S, grp, f, z0)}
-            for tool in ("kisi_fine", "kisi_base", "openems", "openems_base", "cst", "kisi_model", "pbm", "ladder", "model"):
+            for tool in ("kisi_base", "openems", "openems_base", "cst", "kisi_model", "ladder", "model"):
                 f2, S2 = load(nm, tool)
-                if S2 is None or (S2.shape[1] != S.shape[1] and tool not in ("pbm", "ladder")):
+                if S2 is None or (S2.shape[1] != S.shape[1] and tool != "ladder"):
                     continue
-                if tool in ("pbm", "ladder") and S.shape[1] == 4:  # differential-mode model of a pair
+                if tool == "ladder" and S.shape[1] == 4:  # differential-mode model of a pair
                     res[tool] = {"Sdd21": r2(sparam.db(S2[::STEP, 1, 0])), "Sdd11": r2(sparam.db(S2[::STEP, 0, 0]))}
                     continue
                 res[tool] = curves(S2, grp, f2, z0)
@@ -476,7 +382,7 @@ def main():
                         entry["deembed_zc"] = [round(z, 1) for z in zinf]  # kisi-fdtd's feed lines, Z∞ of the Zc(f) fit
                 if tdr:
                     # the via models next to it (ports at the via; a pair's model is its differential mode)
-                    for tool in ("ladder", "pbm"):
+                    for tool in ("ladder",):
                         f2, S2 = load(nm, tool)
                         if S2 is not None and len(f2) == len(f) and np.allclose(f2, f):
                             tdr[tool] = tdr_de(f, S2, diff=S.shape[1] == 4)
@@ -512,24 +418,17 @@ def main():
             entry["res"] = res
         cases.append(entry)
     checks = {}
-    for nm in ("cavity", "pml_thru", "via_convergence", "openems_compare"):
-        p = os.path.join(HERE, "results", f"{nm}.json")
-        if os.path.exists(p):
-            checks[nm] = json.load(open(p))
-    for nm in ("via_pbm", "cavity_model", "rust_models", "kisi_models", "kisi_models_field", "pdn_loop", "practice"):
-        p = os.path.join(HERE, "results", f"{nm}.json")
-        if os.path.exists(p):
-            d = json.load(open(p))
-            pc = os.path.join(HERE, "results", "kisi_models_coax.json")
-            if nm == "kisi_models" and os.path.exists(pc):
-                d["_coax"] = json.load(open(pc)).get("summary") or {}
-            checks[nm] = model_check(nm, d)
     if oe_refs:
         checks["openems_refs"] = openems_check(oe_refs)
     if cst_refs:
         checks["cst_refs"] = cst_check(cst_refs, oe_refs)
-    if "cavity" in checks and "rows" in checks["cavity"] and "cols" not in checks["cavity"]:
-        checks["cavity"] = cavity_check(checks["cavity"])
+
+    def res_json(nm):
+        p = os.path.join(HERE, "results", f"{nm}.json")
+        return json.load(open(p)) if os.path.exists(p) else {}
+    km = res_json("kisi_models")
+    if km:
+        checks["accuracy"] = accuracy_check(km, res_json("via_ladder"), json.load(open(os.path.join(ROOT, "data", "accuracy.json"))))
     data = json.dumps({"cases": cases, "checks": checks}, separators=(",", ":"))
     fonts = []
     for fam, file, w in (("Barlow", "barlow-latin-400-normal.woff2", 400), ("Barlow", "barlow-latin-600-normal.woff2", 600),

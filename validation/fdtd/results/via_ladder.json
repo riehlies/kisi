@@ -1,0 +1,1704 @@
+{
+ "about": "kisi's via ladder alone (ports at the via) against the de-embedded 3D result of each solver (matched 2\u00d7thru de-embedding per port, pairs Sdd); [median, p90, max] of |error|: TDR minimum and maximum pooled (25 ps, 80 ps window), max \u0394|S21| (dB) and max |\u0394S11| (linear) to 20 GHz, |\u0394\u03c4| from the phase 5\u201320 GHz; group G: kisi's plane-cavity model against the |Z11| resonances",
+ "summary": {
+  "kisi": {
+   "single": {
+    "cases": 29,
+    "tdr_err_pct": [
+     1.19,
+     3.453,
+     11.25
+    ],
+    "tdr_min_err_pct_signed_median": -1.4,
+    "dS21_max_db": [
+     0.093,
+     0.828,
+     1.729
+    ],
+    "dS11_max": [
+     0.065,
+     0.166,
+     0.288
+    ],
+    "abs_dtau_ps": [
+     0.118,
+     0.393,
+     0.507
+    ]
+   },
+   "pairs": {
+    "cases": 12,
+    "tdr_err_pct": [
+     1.48,
+     3.302,
+     3.76
+    ],
+    "tdr_min_err_pct_signed_median": 1.77,
+    "dS21_max_db": [
+     0.08,
+     0.577,
+     0.637
+    ],
+    "dS11_max": [
+     0.063,
+     0.206,
+     0.218
+    ],
+    "abs_dtau_ps": [
+     0.067,
+     0.347,
+     0.382
+    ]
+   }
+  },
+  "openems": {
+   "single": {
+    "cases": 29,
+    "tdr_err_pct": [
+     1.31,
+     3.97,
+     10.46
+    ],
+    "tdr_min_err_pct_signed_median": -1.29,
+    "dS21_max_db": [
+     0.075,
+     1.025,
+     3.001
+    ],
+    "dS11_max": [
+     0.069,
+     0.179,
+     0.381
+    ],
+    "abs_dtau_ps": [
+     0.406,
+     0.557,
+     1.059
+    ]
+   },
+   "pairs": {
+    "cases": 12,
+    "tdr_err_pct": [
+     2.375,
+     4.276,
+     6.02
+    ],
+    "tdr_min_err_pct_signed_median": 3.43,
+    "dS21_max_db": [
+     0.068,
+     1.199,
+     1.5
+    ],
+    "dS11_max": [
+     0.059,
+     0.282,
+     0.31
+    ],
+    "abs_dtau_ps": [
+     0.414,
+     0.702,
+     0.706
+    ]
+   }
+  },
+  "cst": {
+   "single": {
+    "cases": 29,
+    "tdr_err_pct": [
+     1.795,
+     3.339,
+     8.68
+    ],
+    "tdr_min_err_pct_signed_median": 1.6,
+    "dS21_max_db": [
+     0.108,
+     0.802,
+     1.492
+    ],
+    "dS11_max": [
+     0.066,
+     0.176,
+     0.302
+    ],
+    "abs_dtau_ps": [
+     0.184,
+     0.414,
+     0.616
+    ]
+   },
+   "pairs": {
+    "cases": 12,
+    "tdr_err_pct": [
+     1.49,
+     5.179,
+     6.42
+    ],
+    "tdr_min_err_pct_signed_median": 4.02,
+    "dS21_max_db": [
+     0.126,
+     0.457,
+     0.493
+    ],
+    "dS11_max": [
+     0.065,
+     0.223,
+     0.239
+    ],
+    "abs_dtau_ps": [
+     0.064,
+     0.378,
+     0.437
+    ]
+   }
+  },
+  "cavity_G": {
+   "resonance_err_pct_max": 0.79,
+   "Z21_below_1GHz_mean_ratio": [
+    1.004,
+    1.007
+   ]
+  }
+ },
+ "cases": {
+  "A_s4_d200_ap1000": {
+   "group": "A",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.4,
+     0.63
+    ],
+    "dS21_max_db": 0.093,
+    "dS11_max": 0.0339,
+    "dtau_ps": 0.459,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.26,
+     -1.51
+    ],
+    "dS21_max_db": 0.055,
+    "dS11_max": 0.0265,
+    "dtau_ps": 0.292,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     0.29,
+     1.71
+    ],
+    "dS21_max_db": 0.074,
+    "dS11_max": 0.0355,
+    "dtau_ps": 0.616,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "A_s4_d200_ap600": {
+   "group": "A",
+   "kisi": {
+    "tdr_err_pct": [
+     -2.64,
+     -1.59
+    ],
+    "dS21_max_db": 0.066,
+    "dS11_max": 0.0323,
+    "dtau_ps": -0.061,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -3.35,
+     -3.97
+    ],
+    "dS21_max_db": 0.047,
+    "dS11_max": 0.0385,
+    "dtau_ps": -0.079,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     -1.22,
+     -0.65
+    ],
+    "dS21_max_db": 0.108,
+    "dS11_max": 0.0453,
+    "dtau_ps": 0.211,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "A_s4_d200_ap800": {
+   "group": "A",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.58,
+     -0.67
+    ],
+    "dS21_max_db": 0.082,
+    "dS11_max": 0.0305,
+    "dtau_ps": 0.231,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.29,
+     -2.89
+    ],
+    "dS21_max_db": 0.051,
+    "dS11_max": 0.0267,
+    "dtau_ps": 0.113,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     0.46,
+     0.47
+    ],
+    "dS21_max_db": 0.108,
+    "dS11_max": 0.0402,
+    "dtau_ps": 0.413,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "A_s4_d300_ap1000": {
+   "group": "A",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.65,
+     0.25
+    ],
+    "dS21_max_db": 0.068,
+    "dS11_max": 0.0504,
+    "dtau_ps": 0.357,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.54,
+     -1.42
+    ],
+    "dS21_max_db": 0.058,
+    "dS11_max": 0.031,
+    "dtau_ps": -0.091,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     0.67,
+     1.79
+    ],
+    "dS21_max_db": 0.06,
+    "dS11_max": 0.0508,
+    "dtau_ps": 0.419,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "A_s4_d300_ap600": {
+   "group": "A",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.44,
+     -0.59
+    ],
+    "dS21_max_db": 0.089,
+    "dS11_max": 0.044,
+    "dtau_ps": -0.089,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -2.49,
+     -0.61
+    ],
+    "dS21_max_db": 0.071,
+    "dS11_max": 0.031,
+    "dtau_ps": -0.515,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     -0.12,
+     0.85
+    ],
+    "dS21_max_db": 0.1,
+    "dS11_max": 0.0553,
+    "dtau_ps": 0.078,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "A_s4_d300_ap800": {
+   "group": "A",
+   "kisi": {
+    "tdr_err_pct": [
+     -2.03,
+     -1.07
+    ],
+    "dS21_max_db": 0.072,
+    "dS11_max": 0.0584,
+    "dtau_ps": 0.147,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -2.99,
+     -1.06
+    ],
+    "dS21_max_db": 0.058,
+    "dS11_max": 0.0301,
+    "dtau_ps": -0.297,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     -0.39,
+     0.15
+    ],
+    "dS21_max_db": 0.071,
+    "dS11_max": 0.0645,
+    "dtau_ps": 0.254,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "B_s8_L1L3_bd_d200": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     -3.24,
+     2.36
+    ],
+    "dS21_max_db": 0.218,
+    "dS11_max": 0.1136,
+    "dtau_ps": 0.195,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.48,
+     3.97
+    ],
+    "dS21_max_db": 0.19,
+    "dS11_max": 0.1088,
+    "dtau_ps": -0.026,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.8,
+     3.33
+    ],
+    "dS21_max_db": 0.21,
+    "dS11_max": 0.1697,
+    "dtau_ps": 0.158,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "B_s8_L1L3_bd_d300": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     -4.0,
+     2.24
+    ],
+    "dS21_max_db": 0.352,
+    "dS11_max": 0.1177,
+    "dtau_ps": 0.253,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.79,
+     3.79
+    ],
+    "dS21_max_db": 0.294,
+    "dS11_max": 0.109,
+    "dtau_ps": -0.002,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     -1.46,
+     0.66
+    ],
+    "dS21_max_db": 0.304,
+    "dS11_max": 0.1056,
+    "dtau_ps": 0.162,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "B_s8_L1L3_stub_d200": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     0.48,
+     2.8
+    ],
+    "dS21_max_db": 0.795,
+    "dS11_max": 0.2878,
+    "dtau_ps": -0.217,
+    "notch_3d_ghz": 21.9,
+    "notch_ladder_ghz": 21.9
+   },
+   "openems": {
+    "tdr_err_pct": [
+     2.87,
+     4.3
+    ],
+    "dS21_max_db": 2.717,
+    "dS11_max": 0.3805,
+    "dtau_ps": -0.542,
+    "notch_3d_ghz": 21.4,
+    "notch_ladder_ghz": 21.9
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.0,
+     -0.01
+    ],
+    "dS21_max_db": 1.095,
+    "dS11_max": 0.3021,
+    "dtau_ps": -0.29,
+    "notch_3d_ghz": 21.8,
+    "notch_ladder_ghz": 21.9
+   }
+  },
+  "B_s8_L1L3_stub_d300": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     0.42,
+     2.93
+    ],
+    "dS21_max_db": 1.159,
+    "dS11_max": 0.237,
+    "dtau_ps": -0.096,
+    "notch_3d_ghz": 21.7,
+    "notch_ladder_ghz": 21.3
+   },
+   "openems": {
+    "tdr_err_pct": [
+     3.03,
+     4.42
+    ],
+    "dS21_max_db": 3.001,
+    "dS11_max": 0.3645,
+    "dtau_ps": -0.51,
+    "notch_3d_ghz": 20.9,
+    "notch_ladder_ghz": 21.3
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.6,
+     -0.08
+    ],
+    "dS21_max_db": 0.648,
+    "dS11_max": 0.2562,
+    "dtau_ps": -0.141,
+    "notch_3d_ghz": 21.6,
+    "notch_ladder_ghz": 21.3
+   }
+  },
+  "B_s8_L1L8_d200": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.69,
+     0.89
+    ],
+    "dS21_max_db": 0.131,
+    "dS11_max": 0.0646,
+    "dtau_ps": 0.071,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -0.2,
+     -0.59
+    ],
+    "dS21_max_db": 0.097,
+    "dS11_max": 0.0455,
+    "dtau_ps": -0.231,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.27,
+     2.15
+    ],
+    "dS21_max_db": 0.131,
+    "dS11_max": 0.0663,
+    "dtau_ps": -0.076,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "B_s8_L1L8_d300": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     0.03,
+     -1.19
+    ],
+    "dS21_max_db": 0.064,
+    "dS11_max": 0.0818,
+    "dtau_ps": -0.042,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     0.03,
+     0.21
+    ],
+    "dS21_max_db": 0.049,
+    "dS11_max": 0.0708,
+    "dtau_ps": -0.512,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.59,
+     0.17
+    ],
+    "dS21_max_db": 0.084,
+    "dS11_max": 0.0871,
+    "dtau_ps": 0.121,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "B_ts6_L1L3_stub": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     -9.76,
+     -2.87
+    ],
+    "dS21_max_db": 1.729,
+    "dS11_max": 0.1619,
+    "dtau_ps": -0.13,
+    "notch_3d_ghz": 26.6,
+    "notch_ladder_ghz": 24.9
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -9.64,
+     -3.04
+    ],
+    "dS21_max_db": 1.388,
+    "dS11_max": 0.1915,
+    "dtau_ps": -0.382,
+    "notch_3d_ghz": 26.0,
+    "notch_ladder_ghz": 24.9
+   },
+   "cst": {
+    "tdr_err_pct": [
+     -1.74,
+     6.25
+    ],
+    "dS21_max_db": 1.492,
+    "dS11_max": 0.1997,
+    "dtau_ps": 0.149,
+    "notch_3d_ghz": 26.4,
+    "notch_ladder_ghz": 24.9
+   }
+  },
+  "B_ts6_L1L6": {
+   "group": "B",
+   "kisi": {
+    "tdr_err_pct": [
+     -2.43,
+     -0.56
+    ],
+    "dS21_max_db": 0.057,
+    "dS11_max": 0.0436,
+    "dtau_ps": 0.071,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.99,
+     -0.61
+    ],
+    "dS21_max_db": 0.047,
+    "dS11_max": 0.0281,
+    "dtau_ps": -0.307,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.2,
+     0.65
+    ],
+    "dS21_max_db": 0.053,
+    "dS11_max": 0.0409,
+    "dtau_ps": -0.054,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_ap1000": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.6,
+     -0.46
+    ],
+    "dS21_max_db": 0.068,
+    "dS11_max": 0.0689,
+    "dtau_ps": 0.118,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -0.11,
+     -1.21
+    ],
+    "dS21_max_db": 0.057,
+    "dS11_max": 0.0672,
+    "dtau_ps": -0.307,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.4,
+     2.58
+    ],
+    "dS21_max_db": 0.051,
+    "dS11_max": 0.0673,
+    "dtau_ps": 0.017,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_ap1200": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.78,
+     -0.16
+    ],
+    "dS21_max_db": 0.109,
+    "dS11_max": 0.0362,
+    "dtau_ps": 0.342,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -0.47,
+     -0.63
+    ],
+    "dS21_max_db": 0.072,
+    "dS11_max": 0.049,
+    "dtau_ps": -0.039,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.97,
+     2.81
+    ],
+    "dS21_max_db": 0.069,
+    "dS11_max": 0.0573,
+    "dtau_ps": 0.209,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_ap600": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     0.95,
+     -0.38
+    ],
+    "dS21_max_db": 0.068,
+    "dS11_max": 0.0569,
+    "dtau_ps": -0.03,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     1.33,
+     1.0
+    ],
+    "dS21_max_db": 0.04,
+    "dS11_max": 0.0317,
+    "dtau_ps": -0.56,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     3.22,
+     2.07
+    ],
+    "dS21_max_db": 0.12,
+    "dS11_max": 0.0641,
+    "dtau_ps": -0.002,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_ap800": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     0.03,
+     -1.19
+    ],
+    "dS21_max_db": 0.064,
+    "dS11_max": 0.0818,
+    "dtau_ps": -0.042,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     0.03,
+     0.21
+    ],
+    "dS21_max_db": 0.049,
+    "dS11_max": 0.0708,
+    "dtau_ps": -0.512,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.59,
+     0.17
+    ],
+    "dS21_max_db": 0.084,
+    "dS11_max": 0.0871,
+    "dtau_ps": 0.121,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_mixed": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.19,
+     -0.57
+    ],
+    "dS21_max_db": 0.081,
+    "dS11_max": 0.057,
+    "dtau_ps": 0.385,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -0.47,
+     0.2
+    ],
+    "dS21_max_db": 0.127,
+    "dS11_max": 0.0677,
+    "dtau_ps": -0.009,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.9,
+     3.36
+    ],
+    "dS21_max_db": 0.067,
+    "dS11_max": 0.052,
+    "dtau_ps": 0.293,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_nfp": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     2.85,
+     -0.81
+    ],
+    "dS21_max_db": 0.128,
+    "dS11_max": 0.1048,
+    "dtau_ps": -0.067,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     2.26,
+     0.35
+    ],
+    "dS21_max_db": 0.132,
+    "dS11_max": 0.0982,
+    "dtau_ps": -0.461,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     5.47,
+     1.87
+    ],
+    "dS21_max_db": 0.127,
+    "dS11_max": 0.1109,
+    "dtau_ps": -0.184,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_nonfp": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     0.21,
+     -1.72
+    ],
+    "dS21_max_db": 0.061,
+    "dS11_max": 0.0775,
+    "dtau_ps": 0.028,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     0.3,
+     -1.21
+    ],
+    "dS21_max_db": 0.053,
+    "dS11_max": 0.0776,
+    "dtau_ps": -0.406,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.39,
+     0.85
+    ],
+    "dS21_max_db": 0.059,
+    "dS11_max": 0.0786,
+    "dtau_ps": -0.032,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "C_s8_offset": {
+   "group": "C",
+   "kisi": {
+    "tdr_err_pct": [
+     -0.37,
+     -4.15
+    ],
+    "dS21_max_db": 0.062,
+    "dS11_max": 0.1166,
+    "dtau_ps": -0.043,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -0.53,
+     -3.17
+    ],
+    "dS21_max_db": 0.055,
+    "dS11_max": 0.1072,
+    "dtau_ps": -0.433,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.86,
+     0.16
+    ],
+    "dS21_max_db": 0.059,
+    "dS11_max": 0.1164,
+    "dtau_ps": -0.107,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "D_s8_stitch_0p5": {
+   "group": "D",
+   "kisi": {
+    "tdr_err_pct": [
+     3.95,
+     -1.28
+    ],
+    "dS21_max_db": 0.044,
+    "dS11_max": 0.1072,
+    "dtau_ps": -0.507,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     3.31,
+     -0.12
+    ],
+    "dS21_max_db": 0.075,
+    "dS11_max": 0.1046,
+    "dtau_ps": -1.059,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     6.52,
+     1.08
+    ],
+    "dS21_max_db": 0.036,
+    "dS11_max": 0.1104,
+    "dtau_ps": -0.583,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "D_s8_stitch_1p0": {
+   "group": "D",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.01,
+     -0.09
+    ],
+    "dS21_max_db": 0.652,
+    "dS11_max": 0.0612,
+    "dtau_ps": -0.032,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.34,
+     0.4
+    ],
+    "dS21_max_db": 0.598,
+    "dS11_max": 0.0721,
+    "dtau_ps": -0.424,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.17,
+     2.32
+    ],
+    "dS21_max_db": 0.655,
+    "dS11_max": 0.0662,
+    "dtau_ps": -0.207,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   }
+  },
+  "D_s8_stitch_2p0": {
+   "group": "D",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.17,
+     -0.2
+    ],
+    "dS21_max_db": 0.959,
+    "dS11_max": 0.0531,
+    "dtau_ps": -0.109,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.37,
+     0.45
+    ],
+    "dS21_max_db": 0.934,
+    "dS11_max": 0.0693,
+    "dtau_ps": -0.464,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "cst": {
+    "tdr_err_pct": [
+     1.98,
+     2.1
+    ],
+    "dS21_max_db": 0.936,
+    "dS11_max": 0.0588,
+    "dtau_ps": -0.29,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   }
+  },
+  "D_s8_stitch_5p0": {
+   "group": "D",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.13,
+     -0.76
+    ],
+    "dS21_max_db": 0.787,
+    "dS11_max": 0.0535,
+    "dtau_ps": -0.188,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.49,
+     -0.02
+    ],
+    "dS21_max_db": 0.767,
+    "dS11_max": 0.068,
+    "dtau_ps": -0.548,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.11,
+     1.8
+    ],
+    "dS21_max_db": 0.768,
+    "dS11_max": 0.0588,
+    "dtau_ps": -0.338,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   }
+  },
+  "D_s8_stitch_none": {
+   "group": "D",
+   "kisi": {
+    "tdr_err_pct": [
+     -1.14,
+     -0.77
+    ],
+    "dS21_max_db": 0.754,
+    "dS11_max": 0.0515,
+    "dtau_ps": -0.205,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -1.49,
+     -0.02
+    ],
+    "dS21_max_db": 0.744,
+    "dS11_max": 0.0675,
+    "dtau_ps": -0.556,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.11,
+     1.81
+    ],
+    "dS21_max_db": 0.736,
+    "dS11_max": 0.0582,
+    "dtau_ps": -0.345,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": 40.0
+   }
+  },
+  "E_s8_L1L3_p1000_oval_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     1.79,
+     2.56
+    ],
+    "dS21_max_db": 0.436,
+    "dS11_max": 0.2079,
+    "dtau_ps": -0.347,
+    "notch_3d_ghz": 24.3,
+    "notch_ladder_ghz": 24.5
+   },
+   "openems": {
+    "tdr_err_pct": [
+     4.47,
+     4.07
+    ],
+    "dS21_max_db": 1.103,
+    "dS11_max": 0.2828,
+    "dtau_ps": -0.702,
+    "notch_3d_ghz": 23.6,
+    "notch_ladder_ghz": 24.5
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.77,
+     -0.34
+    ],
+    "dS21_max_db": 0.392,
+    "dS11_max": 0.2239,
+    "dtau_ps": -0.379,
+    "notch_3d_ghz": 24.2,
+    "notch_ladder_ghz": 24.5
+   }
+  },
+  "E_s8_L1L3_p1000_round_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     0.88,
+     2.5
+    ],
+    "dS21_max_db": 0.593,
+    "dS11_max": 0.1937,
+    "dtau_ps": 0.11,
+    "notch_3d_ghz": 23.8,
+    "notch_ladder_ghz": 23.8
+   },
+   "openems": {
+    "tdr_err_pct": [
+     3.82,
+     4.11
+    ],
+    "dS21_max_db": 1.082,
+    "dS11_max": 0.2775,
+    "dtau_ps": -0.301,
+    "notch_3d_ghz": 23.1,
+    "notch_ladder_ghz": 23.8
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.49,
+     -0.32
+    ],
+    "dS21_max_db": 0.464,
+    "dS11_max": 0.2119,
+    "dtau_ps": 0.041,
+    "notch_3d_ghz": 23.7,
+    "notch_ladder_ghz": 23.8
+   }
+  },
+  "E_s8_L1L3_p1200_round_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     0.64,
+     2.68
+    ],
+    "dS21_max_db": 0.637,
+    "dS11_max": 0.218,
+    "dtau_ps": 0.053,
+    "notch_3d_ghz": 22.9,
+    "notch_ladder_ghz": 22.8
+   },
+   "openems": {
+    "tdr_err_pct": [
+     3.37,
+     4.22
+    ],
+    "dS21_max_db": 1.5,
+    "dS11_max": 0.3097,
+    "dtau_ps": -0.367,
+    "notch_3d_ghz": 22.2,
+    "notch_ladder_ghz": 22.8
+   },
+   "cst": {
+    "tdr_err_pct": [
+     2.23,
+     -0.1
+    ],
+    "dS21_max_db": 0.493,
+    "dS11_max": 0.2391,
+    "dtau_ps": -0.03,
+    "notch_3d_ghz": 22.7,
+    "notch_ladder_ghz": 22.8
+   }
+  },
+  "E_s8_L1L3_p800_round_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     2.82,
+     2.91
+    ],
+    "dS21_max_db": 0.314,
+    "dS11_max": 0.166,
+    "dtau_ps": 0.073,
+    "notch_3d_ghz": 24.8,
+    "notch_ladder_ghz": 25.2
+   },
+   "openems": {
+    "tdr_err_pct": [
+     6.02,
+     4.3
+    ],
+    "dS21_max_db": 1.21,
+    "dS11_max": 0.2419,
+    "dtau_ps": -0.319,
+    "notch_3d_ghz": 24.0,
+    "notch_ladder_ghz": 25.2
+   },
+   "cst": {
+    "tdr_err_pct": [
+     5.13,
+     0.22
+    ],
+    "dS21_max_db": 0.289,
+    "dS11_max": 0.1823,
+    "dtau_ps": 0.013,
+    "notch_3d_ghz": 24.7,
+    "notch_ladder_ghz": 25.2
+   }
+  },
+  "E_s8_L1L8_p1000_oval_g0": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     2.67,
+     -0.62
+    ],
+    "dS21_max_db": 0.051,
+    "dS11_max": 0.0541,
+    "dtau_ps": -0.382,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     2.78,
+     0.56
+    ],
+    "dS21_max_db": 0.044,
+    "dS11_max": 0.0577,
+    "dtau_ps": -0.706,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     4.68,
+     0.44
+    ],
+    "dS21_max_db": 0.058,
+    "dS11_max": 0.0561,
+    "dtau_ps": -0.437,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "E_s8_L1L8_p1000_oval_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     3.47,
+     -0.07
+    ],
+    "dS21_max_db": 0.048,
+    "dS11_max": 0.0581,
+    "dtau_ps": -0.345,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     3.59,
+     1.11
+    ],
+    "dS21_max_db": 0.042,
+    "dS11_max": 0.0534,
+    "dtau_ps": -0.699,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     5.51,
+     0.75
+    ],
+    "dS21_max_db": 0.089,
+    "dS11_max": 0.0574,
+    "dtau_ps": -0.369,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "E_s8_L1L8_p1000_oval_g4": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     3.51,
+     -0.07
+    ],
+    "dS21_max_db": 0.049,
+    "dS11_max": 0.0563,
+    "dtau_ps": -0.313,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     3.49,
+     1.12
+    ],
+    "dS21_max_db": 0.042,
+    "dS11_max": 0.0494,
+    "dtau_ps": -0.683,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     5.2,
+     0.67
+    ],
+    "dS21_max_db": 0.096,
+    "dS11_max": 0.0544,
+    "dtau_ps": -0.272,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "E_s8_L1L8_p1000_round_g0": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     1.16,
+     -0.74
+    ],
+    "dS21_max_db": 0.135,
+    "dS11_max": 0.061,
+    "dtau_ps": 0.036,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     1.34,
+     0.47
+    ],
+    "dS21_max_db": 0.131,
+    "dS11_max": 0.0637,
+    "dtau_ps": -0.344,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     3.58,
+     0.41
+    ],
+    "dS21_max_db": 0.137,
+    "dS11_max": 0.0646,
+    "dtau_ps": -0.037,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "E_s8_L1L8_p1000_round_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     1.71,
+     -0.82
+    ],
+    "dS21_max_db": 0.065,
+    "dS11_max": 0.0615,
+    "dtau_ps": -0.001,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     1.97,
+     0.71
+    ],
+    "dS21_max_db": 0.054,
+    "dS11_max": 0.0545,
+    "dtau_ps": -0.406,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     4.11,
+     0.42
+    ],
+    "dS21_max_db": 0.121,
+    "dS11_max": 0.0622,
+    "dtau_ps": -0.045,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "E_s8_L1L8_p1000_round_g4": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     1.74,
+     -0.55
+    ],
+    "dS21_max_db": 0.067,
+    "dS11_max": 0.061,
+    "dtau_ps": 0.022,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     1.85,
+     0.71
+    ],
+    "dS21_max_db": 0.055,
+    "dS11_max": 0.0497,
+    "dtau_ps": -0.403,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     3.92,
+     0.35
+    ],
+    "dS21_max_db": 0.128,
+    "dS11_max": 0.0628,
+    "dtau_ps": 0.026,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "E_s8_L1L8_p1200_round_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     1.25,
+     -0.85
+    ],
+    "dS21_max_db": 0.069,
+    "dS11_max": 0.0657,
+    "dtau_ps": -0.012,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     1.45,
+     0.66
+    ],
+    "dS21_max_db": 0.055,
+    "dS11_max": 0.0597,
+    "dtau_ps": -0.422,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     3.54,
+     0.51
+    ],
+    "dS21_max_db": 0.107,
+    "dS11_max": 0.0666,
+    "dtau_ps": -0.083,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "E_s8_L1L8_p800_round_g2": {
+   "group": "E",
+   "kisi": {
+    "tdr_err_pct": [
+     3.76,
+     -0.72
+    ],
+    "dS21_max_db": 0.09,
+    "dS11_max": 0.0654,
+    "dtau_ps": -0.061,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     3.99,
+     0.79
+    ],
+    "dS21_max_db": 0.081,
+    "dS11_max": 0.0574,
+    "dtau_ps": -0.471,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     6.42,
+     0.44
+    ],
+    "dS21_max_db": 0.124,
+    "dS11_max": 0.0659,
+    "dtau_ps": -0.086,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "G_pp100": {
+   "group": "G",
+   "resonances_ghz_3d_model": [
+    [
+     1.45,
+     1.44
+    ],
+    [
+     2.4,
+     2.4
+    ],
+    [
+     2.81,
+     2.81
+    ],
+    [
+     2.9,
+     2.9
+    ],
+    [
+     3.78,
+     3.76
+    ],
+    [
+     4.34,
+     4.33
+    ]
+   ],
+   "resonance_err_pct_max": 0.69,
+   "Z11_below_1GHz_mean_ratio": 0.933,
+   "Z21_below_1GHz_mean_ratio": 1.004
+  },
+  "G_pp200": {
+   "group": "G",
+   "resonances_ghz_3d_model": [
+    [
+     1.45,
+     1.44
+    ],
+    [
+     2.4,
+     2.4
+    ],
+    [
+     2.82,
+     2.81
+    ],
+    [
+     2.9,
+     2.9
+    ],
+    [
+     3.79,
+     3.76
+    ],
+    [
+     4.34,
+     4.33
+    ]
+   ],
+   "resonance_err_pct_max": 0.79,
+   "Z11_below_1GHz_mean_ratio": 0.936,
+   "Z21_below_1GHz_mean_ratio": 1.007
+  },
+  "X_s8x2_L1L3_bd_d200": {
+   "group": "X",
+   "kisi": {
+    "tdr_err_pct": [
+     -7.55,
+     -2.21
+    ],
+    "dS21_max_db": 0.146,
+    "dS11_max": 0.1585,
+    "dtau_ps": -0.425,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -5.98,
+     -0.05
+    ],
+    "dS21_max_db": 0.1,
+    "dS11_max": 0.1496,
+    "dtau_ps": -0.61,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     -8.19,
+     -3.11
+    ],
+    "dS21_max_db": 0.146,
+    "dS11_max": 0.1459,
+    "dtau_ps": -0.364,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  },
+  "X_s8x4_L1L3_bd_d200": {
+   "group": "X",
+   "kisi": {
+    "tdr_err_pct": [
+     -11.25,
+     -1.79
+    ],
+    "dS21_max_db": 0.303,
+    "dS11_max": 0.1826,
+    "dtau_ps": 0.082,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "openems": {
+    "tdr_err_pct": [
+     -10.46,
+     -0.89
+    ],
+    "dS21_max_db": 0.29,
+    "dS11_max": 0.1753,
+    "dtau_ps": -0.128,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   },
+   "cst": {
+    "tdr_err_pct": [
+     -8.68,
+     -1.32
+    ],
+    "dS21_max_db": 0.284,
+    "dS11_max": 0.165,
+    "dtau_ps": -0.021,
+    "notch_3d_ghz": null,
+    "notch_ladder_ghz": null
+   }
+  }
+ }
+}

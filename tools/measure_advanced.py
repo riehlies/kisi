@@ -222,8 +222,12 @@ with sync_playwright() as pw:
         pg = br.ctx.pages[0]
         t = time.time()
         pg.goto("file://" + adv)
-        pg.wait_for_function("typeof Plotly === 'object' && window.__kisiAdv && window.__kisiAdv.tStarted && "
-                             "/Ready/.test(document.getElementById('console_out').textContent)", timeout=120000)
+        try:
+            pg.wait_for_function("typeof Plotly === 'object' && window.__kisiAdv && window.__kisiAdv.tStarted && "
+                                 "/Ready/.test(document.getElementById('console_out').textContent)", timeout=120000)
+        except Exception:
+            print("kisi-advanced.html did not start:\n" + "\n".join(br.errors[:20]))
+            raise
         fw = pg.evaluate("window.__kisiAdv.has('wasm_solver/gmsh.wasm')")
         R["adv_alone"] = {"load_s": round(time.time() - t, 2), "decoded_ms": round(pg.evaluate("window.__kisiAdv.tDecoded")),
                           "rss_mb": mb(br.rss()), "fullwave_in_build": fw}

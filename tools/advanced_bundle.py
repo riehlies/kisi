@@ -22,7 +22,7 @@ The page's own HTML is changed only where it loads files: the stylesheet inlined
 script tags replaced by the bundle's start. Each such replacement must match exactly once (a changed fork fails here,
 not at run time).
 """
-import base64, gzip, hashlib, json, os, re, sys
+import base64, gzip, hashlib, json, os, re, shutil, subprocess, sys, tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from esm_classic import convert_module  # noqa: E402
@@ -37,14 +37,31 @@ IMPORT_RE = re.compile(r"""((?:^|\n)\s*(?:import|export)\s[^'";]*?from\s*)(['"])
 DYN_LIT_RE = re.compile(r"""\bimport\(\s*(['"])(\.{1,2}/[^'"]+)\1\s*\)""")
 DYN_EXPR_RE = re.compile(r"""\bimport\(\s*(?=[A-Za-z_$])""")
 EXPORT_DEFAULT_ID_RE = re.compile(r"^export\s+default\s+([A-Za-z_$][\w$]*)\s*;", re.M)
+# Emscripten's loaders are minified: their `export default Module;` need not start a line
+EMSCRIPTEN_EXPORT_RE = re.compile(r"(?<![\w$.])export\s+default\s+([A-Za-z_$][\w$]*)\s*;")
 
 
 def gzb64(b):
     return base64.b64encode(gzip.compress(b, 9, mtime=0)).decode()
 
 
+def check_syntax(bundle):
+    """the bundle must parse as one classic script (node --check), else the page would not start at all"""
+    node = shutil.which("node")
+    if not node:
+        print("advanced_bundle: node not found, syntax not checked")
+        return
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
+        f.write("const __kisiBundle = (" + bundle + ");\n")
+    r = subprocess.run([node, "--check", f.name], capture_output=True, text=True)
+    os.unlink(f.name)
+    if r.returncode:
+        raise SystemExit("advanced_bundle: the bundle does not parse:\n" + r.stderr[:3000])
+
+
 def build(fork, sparse, out, fw=None):
     src_dir = os.path.join(fork, "src")
+    fw = os.path.abspath(fw) if fw else None
     fw_files = set(os.listdir(fw)) if fw else set()
 
     def real(logical):
@@ -105,6 +122,8 @@ def build(fork, sparse, out, fw=None):
         if "import.meta" in text:
             raise SystemExit(f"advanced_bundle: {logical} uses import.meta beyond import.meta.url")
         text = EXPORT_DEFAULT_ID_RE.sub(r"export { \1 as default };", text)
+        if fw and real(logical).startswith(os.path.abspath(fw)):
+            text = EMSCRIPTEN_EXPORT_RE.sub(lambda m: f"\nexport {{ {m.group(1)} as default }};\n", text)
         try:
             conv = convert_module(text)
         except ValueError as e:
@@ -115,6 +134,7 @@ def build(fork, sparse, out, fw=None):
     parts.append("for (const e of __kisiEntries) __kisiReq(e);")
     parts.append("}")
     bundle = "\n".join(parts)
+    check_syntax(bundle)
     entries = {"#page": [index[e] for e in PAGE_ENTRIES]}
     entries.update({e: index[e] for e in WORKER_ENTRIES})
 

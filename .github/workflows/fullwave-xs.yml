@@ -143,6 +143,8 @@ jobs:
           python3 tools/bundle.py --advanced web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm adv/kisi-examples-adv.html $EX
           python3 tools/bundle.py --advanced-inline adv/kisi-advanced.html web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm adv/kisi-examples-inline.html $EX
           cp "$FW/dist/BUILD_INFO.json" adv/
+          # how the Emscripten loaders export and load (the bundler rewrites these)
+          for f in "$FW"/dist/*.js; do echo "== $f"; grep -o -E ".{0,50}(export |import\.meta|import\().{0,50}" "$f" | head -12; done
           ls -la adv adv/qs
       - name: Measure (headless Chromium)
         run: |

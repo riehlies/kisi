@@ -199,8 +199,9 @@ def model_check(nm, d):
             rows.append([v["case"], f"max Δ|S21| to {v['f_limit_ghz']} GHz", v["dS21_max_db"], "TDR Z min/max 3D | kisi", f"{v['z_min_3d']}/{v['z_max_3d']} | {v['z_min_kisi']}/{v['z_max_kisi']}",
                          "; ".join(x for x in (via, f"stub notch 3D {v['stub_3d_ghz']} GHz, kisi {v.get('stub_kisi_ghz') or '–'} GHz" if v.get("stub_3d_ghz") else "", v.get("kisi_return") or "") if x)])
     title = "kisi's fast channel model against the 3D result" + (" (Node CLI, 2D field solver)" if nm == "kisi_models_field" else " (formula impedances)")
-    text = ["Each case as a mini KiCad board (kisi_board.py), computed by `kisi net … --s2p/--s4p` (formula impedances, kisi's via "
-            "model), ports at the ends of the feed lines as in 3D. TDR with a 35 ps edge; coupling as the peak of the step response "
+    text = ["Each case as a mini KiCad board (kisi_board.py), computed by `kisi net … --s2p/--s4p` (" +
+            ("the Node CLI kisi.mjs with the 2D field solver's impedances" if nm == "kisi_models_field" else "formula impedances") +
+            ", kisi's via model), ports at the ends of the feed lines as in 3D. TDR with a 35 ps edge; coupling as the peak of the step response "
             "(35 ps) at the victim's near and far end. kisi exports S-parameters up to 25 GHz; the comparison stops there. Script: compare_kisi.py.",
             "The full-channel TDR minimum also holds the low-frequency offset of the 3D lumped ports (a 49 Ω line shows 43–45 Ω after 100 ps), "
             "so the via itself is compared de-embedded: kisi's channel with kisi's own 2×thru, 3D with the 3D 2×thru (TDR 25 ps, 80 ps window, up to 25 GHz)" +

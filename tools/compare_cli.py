@@ -12,13 +12,17 @@ timings of both runs are printed (in GitHub Actions also as a notice in the run'
 `check-cavity` is `check --all --via-cavity` on LibreVNA only (the cavity grids in WebAssembly; a clock call there
 once trapped). `stackups` lists the fab stackup templates with their fit and kisi.json entries; `overview-preset` is
 `overview --stackup-preset … --tol …` (a JLCPCB template laid over the board, with its tolerance band); the LibreVNA
-export writes the tolerance corners too (`--corners`). `report` compares the written analysis/kisi.json as well (its
-check computed in worker threads by the Node CLI), and the printable report (`--html`) and its tables (`--csv`)
-byte by byte (SOURCE_DATE_EPOCH set). Exit code 1 on any difference.
+export writes the tolerance corners too (`--corners`). `report` also compares the files each CLI writes – the
+analysis/kisi.json (the Node CLI's check computed in worker threads), the printable report (`--html`) and its tables
+(`--csv`, SOURCE_DATE_EPOCH set) – native against Node, with the tolerance of tools/golden.py: numbers within 1e-4
+relative (the DC solutions of the native build and of WebAssembly differ by about 3e-8 relative), everything else
+identical. Exit code 1 on any difference.
 """
 import json, os, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import golden  # noqa: E402  (the stored results' tolerance: numbers within golden.REL relative)
 BOARDS = [("ts", "Thunderscope_Rev5.3"), ("vna", "VNA")]
 IGNORE = {"field_solver", "field_solver_note", "config", "timing_ms", "file"}
 ARGS = {"check": ["--all"], "gaps": [], "check-cavity": ["--all", "--via-cavity"],
@@ -65,6 +69,27 @@ def first_diff(a, b, path="$"):
     return None if a == b else f"{path}: {a!r} != {b!r}"
 
 
+def report_files(tmp):
+    """the files `report` wrote into tmp: {name: text} (kisi.json, report.html, csv/*)"""
+    names = ["kisi.json", "report.html"] + [os.path.join("csv", f) for f in sorted(os.listdir(os.path.join(tmp, "csv")))]
+    return {n: open(os.path.join(tmp, n), encoding="utf-8").read() for n in names}
+
+
+def report_diff(native, node):
+    """the first difference of the report files, native against Node, with golden.py's tolerance (numbers within
+    golden.REL relative, or one unit of the last decimal in the page and the tables), or None"""
+    if sorted(native) != sorted(node):
+        return f"written files {sorted(native)} != {sorted(node)}"
+    for n in native:
+        if n.endswith(".json"):
+            d = golden.diffs(norm(json.loads(native[n])), norm(json.loads(node[n])))
+        else:
+            d = golden.html_diffs(native[n], node[n])
+        if d:
+            return f"{n}: {d[0]}" + (f" (and {len(d) - 1} more)" if len(d) > 1 else "")
+    return None
+
+
 def run(cmd, threads=None, raw=False):
     env = dict(os.environ, SOURCE_DATE_EPOCH="1794528000", **({"KISI_THREADS": str(threads)} if threads else {}))
     r = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, env=env)
@@ -96,7 +121,11 @@ def main():
                     + ["--out", os.path.join(tmp, "x" if c == "export" else "kisi.json")]
             na = [native, cmd, pcb, "--config", cfg] + extra
             nb = ["node", mjs, cmd, pcb, "--config", cfg, "--formula"] + extra
-            t0 = time.time(); ta = run(na, raw=True); t1 = time.time(); tb = run(nb, raw=True); t2 = time.time()
+            t0 = time.time(); ta = run(na, raw=True); t1 = time.time()
+            if c == "report":
+                # the files the native CLI wrote, before the Node CLI writes the same paths
+                written = report_files(tmp)
+            tb = run(nb, raw=True); t2 = time.time()
             secs = {"native": t1 - t0, "node": t2 - t1}
             d = first_diff(norm(json.loads(ta)), norm(json.loads(tb)))
             if c == "export" and d is None:
@@ -109,16 +138,9 @@ def main():
                         d = f"written file {f} differs"
                         break
             if c == "report" and d is None:
-                # the file each wrote (the same path): the native one, then the Node CLI's again
-                rep = os.path.join(tmp, "kisi.json")
-                native_rep = json.load(open(rep, encoding="utf-8"))
-                pages = [os.path.join(tmp, "report.html")] + [os.path.join(tmp, "csv", f) for f in sorted(os.listdir(os.path.join(tmp, "csv")))]
-                native_pages = {f: open(f, "rb").read() for f in pages}
-                run(nb, raw=True)
-                d = first_diff(norm(native_rep), norm(json.load(open(rep, encoding="utf-8"))))
-                d = d and "analysis/kisi.json " + d
-                # the page names the configuration's file as given: the same path for both
-                d = d or next((f"{os.path.basename(f)} differs" for f, data in native_pages.items() if open(f, "rb").read() != data), None)
+                # the files each wrote to the same paths (the page names the configuration's file as given: the same
+                # path for both): native, read before the Node CLI ran, against Node's
+                d = report_diff(written, report_files(tmp))
             print(f"{stem} {c}: {'identical' if d is None else 'DIFFERENT – ' + d}")
             bad += d is not None
             if c == "check":

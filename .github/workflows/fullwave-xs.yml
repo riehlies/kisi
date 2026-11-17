@@ -121,7 +121,7 @@ jobs:
           name: forsten-fw-wasm
           path: ${{ env.FW }}/dist
       - name: Rust toolchain
-        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal --target wasm32-unknown-unknown  # rust-toolchain.toml
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown  # rust-toolchain.toml
       - name: Playwright
         run: |
           python3 -m pip install --quiet playwright==1.64.1 psutil

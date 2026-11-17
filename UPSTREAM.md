@@ -75,6 +75,18 @@ The geometry text and the result contract need no change; sweeps (RLGC(f), α) w
 frequency models of the line where the backend is chosen, which is a model change with its own validation
 (`validation/cst_xs/compare.py`, loss sweep, with the independent MQS check `mqs_check.py`, is the start of it).
 
+## The fork's field views (prototype, optional bundle)
+
+`kisi-advanced.html` (`tools/advanced_bundle.py`, `docs/research/advanced-solvers.md`) is the page of the fork
+[riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) – the original plus its field views in `src/fork/`
+– as one file, opened by a viewer built with `tools/bundle.py --advanced` for a clicked segment. The fork is not
+vendored: `tools/fetch_fork.sh` fetches the commit pinned in `third_party/js_2d_fields_fork.json` (its own upstream
+base, b5ea9eb, is newer than `third_party/UPSTREAM_REV`). The adapters are `web/advanced/` (hand-over in the
+original's `#params=` link form, the single-file runtime, kisi-sparse stand-ins for the original's `solver.wasm` and
+the two linear solves of `eigen_solver.wasm`); with `--fw` the full-wave modules of
+`tools/build_forsten_fullwave.sh` go in. A fork update: change the pin, rebuild; `advanced_bundle.py` stops on any
+change of the page it cannot place.
+
 ## Updating to a new upstream version
 
 ```sh

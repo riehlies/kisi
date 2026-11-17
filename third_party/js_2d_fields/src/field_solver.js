@@ -2367,7 +2367,9 @@ export class FieldSolver2D {
             // reason distinguishes loss-accuracy notes from certificate notes for
             // machine consumers (the fuzzer relaxes its R gate on loss reasons).
             this._skinTransitionWarn = (deltaWarn > 0.5 * tMin)
-                ? { type: 'accuracy', reason: 'skin-transition', mode: 'all', message:
+                // fBand: where the skin depth is half the thickness (delta ~ f^-1/2).
+                ? { type: 'accuracy', reason: 'skin-transition', mode: 'all',
+                    fBand: this.freq * (deltaWarn / (0.5 * tMin)) ** 2, message:
                     `Conductor loss and internal-inductance accuracy is reduced in the DC-skin ` +
                     `transition (skin depth ${(deltaWarn * 1e6).toFixed(1)} µm vs conductor thickness ` +
                     `${(tMin * 1e6).toFixed(1)} µm). The full-wave solver resolves the ` +
@@ -2413,7 +2415,7 @@ export class FieldSolver2D {
         if (!worst || !(f < worst.fOn)) return null;
         const fmtF = v => v >= 1e6 ? `${+(v / 1e6).toPrecision(3)} MHz` : `${+(v / 1e3).toPrecision(3)} kHz`;
         const um = v => `${+(v * 1e6).toPrecision(3)} µm`;
-        return { type: 'accuracy', reason: 'ground-spreading', mode: 'all', message:
+        return { type: 'accuracy', reason: 'ground-spreading', mode: 'all', fOn: worst.fOn, gap: worst.g, message:
             `Below ${fmtF(worst.fOn)} the return current spreads sideways in the ground planes ` +
             `(${um(worst.d)} thick, ${um(worst.g)} from the signal). Grounds reaching the edge of ` +
             `the domain are modelled as ideal returns of unlimited width. ` +
@@ -2444,12 +2446,12 @@ export class FieldSolver2D {
                 const sg = Math.min(this._bulk_sigma(A), this._bulk_sigma(B));
                 const delta = Math.sqrt(2 / (2 * Math.PI * f * CONSTANTS.MU0 * sg));
                 const r = delta / g;
-                if (r > 0.05 && (!worst || r > worst.r)) worst = { r, g, delta };
+                if (r > 0.05 && (!worst || r > worst.r)) worst = { r, g, delta, sigma: sg };
             }
         }
         if (!worst) return null;
         const um = v => `${+(v * 1e6).toPrecision(3)} µm`;
-        return { type: 'accuracy', reason: 'narrow-gap', mode: 'all', freq: f, message:
+        return { type: 'accuracy', reason: 'narrow-gap', mode: 'all', freq: f, gap: worst.g, sigma: worst.sigma, message:
             `Conductors ${um(worst.g)} apart face each other across only ${(1 / worst.r).toFixed(0)} skin depths ` +
             `(${um(worst.delta)}): the quasi-static surface-impedance model can be inaccurate in this case. ` +
             `The full-wave solver models the current in the gap.` };

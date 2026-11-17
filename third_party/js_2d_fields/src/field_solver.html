@@ -513,7 +513,7 @@
         </div>
 
         <div class="control-group">
-            <label><input type="checkbox" id="chk_causal_materials"> Use Causal Material Parameters <span class="help-icon" onclick="showHelpModal('causal', event)">?</span></label>
+            <label><input type="checkbox" id="chk_causal_materials" checked> Use Causal Material Parameters <span class="help-icon" onclick="showHelpModal('causal', event)">?</span></label>
         </div>
         </div>
     </div>
@@ -607,6 +607,7 @@
         <button class="tab-button" data-tab="results">Results</button>
         <button class="tab-button" data-tab="sparams">S-Parameters</button>
         <button class="tab-button" data-tab="sweep">Parameter Sweep</button>
+        <button class="tab-button" data-tab="eye">Time domain</button>
         <button class="tab-button" data-tab="modes">Modes</button>
         <button class="tab-button" data-tab="about">About</button>
     </div>
@@ -765,6 +766,282 @@
             <button id="export-snp">Export SnP file</button>
             <div id="sparam-notice" style="display: none; padding: 6px 10px; background: #3d3520; border-left: 3px solid #f59e0b; font-size: 0.8em; border-radius: 3px; flex-shrink: 0; color: #fbbf24;">
                 <strong>⚠</strong> <span id="sparam-notice-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-eye" class="tab-content">
+        <div class="results-controls">
+            <select id="eye-view">
+                <option value="wave">Waveform</option>
+                <option value="eye">Eye diagram</option>
+                <option value="stat">Statistical eye</option>
+                <option value="pulse">Pulse response</option>
+                <option value="spectrum">Channel response</option>
+                <option value="package">Package S-parameters</option>
+            </select>
+            <label class="checkbox-label"><input type="checkbox" id="eye-show-rx" checked> RX</label>
+            <label class="checkbox-label"><input type="checkbox" id="eye-show-tx"> TX pad</label>
+            <label class="checkbox-label"><input type="checkbox" id="eye-show-src"> Source</label>
+            <label class="checkbox-label" id="eye-show-legs-label"><input type="checkbox" id="eye-show-legs"> P/N single-ended</label>
+            <label class="checkbox-label" id="eye-show-cm-label"><input type="checkbox" id="eye-show-cm"> Common mode</label>
+            <button id="btn-eye-run" style="width:auto; padding:8px 18px;">Simulate</button>
+            <button id="btn-eye-stop" style="width:auto; padding:8px 18px; display:none; background:#f44336;">Stop</button>
+            <button id="eye-settings-btn" style="width:auto; padding:6px 12px; font-size:0.85em;" aria-controls="eye-settings" aria-expanded="true">Hide settings</button>
+            <button id="eye-freeze-btn" style="width:auto; padding:6px 12px; font-size:0.85em;">Freeze</button>
+            <button id="eye-export-btn" style="width:auto; padding:6px 12px; font-size:0.85em;" disabled>Export CSV</button>
+            <span id="eye-status" style="color:var(--text-muted); font-size:0.85em;"></span>
+            <span class="help-icon" onclick="showHelpModal('eye', event)">?</span>
+        </div>
+        <div id="eye-notice" class="eye-notice" style="display: none;"></div>
+        <div id="eye-warnings" class="eye-notice" style="display: none;"></div>
+        <div class="eye-body">
+            <div id="eye-settings" class="eye-settings">
+                <fieldset>
+                    <legend>Interface preset <span class="help-icon" onclick="showHelpModal('eye_presets', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-preset">Fill typical values</label>
+                        <select id="eye-preset">
+                            <option value="" selected>Choose...</option>
+                            <option value="lvds">LVDS</option>
+                            <option value="pcie1">PCIe Gen1 (2.5 GT/s)</option>
+                            <option value="pcie2">PCIe Gen2 (5 GT/s)</option>
+                            <option value="pcie3">PCIe Gen3 (8 GT/s)</option>
+                            <option value="pcie4">PCIe Gen4 (16 GT/s)</option>
+                            <option value="pcie5">PCIe Gen5 (32 GT/s)</option>
+                            <option value="lvpecl">LVPECL 3.3 V clock</option>
+                            <option value="lvcmos33">LVCMOS 3.3 V clock</option>
+                            <option value="lvcmos25">LVCMOS 2.5 V clock</option>
+                            <option value="lvcmos18">LVCMOS 1.8 V clock</option>
+                        </select></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Line</legend>
+                    <div class="eye-row"><label for="eye-length">Length</label><input type="text" id="eye-length" value="100 mm"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Stimulus <span class="help-icon" onclick="showHelpModal('eye_stimulus', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-stim">Type</label>
+                        <select id="eye-stim">
+                            <option value="pulse" selected>Single pulse</option>
+                            <option value="step">Step</option>
+                            <option value="clock">Clock</option>
+                            <option value="pattern">Bit pattern</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-bitrate"><label for="eye-bitrate">Bit rate</label><input type="text" id="eye-bitrate" value="10 Gb/s"></div>
+                    <div class="eye-row" id="eye-row-pattern"><label for="eye-pattern">Pattern</label>
+                        <select id="eye-pattern">
+                            <option value="prbs7" selected>PRBS7</option>
+                            <option value="prbs9">PRBS9</option>
+                            <option value="prbs11">PRBS11</option>
+                            <option value="prbs15">PRBS15</option>
+                            <option value="prbs23">PRBS23</option>
+                            <option value="prbs31">PRBS31</option>
+                            <option value="custom">Custom bits</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-bits"><label for="eye-bits">Bits</label><input type="text" id="eye-bits" value="0011010111"></div>
+                    <div class="eye-row" id="eye-row-nbits"><label for="eye-nbits">Bits simulated</label><input type="text" id="eye-nbits" value="32767"></div>
+                    <div class="eye-row" id="eye-row-width"><label for="eye-width">Pulse width (50 %)</label><input type="text" id="eye-width" value="1 ns"></div>
+                    <div class="eye-row" id="eye-row-clock-freq"><label for="eye-clock-freq">Clock frequency</label><input type="text" id="eye-clock-freq" value="1 GHz"></div>
+                    <div class="eye-note" id="eye-rate-note"></div>
+                    <div class="eye-row" id="eye-row-duty"><label for="eye-duty">Duty cycle (%)</label><input type="text" id="eye-duty" value="50"></div>
+                    <div class="eye-row" id="eye-row-clock-mode"><label for="eye-clock-mode">Clock</label>
+                        <select id="eye-clock-mode">
+                            <option value="steady" selected>Steady state</option>
+                            <option value="burst">Burst from rest</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-cycles"><label for="eye-cycles">Cycles</label><input type="text" id="eye-cycles" value="8"></div>
+                    <div class="eye-row" id="eye-row-delay"><label for="eye-delay">Start delay</label><input type="text" id="eye-delay" value="0 ps"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Driver <span class="help-icon" onclick="showHelpModal('eye_driver', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-driver">Type</label>
+                        <select id="eye-driver">
+                            <option value="voltage" selected>Voltage mode</option>
+                            <option value="current">Current mode (LVDS)</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-vlow"><label for="eye-vlow">Low level (EMF)</label><input type="text" id="eye-vlow" value="0 V"></div>
+                    <div class="eye-row" id="eye-row-vhigh"><label for="eye-vhigh">High level (EMF)</label><input type="text" id="eye-vhigh" value="1 V"></div>
+                    <div class="eye-row" id="eye-row-rs"><label for="eye-rs">Source resistance (&Omega;)</label><input type="text" id="eye-rs" value="50"></div>
+                    <div class="eye-row" id="eye-row-iout"><label for="eye-iout">Output current</label><input type="text" id="eye-iout" value="3.5 mA"></div>
+                    <div class="eye-row" id="eye-row-rout"><label for="eye-rout">Output resistance (&Omega;)</label><input type="text" id="eye-rout" value="10k"></div>
+                    <div class="eye-row" id="eye-row-vcm"><label for="eye-vcm">Common-mode voltage</label><input type="text" id="eye-vcm" value="1.2 V"></div>
+                    <div class="eye-note" id="eye-level-note"></div>
+                    <div class="eye-row"><label for="eye-tr">Rise time</label><input type="text" id="eye-tr" value="35 ps"></div>
+                    <div class="eye-row"><label for="eye-tf">Fall time</label><input type="text" id="eye-tf" value="35 ps"></div>
+                    <div class="eye-row"><label for="eye-edge-def">Edge times</label>
+                        <select id="eye-edge-def">
+                            <option value="10-90" selected>10-90 %</option>
+                            <option value="20-80">20-80 %</option>
+                        </select></div>
+                    <div class="eye-row"><label for="eye-edge-shape">Edge shape</label>
+                        <select id="eye-edge-shape">
+                            <option value="rcos" selected>Raised cosine</option>
+                            <option value="gauss">Gaussian</option>
+                            <option value="ramp">Linear ramp</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-skew"><label for="eye-skew">P/N skew (N later)</label><input type="text" id="eye-skew" value="0 ps"></div>
+                    <div class="eye-row"><label for="eye-padtx">TX pad capacitance</label><input type="text" id="eye-padtx" value="0 pF"></div>
+                </fieldset>
+                <fieldset id="eye-jitter-set">
+                    <legend>TX jitter <span class="help-icon" onclick="showHelpModal('eye_tx_jitter', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-rj">Rj (rms)</label><input type="text" id="eye-rj" value="0 ps"></div>
+                    <div class="eye-row"><label for="eye-djdd">DjDD (pk-pk)</label><input type="text" id="eye-djdd" value="0 ps"></div>
+                    <div class="eye-row"><label for="eye-pwrj">Pulse-width Rj (rms)</label><input type="text" id="eye-pwrj" value="0 ps"></div>
+                    <div class="eye-row"><label for="eye-pwdj">Pulse-width DDj (pk-pk)</label><input type="text" id="eye-pwdj" value="0 ps"></div>
+                </fieldset>
+                <fieldset id="eye-txeq-set">
+                    <legend>TX equalization <span class="help-icon" onclick="showHelpModal('eye_tx_equalization', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-txeq">FIR</label>
+                        <select id="eye-txeq">
+                            <option value="none" selected>None</option>
+                            <option value="db">De-emphasis / pre-shoot</option>
+                            <option value="P0">PCIe preset P0</option>
+                            <option value="P1">PCIe preset P1</option>
+                            <option value="P2">PCIe preset P2</option>
+                            <option value="P3">PCIe preset P3</option>
+                            <option value="P4">PCIe preset P4</option>
+                            <option value="P5">PCIe preset P5</option>
+                            <option value="P6">PCIe preset P6</option>
+                            <option value="P7">PCIe preset P7</option>
+                            <option value="P8">PCIe preset P8</option>
+                            <option value="P9">PCIe preset P9</option>
+                            <option value="P10">PCIe preset P10 (nominal maximum boost)</option>
+                            <option value="auto">Best PCIe preset (full swing)</option>
+                            <option value="auto-rs">Best PCIe preset (reduced swing)</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-deemph"><label for="eye-deemph">De-emphasis (dB)</label><input type="text" id="eye-deemph" value="-3.5"></div>
+                    <div class="eye-row" id="eye-row-preshoot"><label for="eye-preshoot">Pre-shoot (dB)</label><input type="text" id="eye-preshoot" value="0"></div>
+                </fieldset>
+                <fieldset id="eye-pkg-set">
+                    <legend>Packages <span class="help-icon" onclick="showHelpModal('eye_packages', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-pkgtx">TX package</label>
+                        <select id="eye-pkgtx">
+                            <option value="none" selected>None</option>
+                            <option value="line">Line</option>
+                            <option value="rl">R + L (IBIS)</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-pkgtx-fill"><label for="eye-pkgtx-fill">Fill in</label>
+                        <select id="eye-pkgtx-fill">
+                            <option value="" selected>&mdash;</option>
+                            <option value="pcie8Tx">PCIe 8 GT/s TX (approximate)</option>
+                            <option value="pcie8Rx">PCIe 8 GT/s RX (approximate)</option>
+                            <option value="pcie16Root">PCIe 16 GT/s root port</option>
+                            <option value="pcie16NonRoot">PCIe 16 GT/s non-root</option>
+                            <option value="pcie32Root">PCIe 32 GT/s root port</option>
+                            <option value="pcie32NonRoot">PCIe 32 GT/s non-root</option>
+                            <option value="fpga18">Generic 1.8 V FPGA I/O</option>
+                            <option value="qfnPecl">QFN LVPECL clock buffer</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-pkgtx-cpin"><label for="eye-pkgtx-cpin">Pin capacitance</label><input type="text" id="eye-pkgtx-cpin" value="0.25 pF"></div>
+                    <div class="eye-row" id="eye-row-pkgtx-z0"><label for="eye-pkgtx-z0">Impedance (&Omega;)</label><input type="text" id="eye-pkgtx-z0" value="40"></div>
+                    <div class="eye-row" id="eye-row-pkgtx-delay"><label for="eye-pkgtx-delay">Delay</label><input type="text" id="eye-pkgtx-delay" value="150 ps"></div>
+                    <div class="eye-row" id="eye-row-pkgtx-lossc"><label for="eye-pkgtx-lossc">Conductor loss at 1 GHz (dB)</label><input type="text" id="eye-pkgtx-lossc" value="0.5"></div>
+                    <div class="eye-row" id="eye-row-pkgtx-lossd"><label for="eye-pkgtx-lossd">Dielectric loss at 1 GHz (dB)</label><input type="text" id="eye-pkgtx-lossd" value="0"></div>
+                    <div class="eye-row" id="eye-row-pkgtx-r"><label for="eye-pkgtx-r">DC resistance (&Omega;)</label><input type="text" id="eye-pkgtx-r" value="1"></div>
+                    <div class="eye-row" id="eye-row-pkgtx-l"><label for="eye-pkgtx-l">Inductance</label><input type="text" id="eye-pkgtx-l" value="1 nH"></div>
+                    <div class="eye-row"><label for="eye-pkgrx">RX package</label>
+                        <select id="eye-pkgrx">
+                            <option value="none" selected>None</option>
+                            <option value="line">Line</option>
+                            <option value="rl">R + L (IBIS)</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-pkgrx-fill"><label for="eye-pkgrx-fill">Fill in</label>
+                        <select id="eye-pkgrx-fill">
+                            <option value="" selected>&mdash;</option>
+                            <option value="pcie8Tx">PCIe 8 GT/s TX (approximate)</option>
+                            <option value="pcie8Rx">PCIe 8 GT/s RX (approximate)</option>
+                            <option value="pcie16Root">PCIe 16 GT/s root port</option>
+                            <option value="pcie16NonRoot">PCIe 16 GT/s non-root</option>
+                            <option value="pcie32Root">PCIe 32 GT/s root port</option>
+                            <option value="pcie32NonRoot">PCIe 32 GT/s non-root</option>
+                            <option value="fpga18">Generic 1.8 V FPGA I/O</option>
+                            <option value="qfnPecl">QFN LVPECL clock buffer</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-pkgrx-cpin"><label for="eye-pkgrx-cpin">Pin capacitance</label><input type="text" id="eye-pkgrx-cpin" value="0.25 pF"></div>
+                    <div class="eye-row" id="eye-row-pkgrx-z0"><label for="eye-pkgrx-z0">Impedance (&Omega;)</label><input type="text" id="eye-pkgrx-z0" value="40"></div>
+                    <div class="eye-row" id="eye-row-pkgrx-delay"><label for="eye-pkgrx-delay">Delay</label><input type="text" id="eye-pkgrx-delay" value="150 ps"></div>
+                    <div class="eye-row" id="eye-row-pkgrx-lossc"><label for="eye-pkgrx-lossc">Conductor loss at 1 GHz (dB)</label><input type="text" id="eye-pkgrx-lossc" value="0.5"></div>
+                    <div class="eye-row" id="eye-row-pkgrx-lossd"><label for="eye-pkgrx-lossd">Dielectric loss at 1 GHz (dB)</label><input type="text" id="eye-pkgrx-lossd" value="0"></div>
+                    <div class="eye-row" id="eye-row-pkgrx-r"><label for="eye-pkgrx-r">DC resistance (&Omega;)</label><input type="text" id="eye-pkgrx-r" value="1"></div>
+                    <div class="eye-row" id="eye-row-pkgrx-l"><label for="eye-pkgrx-l">Inductance</label><input type="text" id="eye-pkgrx-l" value="1 nH"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Coupling <span class="help-icon" onclick="showHelpModal('eye_coupling', event)">?</span></legend>
+                    <div class="eye-row"><label class="checkbox-label"><input type="checkbox" id="eye-tx-ac"> AC at TX</label><input type="text" id="eye-ctx" value="100 nF"></div>
+                    <div class="eye-row"><label class="checkbox-label"><input type="checkbox" id="eye-rx-ac"> AC at RX</label><input type="text" id="eye-crx" value="100 nF"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>RX termination <span id="eye-term-label" class="eye-note-inline"></span> <span class="help-icon" onclick="showHelpModal('eye_termination', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-term">Type</label>
+                        <select id="eye-term">
+                            <option value="r" selected>Resistor to ground</option>
+                            <option value="vtt">Resistor to V_TT</option>
+                            <option value="rc">Resistor + capacitor to ground</option>
+                            <option value="diff">Differential resistor</option>
+                            <option value="thev">Thevenin (pull-up + pull-down)</option>
+                            <option value="open">Open (high impedance)</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-termloc"><label for="eye-termloc">Location</label>
+                        <select id="eye-termloc">
+                            <option value="die" selected>On die</option>
+                            <option value="board">On board (at the RX pin)</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-rt"><label for="eye-rt">Resistance (&Omega;)</label><input type="text" id="eye-rt" value="50"></div>
+                    <div class="eye-row" id="eye-row-vtt"><label for="eye-vtt">V_TT</label><input type="text" id="eye-vtt" value="1.2 V"></div>
+                    <div class="eye-row" id="eye-row-ct"><label for="eye-ct">Capacitance</label><input type="text" id="eye-ct" value="100 nF"></div>
+                    <div class="eye-row" id="eye-row-rdiff"><label for="eye-rdiff">Resistance P-N (&Omega;)</label><input type="text" id="eye-rdiff" value="100"></div>
+                    <div class="eye-row" id="eye-row-rup"><label for="eye-rup">Pull-up to supply (&Omega;)</label><input type="text" id="eye-rup" value="130"></div>
+                    <div class="eye-row" id="eye-row-rdn"><label for="eye-rdn">Pull-down to ground (&Omega;)</label><input type="text" id="eye-rdn" value="82"></div>
+                    <div class="eye-row" id="eye-row-vsup"><label for="eye-vsup">Supply</label><input type="text" id="eye-vsup" value="3.3 V"></div>
+                    <div class="eye-row"><label for="eye-padrx">RX pad / input capacitance</label><input type="text" id="eye-padrx" value="0 pF"></div>
+                </fieldset>
+                <fieldset id="eye-rxeq-set">
+                    <legend>RX equalization <span class="help-icon" onclick="showHelpModal('eye_rx_equalization', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-ctle">CTLE</label>
+                        <select id="eye-ctle">
+                            <option value="off" selected>Off</option>
+                            <option value="fixed">Fixed DC gain</option>
+                            <option value="auto">Best DC gain</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-adc"><label for="eye-adc">DC gain (dB)</label><input type="text" id="eye-adc" value="-6"></div>
+                    <div class="eye-row" id="eye-row-adcmin"><label for="eye-adcmin">DC gain from (dB)</label><input type="text" id="eye-adcmin" value="-12"></div>
+                    <div class="eye-row" id="eye-row-adcmax"><label for="eye-adcmax">DC gain to (dB)</label><input type="text" id="eye-adcmax" value="-6"></div>
+                    <div class="eye-row" id="eye-row-ctleorder"><label for="eye-ctleorder">CTLE form</label>
+                        <select id="eye-ctleorder">
+                            <option value="1" selected>1st order (PCIe 8 / 16 GT/s)</option>
+                            <option value="2">2nd order (PCIe 32 GT/s)</option>
+                        </select></div>
+                    <div class="eye-row" id="eye-row-fz1"><label for="eye-fz1">Zero 1</label><input type="text" id="eye-fz1" value="450 MHz"></div>
+                    <div class="eye-row" id="eye-row-fp1"><label for="eye-fp1">Pole 1</label><input type="text" id="eye-fp1" value="2 GHz"></div>
+                    <div class="eye-row" id="eye-row-fp2"><label for="eye-fp2">Pole 2</label><input type="text" id="eye-fp2" value="8 GHz"></div>
+                    <div class="eye-row" id="eye-row-fp3"><label for="eye-fp3">Poles 3 and 4</label><input type="text" id="eye-fp3" value="28 GHz"></div>
+                    <div class="eye-row"><label for="eye-dfe">DFE taps</label><input type="text" id="eye-dfe" value="0"></div>
+                    <div class="eye-row" id="eye-row-dfelim"><label for="eye-dfelim">DFE tap limits</label><input type="text" id="eye-dfelim" value="" placeholder="none"></div>
+                </fieldset>
+                <fieldset id="eye-stat-set">
+                    <legend>Statistical eye <span class="help-icon" onclick="showHelpModal('eye_stat', event)">?</span></legend>
+                    <div class="eye-row"><label class="checkbox-label"><input type="checkbox" id="eye-stat" checked> Compute</label></div>
+                    <div class="eye-row" id="eye-row-ber"><label for="eye-ber">Target BER</label><input type="text" id="eye-ber" value="1e-12"></div>
+                    <div class="eye-row" id="eye-row-soff-from"><label for="eye-soff-from">Sample offsets from (UI)</label><input type="text" id="eye-soff-from" value="-0.1"></div>
+                    <div class="eye-row" id="eye-row-soff-to"><label for="eye-soff-to">to (UI)</label><input type="text" id="eye-soff-to" value="0.1"></div>
+                    <div class="eye-row" id="eye-row-soff-step"><label for="eye-soff-step">in steps of (UI)</label><input type="text" id="eye-soff-step" value="0.05"></div>
+                    <div class="eye-row" id="eye-row-mask-eh"><label for="eye-mask-eh">Mask eye height</label><input type="text" id="eye-mask-eh" value="" placeholder="none"></div>
+                    <div class="eye-row" id="eye-row-mask-ew"><label for="eye-mask-ew">Mask eye width (UI)</label><input type="text" id="eye-mask-ew" value="" placeholder="none"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Simulation <span class="help-icon" onclick="showHelpModal('eye_simulation', event)">?</span></legend>
+                    <div class="eye-row"><label for="eye-spe">Samples per edge</label><input type="text" id="eye-spe" value="16"></div>
+                    <div class="eye-row" id="eye-row-span"><label for="eye-span">Time span</label><input type="text" id="eye-span" value="" placeholder="auto"></div>
+                </fieldset>
+            </div>
+            <div class="eye-main">
+                <div id="eye-plot" class="plot-container">
+                    <div class="plotly-loading">
+                        <div class="plotly-loading-spinner"></div>
+                        <span>Loading Plotly library...</span>
+                    </div>
+                </div>
+                <div id="eye-metrics" class="eye-metrics"></div>
             </div>
         </div>
     </div>
@@ -1302,6 +1579,282 @@
             title: 'Copy link',
             body: '<p>Copies URL to clip board with all transmission line parameters encoded in it. Opening it will load the same parameters.</p>'
         },
+        eye: {
+            title: 'Time domain tab',
+            wide: true,
+            body: `<p>Time-domain response of the solved line, of the given length, between a driver and a receiver termination.</p>
+                <h4>Line parameters</h4>
+                <ul>
+                    <li>R, L, G, C of the line (the physical 2&times;2 matrices of a pair) from DC up to about three times the knee frequency 0.35/t<sub>r</sub> of the fastest edge.</li>
+                    <li>The last solve is reused when it is of the current geometry, starts at DC and reaches that frequency (an interpolating sweep, or a discrete one dense enough). Otherwise the tab runs its own interpolating sweep.</li>
+                    <li>Above the sweep stop R grows as &radic;f, G as f, the internal inductance falls as 1/&radic;f and C is held.</li>
+                </ul>
+                <h4>Circuit</h4>
+                <ul>
+                    <li>The line enters as its exact admittance matrix, with the driver, the coupling capacitors and the termination around it.</li>
+                    <li>Every response starts from the DC operating point.</li>
+                    <li>The response is the inverse FFT of the transfer function times the edge spectra.</li>
+                    <li>AC coupling time constants longer than the simulated window are integrated exactly in time instead, so droop and the baseline shift are correct on any time span.</li>
+                </ul>
+                <h4>Views</h4>
+                <table>
+                    <tr><th>Waveform</th><td>The voltages against time. The dotted lines mark the first source edge and its arrival after the line delay. A pattern shows its first 200 bits.</td></tr>
+                    <tr><th>Eye diagram</th><td>The receiver waveform folded over 2 UI. A clock is drawn as lines (UI = half the clock period), a pattern as the density of the whole period with the eye height and width marked.</td></tr>
+                    <tr><th>Pulse response</th><td>The equalized single-bit response with its cursors and the DFE taps marked (only with TX or RX equalization).</td></tr>
+                    <tr><th>Channel response</th><td>|V<sub>RX</sub>/EMF| with the edge spectrum; for a current-mode driver |V<sub>RX</sub>/I| relative to its low-frequency level.</td></tr>
+                </table>
+                <h4>Eye metrics (patterns)</h4>
+                <ul>
+                    <li><b>Threshold</b>: half way between the mean one and zero levels at the eye centre, half a UI from the mean crossing.</li>
+                    <li><b>Eye height</b>: smallest one minus largest zero at the centre, and the largest such opening over the sampling phase.</li>
+                    <li><b>Eye width</b>: UI minus the peak-to-peak spread of the threshold crossings, which is also the data-dependent jitter.</li>
+                    <li>No noise or random jitter is included.</li>
+                </ul>
+                <p class="help-note">Use causal materials for time-domain work: a constant loss tangent is not causal and the receiver responds before the signal can arrive.</p>`
+        },
+        eye_stimulus: {
+            title: 'Stimulus',
+            body: `<table>
+                    <tr><th>Step</th><td>One rising edge.</td></tr>
+                    <tr><th>Single pulse</th><td>A rising and a falling edge, the width between their 50 % points.</td></tr>
+                    <tr><th>Clock</th><td>A square wave of the given frequency and duty cycle, either its periodic steady state (exact, all reflections and coupling droop settled) or a burst of N cycles from rest.</td></tr>
+                    <tr><th>Bit pattern</th><td>NRZ data at the bit rate, repeated indefinitely.</td></tr>
+                </table>
+                <h4>Patterns</h4>
+                <ul>
+                    <li><b>PRBS</b>: x<sup>n</sup> + x<sup>k</sup> + 1, maximal length 2<sup>n</sup> &minus; 1 bits.
+                        <table>
+                            <tr><th>Pattern</th><td>PRBS7</td><td>PRBS9</td><td>PRBS11</td><td>PRBS15</td><td>PRBS23</td><td>PRBS31</td></tr>
+                            <tr><th>k</th><td>6</td><td>5</td><td>9</td><td>14</td><td>18</td><td>28</td></tr>
+                        </table>
+                        PRBS23 and PRBS31 are simulated over the given number of their first bits, repeated.</li>
+                    <li><b>Custom</b>: 0 and 1, spaces ignored.</li>
+                    <li>The result is the periodic steady state of the repeating pattern, so AC coupling shows its settled baseline wander.</li>
+                </ul>
+                <p>The start delay is the time before the first edge begins (not used for patterns).</p>`
+        },
+        eye_driver: {
+            title: 'Driver',
+            body: `<h4>Voltage mode</h4>
+                <p>Each output pad is driven by a voltage source through a series resistance. The levels are the source's open-circuit (EMF) levels: a 50 &Omega; driver into a matched 50 &Omega; line puts half of the EMF swing on the line.</p>
+                <h4>Current mode (LVDS)</h4>
+                <p>Each output pad is driven by a current source of &plusmn;I, in parallel with an output resistance to the common-mode voltage. A pair steers I through the termination (3.5 mA into 100 &Omega; gives 350 mV). The output resistance sets the reflections at the driver.</p>
+                <h4>Pairs</h4>
+                <p>P and N are driven complementary: P goes low to high while N goes high to low, so the differential EMF swings &plusmn;(high &minus; low). The skew delays the N output relative to P; a negative skew makes N earlier.</p>
+                <h4>Edges</h4>
+                <p>Rise and fall times are the 10-90 % or 20-80 % times of the EMF.</p>
+                <ul>
+                    <li><b>Raised cosine</b>: compact support and a fast falling spectrum.</li>
+                    <li><b>Gaussian</b>: band limited.</li>
+                    <li><b>Linear ramp</b>: has corners, which show a little band-limit ringing.</li>
+                </ul>`
+        },
+        eye_coupling: {
+            title: 'Coupling',
+            body: `<ul>
+                    <li><b>DC coupling</b> connects the driver, the line and the receiver directly.</li>
+                    <li><b>AC at TX</b> puts a series capacitor at each pad, between the driver and the line.</li>
+                    <li><b>AC at RX</b> puts it between the line and the termination.</li>
+                </ul>
+                <p class="help-note">A receiver behind a coupling capacitor with only a differential or no termination has no DC path: its common-mode level is set by the receiver bias network, which is not modelled (a 1 G&Omega; leak holds it at 0 V).</p>`
+        },
+        eye_packages: {
+            title: 'Packages',
+            body: `<p>A package per side, the same on each leg, between the die pad and the board pin:</p>
+                <p>die pad (pad capacitance of the driver or receiver) &mdash; series element &mdash; pin capacitance &mdash; board.</p>
+                <ul>
+                    <li><b>Line</b>: a uniform line of the given impedance and delay (at 1 GHz). The conductor loss grows as &radic;f above the skin corner, where the DC resistance takes over, and the dielectric loss about as f. Both are causal.</li>
+                    <li><b>R + L</b>: the series R<sub>pkg</sub> and L<sub>pkg</sub> of an IBIS [Package]. With the pad capacitance as C_comp and the pin capacitance as C<sub>pkg</sub>.</li>
+                </ul>
+                <p>The receiver waveform and eye are at the receiver die pad, the TX waveform at the driver die pad.</p>
+                <p>The RX termination is on the die (behind the package) or on the board at the RX pin (RX termination, Location), where the package is an unterminated stub to the die pad. The AC coupling capacitors are on the board.</p>
+                <p>The <b>Package S-parameters</b> view plots S21 and S11 (pin side; S22 at the die in the legend) of both packages with their pad capacitances, 50 &Omega; per leg (SDD at 100 &Omega; for a pair). It needs no simulation and follows the inputs as they are edited, up to the bit rate (Nyquist marked) or 1 / rise time.</p>
+                <h4>PCIe 16 GT/s</h4>
+                <p>The behavioral packages of the base spec (8.5.1.1): C<sub>pin</sub> 0.25 pF, C<sub>pad</sub> 0.5 pF and a line fitted to the SDD21 curves of the spec's reference packages (&minus;3.08 dB non-root, &minus;5.02 dB root at 8 GHz, within 0.2 and 0.4 dB rms up to 15 GHz). The root port package is socketed and its ripple is only approximated. Fill in sets the pad capacitance too.</p>
+                <h4>PCIe 8 GT/s</h4>
+                <p>The spec gives only C<sub>pin</sub> 0.25 pF and C<sub>pad</sub> 1.0 pF (TX) / 0.8 pF (RX). The line between them is the 16 GT/s non-root one, an approximation. Gen1 and Gen2 channels are checked with the 8 GT/s package too.</p>
+                <h4>PCIe 32 GT/s</h4>
+                <p>The spec's reference packages are S-parameter models. The root port template is a line with C<sub>pin</sub> and C<sub>pad</sub> fitted to their plots: insertion loss &minus;8.4 dB at 16 GHz and within 0.7 dB rms to 30 GHz; board-side return loss within 1.8 dB rms of its ripple average, with a coarser ripple than the socketed original.</p>
+                <h4>Generic 1.8 V FPGA I/O</h4>
+                <p>IBIS package of a high-performance 1.8 V LVCMOS FPGA pin: R<sub>pkg</sub> 0.3 &Omega;, L<sub>pkg</sub> 5 nH, C<sub>pkg</sub> 1 pF (pin) and C_comp 4.5 pF (pad).</p>
+                <h4>QFN LVPECL clock buffer</h4>
+                <p>IBIS package of a QFN-16 LVPECL fanout buffer: R<sub>pkg</sub> 72 m&Omega;, L<sub>pkg</sub> 1.47 nH, C<sub>pkg</sub> 0.077 pF (pin) and the C_comp 2 pF of its output model (pad).</p>`
+        },
+        eye_presets: {
+            title: 'Interface presets',
+            wide: true,
+            body: `<p>Fill the stimulus, driver, coupling, termination and equalization with typical values of an interface. The line length is kept and every value stays editable. They are starting points. Check the levels, edge rates, impedances and capacitances of the parts used.</p>
+                <p>LVDS and LVCMOS put the generic 1.8 V FPGA I/O package at both ends (0.3 &Omega;, 5 nH, 1 pF pin, 4.5 pF pad), LVPECL the QFN LVPECL clock buffer one (72 m&Omega;, 1.47 nH, 0.077 pF pin, 2 pF pad).</p>
+                <h4>LVDS</h4>
+                <p>Current-mode driver, 3.5 mA into 100 &Omega; differential (350 mV), 1.2 V common mode.</p>
+                <h4>PCIe</h4>
+                <ul>
+                    <li>The behavioral transmitter of channel tolerancing (base spec 8.5.1.4, Table 8-14) at the die pad: a 50 &Omega; voltage-mode driver of 804 mV differential peak-to-peak full swing into a matched load (0.804 V EMF steps per pad), Gaussian edges of the table's 10-90 % time (without the pad capacitance, which is part of the package), and the table's jitter (TX jitter help). For reduced swing, halve the high level.</li>
+                    <li>TX AC coupling, 2 &times; 50 &Omega; receiver termination.</li>
+                </ul>
+                <table>
+                    <tr><th></th><th>TX FIR</th><th>CTLE</th><th>DFE</th><th>Edge (10-90 %)</th><th>Rj</th><th>DjDD</th><th>PW Rj</th><th>PW DDj</th></tr>
+                    <tr><th>Gen1</th><td>&minus;3.5 dB de-emphasis</td><td>None defined</td><td>None</td><td>140 ps</td><td>3.45 ps</td><td>20 ps</td><td>1.42 ps</td><td>80 ps</td></tr>
+                    <tr><th>Gen2</th><td>&minus;6 dB de-emphasis</td><td>None defined</td><td>None</td><td>70 ps</td><td>3.45 ps</td><td>20 ps</td><td>1.42 ps</td><td>40 ps</td></tr>
+                    <tr><th>Gen3</th><td>Best preset</td><td>1st order</td><td>1 tap</td><td>43.75 ps</td><td>1.31 ps</td><td>7 ps</td><td>1.0 ps</td><td>10 ps</td></tr>
+                    <tr><th>Gen4</th><td>Best preset</td><td>1st order</td><td>2 taps</td><td>21.875 ps</td><td>0.71 ps</td><td>3.75 ps</td><td>0.54 ps</td><td>5 ps</td></tr>
+                    <tr><th>Gen5</th><td>Best preset</td><td>2nd order</td><td>3 taps</td><td>10.94 ps</td><td>0.276 ps</td><td>1.875 ps</td><td>0.27 ps</td><td>2.5 ps</td></tr>
+                </table>
+                <p>The CTLE and DFE are the behavioral ones of the base spec, with its tap limits.</p>
+                <p>Packages (root port transmitting where the spec tells root and non-root apart): Gen1-3 the 8 GT/s TX and RX packages (approximate line), Gen4 the 16 GT/s root port and non-root packages, Gen5 the 32 GT/s root port package with the 16 GT/s non-root one at the receiver (the 32 GT/s non-root model is not fitted yet). See the Packages help.</p>
+                <p>Not modeled yet: the statistical eye at BER 10<sup>&minus;12</sup> (the eye shows one jitter draw), crosstalk, and the behavioral CDR of compliance testing.</p>
+                <h4>LVPECL</h4>
+                <p>Differential. Emitter-follower driver (low output resistance, 1.6/2.4 V per leg) into 50 &Omega; to V<sub>CC</sub> &minus; 2 V on each leg, terminated on the board at the receiver pin. The RX trace is at the die, behind the package stub that follows the termination.</p>
+                <h4>LVCMOS</h4>
+                <p>CMOS driver of 25-35 &Omega; output resistance into an unterminated receiver.</p>
+                <p class="help-note">The drivers and receivers are linear. A real CMOS or emitter-follower output changes its resistance with the output voltage, and receiver clamp diodes limit overshoot on unterminated lines.</p>`
+        },
+        eye_tx_jitter: {
+            title: 'TX jitter (bit patterns and steady clocks)',
+            body: `<p>Edge jitter of the transmitter at the die pad, in the terms of the PCIe channel tolerancing parameters (base spec 8.5.1.4, Table 8-14). Every term acts on each bit boundary independently:</p>
+                <ul>
+                    <li><b>Rj</b>: Gaussian, this rms.</li>
+                    <li><b>DjDD</b>: dual Dirac, &plusmn;half of this peak-to-peak value.</li>
+                    <li><b>Pulse-width Rj</b>: Gaussian of rms / &radic;2 per edge, so the width of a bit (two edges) has this rms.</li>
+                    <li><b>Pulse-width DDj</b>: dual Dirac of &plusmn;a quarter of this value per edge, so the width of a bit spans this peak-to-peak.</li>
+                </ul>
+                <p>This is how the spec's own derivation splits them (the pulse-width Rj enters the edge Rj &times; 0.707, the pulse-width DDj the edge DjDD halved). Both legs of a pair and the FIR level steps at a bit boundary move together.</p>
+                <p>The simulation draws one displacement per bit of the pattern (the same draw every run) and shows that eye: a PRBS15 has 16384 transitions, so its Gaussian tails reach about 4 &sigma;, not the 7 &sigma; of BER 10<sup>&minus;12</sup>. The result lists the per-edge totals and the dual-Dirac total jitter at BER 10<sup>&minus;12</sup>, DJ + 14.07 RJ. The TX preset and CTLE choice uses the pulse response without jitter.</p>
+                <p>A steady clock with jitter is simulated over 4096 cycles, each edge with its own draw (the pulse-width terms then jitter the high and low times). The wave and eye views show that run; the duty cycle, edge times, levels and delay in the results are those of the clock without jitter, the eye height, eye width and crossing jitter those with it. A burst has no jitter.</p>
+                <p>The PCIe presets fill in the Table 8-14 values of their rate.</p>`
+        },
+        eye_tx_equalization: {
+            title: 'TX equalization (bit patterns)',
+            wide: true,
+            body: `<p>A three-tap FIR c<sub>-1</sub>, c<sub>0</sub>, c<sub>+1</sub> with |c<sub>-1</sub>| + c<sub>0</sub> + |c<sub>+1</sub>| = 1, so the low and high levels are the full swing.</p>
+                <h4>Levels (PCIe definitions)</h4>
+                <table>
+                    <tr><th>V<sub>a</sub></th><td>The bit after a transition</td></tr>
+                    <tr><th>V<sub>b</sub></th><td>A long run</td></tr>
+                    <tr><th>V<sub>c</sub></th><td>The bit before a transition</td></tr>
+                    <tr><th>V<sub>d</sub></th><td>An isolated bit</td></tr>
+                </table>
+                <ul>
+                    <li><b>De-emphasis</b> = 20 log(V<sub>b</sub>/V<sub>a</sub>)</li>
+                    <li><b>Pre-shoot</b> = 20 log(V<sub>c</sub>/V<sub>b</sub>)</li>
+                    <li><b>Boost</b> = 20 log(V<sub>d</sub>/V<sub>b</sub>), reported with the result</li>
+                </ul>
+                <h4>PCIe 3.0+ presets</h4>
+                <table>
+                    <tr><th>Preset</th><td>P0</td><td>P1</td><td>P2</td><td>P3</td><td>P4</td><td>P5</td><td>P6</td><td>P7</td><td>P8</td><td>P9</td><td>P10</td></tr>
+                    <tr><th>Pre-shoot (dB)</th><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1.9</td><td>2.5</td><td>3.5</td><td>3.5</td><td>3.5</td><td>0</td></tr>
+                    <tr><th>De-emphasis (dB)</th><td>&minus;6.0</td><td>&minus;3.5</td><td>&minus;4.4</td><td>&minus;2.5</td><td>0</td><td>0</td><td>0</td><td>&minus;6.0</td><td>&minus;3.5</td><td>0</td><td>&minus;9.5</td></tr>
+                </table>
+                <p>P10 is not a fixed preset: its de-emphasis follows the LF level the transmitter advertises in link training. It is simulated at its nominal maximum boost of 9.5 dB (full swing, &plusmn;1.5 dB).</p>
+                <h4>Best PCIe preset</h4>
+                <ul>
+                    <li><b>Full swing</b> tries all eleven presets.</li>
+                    <li><b>Reduced swing</b> tries only P4, P1, P9, P5, P6 and P3, the presets reduced-swing signaling implements.</li>
+                    <li>The best preset maximizes the statistical eye height times width at the target BER (PCIe 8.5.1.3.2), together with the CTLE gain. With the statistical eye off, it maximizes the worst-case (peak-distortion) eye height of the pulse response at the slicer.</li>
+                </ul>`
+        },
+        eye_rx_equalization: {
+            title: 'RX equalization (bit patterns)',
+            wide: true,
+            body: `<p>The behavioral receiver equalizer of PCIe: a Continuous Time Linear Equalizer (CTLE) followed by a Decision Feedback Equalizer (DFE). Uses ideal equations and doesn't model full analog receiver. It is useful for compliance measurements for the channel.</p>
+                <h4>CTLE, 1st order (8 and 16 GT/s)</h4>
+                <div class="help-formula">H(s) = &omega;<sub>p2</sub>(s + A&omega;<sub>p1</sub>) / ((s + &omega;<sub>p1</sub>)(s + &omega;<sub>p2</sub>))</div>
+                <p>DC gain A, poles f<sub>p1</sub>, f<sub>p2</sub> and a zero at A f<sub>p1</sub>.</p>
+                <table>
+                    <tr><th></th><th>f<sub>p1</sub></th><th>f<sub>p2</sub></th><th>A</th></tr>
+                    <tr><th>8 GT/s</th><td>2 GHz</td><td>8 GHz</td><td>&minus;6 to &minus;12 dB</td></tr>
+                    <tr><th>16 GT/s</th><td>2 GHz</td><td>16 GHz</td><td>&minus;6 to &minus;12 dB</td></tr>
+                </table>
+                <h4>CTLE, 2nd order (32 GT/s)</h4>
+                <div class="help-formula">H(s) = (&omega;<sub>p1</sub>&omega;<sub>p3</sub>&omega;<sub>p4</sub>/&omega;<sub>z1</sub>) &middot; (s + &omega;<sub>z1</sub>)(s + A&omega;<sub>p2</sub>) / ((s + &omega;<sub>p1</sub>)(s + &omega;<sub>p2</sub>)(s + &omega;<sub>p3</sub>)(s + &omega;<sub>p4</sub>))</div>
+                <table>
+                    <tr><th>f<sub>z1</sub></th><td>450 MHz</td></tr>
+                    <tr><th>f<sub>p1</sub></th><td>1.65 f<sub>z1</sub></td></tr>
+                    <tr><th>f<sub>p2</sub></th><td>9.5 GHz</td></tr>
+                    <tr><th>f<sub>p3</sub> = f<sub>p4</sub></th><td>28 GHz</td></tr>
+                    <tr><th>A</th><td>&minus;5 to &minus;15 dB</td></tr>
+                </table>
+                <p>A is stepped in 1 dB. 2.5 and 5 GT/s define no behavioral receiver equalization.</p>
+                <p><b>Best DC gain</b> tries every dB of the range.</p>
+                <h4>DFE</h4>
+                <ul>
+                    <li>Ideal decisions: each tap cancels one post-cursor of the pulse response at the sampling point, up to its limit.</li>
+                    <li><b>Tap limits</b>: a list in tap order of voltages or ratios to the cursor h<sub>0</sub>, e.g. <code>0.8 h0, 20 mV, 20 mV</code>. Empty means no limit.</li>
+                    <li>A limited tap leaves the rest of its post-cursor as ISI.</li>
+                </ul>
+                <table>
+                    <tr><th></th><th>Taps</th><th>d1 limit</th><th>d2, d3 limit</th></tr>
+                    <tr><th>8 GT/s</th><td>1</td><td>&plusmn;30 mV</td><td>&ndash;</td></tr>
+                    <tr><th>16 GT/s</th><td>2</td><td>&plusmn;30 mV</td><td>&plusmn;20 mV</td></tr>
+                    <tr><th>32 GT/s</th><td>3</td><td>|d1| &le; 0.8 h<sub>0</sub></td><td>&plusmn;20 mV</td></tr>
+                </table>
+                <p>The limits apply to the reference receiver only. Implementations can use different limits.</p>
+                <h4>Results</h4>
+                <ul>
+                    <li>The best TX preset and CTLE gain maximize the statistical eye height times width at the target BER (PCIe 8.5.1.3.2). Every combination is ranked on a coarse grid, the best few again on the full one. With the statistical eye off, they maximize the worst-case (peak-distortion) eye height of the pulse response at the slicer.</li>
+                    <li>The DFE taps of each combination cancel the post-cursors at its peak-distortion sample point.</li>
+                    <li>The eye diagram and its metrics show the slicer signal (after the CTLE and DFE), with the eye height at the pins listed for comparison.</li>
+                    <li>The pulse response view shows the equalized pulse with its cursors, the DFE taps marked.</li>
+                </ul>`
+        },
+        eye_stat: {
+            title: 'Statistical eye (bit patterns)',
+            wide: true,
+            body: `<p>The eye at a target bit error ratio, computed from the step responses rather than a simulated pattern: every bit sequence (independent, equiprobable bits) and the TX jitter distribution of every bit boundary, including the tails a pattern run never reaches. This is the PCIe channel tolerancing eye (8.5.1.3).</p>
+                <h4>Method</h4>
+                <ul>
+                    <li>The slicer signal at a sampling phase is a sum over bit boundaries of the FIR transition times its step response (through the CTLE), each boundary moved by its own jitter, less the DFE taps times the previous bits.</li>
+                    <li>Boundaries near an arriving edge (where the jitter or unequal rise and fall times matter) are evaluated exactly over the bits each transition depends on; the other bits add their pulse response cursors independently.</li>
+                    <li>Jitter: per edge, Gaussian Rj with the PW Rj times 0.707, dual Dirac &plusmn;DjDD/2 and &plusmn;PW DDj/4 (the TX jitter split).</li>
+                    <li>AC coupling adds its baseline wander as a Gaussian.</li>
+                    <li>The automatic TX preset and CTLE gain are chosen by this eye's height times width (see RX equalization); the time-domain eye uses the same settings.</li>
+                </ul>
+                <h4>Sample point</h4>
+                <ul>
+                    <li>The sample point is swept over the offsets from the mean UI centre, the DFE taps recomputed at each; the one with the largest eye height times width wins (jointly with the TX preset and CTLE gain).</li>
+                    <li>PCIe: &plusmn;0.1 UI at 8 and 16 GT/s (the EH aperture), 0 to &minus;0.30 UI in 0.05 UI steps at 32 GT/s.</li>
+                    <li>Mean UI centre: the middle of the zero-line crossings, each where half of the transitions have crossed (from the statistical eye without the DFE).</li>
+                    <li>Without equalization the sweep picks the sample point of the receiver eye.</li>
+                </ul>
+                <h4>Results</h4>
+                <ul>
+                    <li><b>BER</b> at a decision level and phase: half the probability that a one falls below it plus half that a zero lies above it.</li>
+                    <li><b>Eye width</b>: the span of sampling phases whose BER at the mid level (the zero-crossing line) is below the target.</li>
+                    <li><b>Eye height</b>: the vertical opening at the target BER at the sample point.</li>
+                    <li>The view shows the probability density of the slicer signal with BER contours from 1e-3 down to the target.</li>
+                </ul>
+                <h4>Pass / fail mask</h4>
+                <ul>
+                    <li>Mask eye height and width: the minimum EH and EW at the target BER (PCIe Table 8-15, Fig 8-79). The result lists pass or fail with the margins; an empty field sets no limit.</li>
+                    <li>The mask is drawn as a diamond: its top and bottom at the sample point, centred on the eye opening there, its left and right on the zero-crossing line, centred on the eye width. It fits inside the BER contour exactly when the eye passes.</li>
+                    <li>PCIe presets fill in the channel limits: 2.5 GT/s 130 mV / 0.35 UI, 5 GT/s 85 mV / 0.30 UI, 8 GT/s 25 mV / 0.3 UI, 16 and 32 GT/s 15 mV / 0.3 UI.</li>
+                    <li>A spec-style estimate for the solved line with behavioral packages, not a compliance result: no vias, connectors, crosstalk or RX noise.</li>
+                </ul>
+                <p>Not included: RX noise and crosstalk.</p>`
+        },
+        eye_termination: {
+            title: 'RX termination',
+            body: `<table>
+                    <tr><th>Resistor to ground</th><td>R from each receiver pad to ground.</td></tr>
+                    <tr><th>Resistor to V_TT</th><td>R from each receiver pad to a termination supply V_TT, which sets the DC level.</td></tr>
+                    <tr><th>Resistor + capacitor</th><td>R in series with C from each receiver pad to ground (AC termination, no DC load).</td></tr>
+                    <tr><th>Differential resistor</th><td>R between P and N, differential only.</td></tr>
+                    <tr><th>Thevenin</th><td>A pull-up to a supply and a pull-down to ground at each receiver pad (LVPECL: 130 &Omega; and 82 &Omega; from 3.3 V give 50 &Omega; to 1.28 V).</td></tr>
+                    <tr><th>Open</th><td>No termination.</td></tr>
+                </table>
+                <h4>Pad capacitance</h4>
+                <ul>
+                    <li><b>RX pad / input capacitance</b>: a capacitor to ground on every receiver pin (behind the AC coupling capacitor).</li>
+                    <li><b>TX pad capacitance</b>: the same at the driver pins.</li>
+                </ul>`
+        },
+        eye_simulation: {
+            title: 'Simulation',
+            body: `<ul>
+                    <li><b>Samples per edge</b> set the time step: the shorter of the rise and fall times divided by it.</li>
+                    <li><b>Time span</b> is automatic: the edges, the line delay and the reflections until they settle. A longer span shows the slow AC coupling relaxation; a shorter one crops the plot. Not used for bit patterns, which are simulated over one period of the repeating pattern.</li>
+                </ul>`
+        },
         freeze: {
             title: 'Freeze Trace',
             body: '<p>Saves the current plot data as a semi-transparent reference trace. The frozen trace persists when you change parameters and re-run the simulation, letting you visually compare results.</p><p>For S-Parameters, the frozen trace also preserves the line length and reference impedance from freeze time.</p><p>Click Unfreeze to remove the reference trace.</p>'
@@ -1379,6 +1932,7 @@
         if (content) {
             document.getElementById('helpModalTitle').textContent = content.title;
             document.getElementById('helpModalBody').innerHTML = content.body;
+            document.querySelector('#helpModal .help-modal-content').classList.toggle('wide', !!content.wide);
             document.getElementById('helpModal').style.display = 'block';
         }
     }

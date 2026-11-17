@@ -10,6 +10,8 @@ import { solverToGeometryText, setParamInText } from './custom_geometry_text.js'
 import { initLayoutPanels, syncLogPanel, setLogStatus, logSolveStarted } from './layout_panels.js';
 import { buildSolverFromParams as _buildSolverFromParams, platingOptions } from './solver_factory.js';
 import { DEFAULT_GRID_N } from './mesher.js';
+import { initEyeTab, onEyeTabShown, eyeBusy, updateEyeVisibility, EYE_FIELDS, EYE_DEFAULTS,
+    eyeKeyActive, readEyeSetting, writeEyeSetting } from './eye/eye_ui.js';
 
 // Lazy Plotly access - allows app to function while Plotly is loading
 const getPlotly = () => window.Plotly;
@@ -27,6 +29,8 @@ let currentTab = 'geometry';
 let geometryChanged = false;  // Track if geometry has changed since last solve
 let lastSolvedGeometry = null;  // Hash of geometry params from last solve
 let lastSolvedFrequency = null;  // Frequency params from last solve
+let lastSolvedInterp = false;    // The last solve used the interpolating sweep
+let lastSolvedParams = null;     // getParams() of the last solve
 let isSweeping = false;
 let parameterSweepResults = null;
 let lastSweepGeometry = null;  // Geometry hash at sweep time (excluding swept param)
@@ -177,7 +181,9 @@ const DEFAULT_SETTINGS = {
     sigma: 5.8e7,
     freq_start: 0.1,   // GHz
     freq_stop: 10,     // GHz
-    freq_points: 10,
+    // The one default changed after links existed: a link that leaves it out and was
+    // made with 10 points loads with 200.
+    freq_points: 200,
     trace_spacing: 0.2, // mm
     gap: 0.1,          // mm
     via_gap: 0.1,      // mm
@@ -220,7 +226,7 @@ const DEFAULT_SETTINGS = {
     plating_thick_corners: 1,
     sparam_length: 10, // mm
     sparam_z_ref: 50,
-    use_causal_materials: 0,
+    use_causal_materials: 1,
     interp_sweep: 1,
     interp_tolerance: 0.5,
     // Modes tab (eigenmode viewer)
@@ -265,6 +271,9 @@ const DEFAULT_SETTINGS = {
     // Custom geometry: the geometry text and the conductor conductivity.
     custom_geom: '',
     custom_sigma: 5.8e7,
+
+    // Eye tab (SI numbers and select values)
+    ...EYE_DEFAULTS,
 };
 
 // Certified error (fraction) as a percentage with three significant digits,
@@ -370,6 +379,8 @@ const SETTINGS_FIELDS = [
     ['wg_er', 'inp_wg_er', 'num', 'sphl'],
     ['wg_tand', 'inp_wg_tand', 'num', 'sphl'],
     ['wg_sigma', 'inp_wg_sigma', 'num', 'sphl'],
+    // Eye tab
+    ...EYE_FIELDS.map(([key, id, kind]) => [key, id, kind, 's']),
 ];
 const fieldsFor = (use) => SETTINGS_FIELDS.filter(f => f[3].includes(use));
 
@@ -385,7 +396,9 @@ function readSetting(id, kind) {
                 parseFloat(el.value);
             // Convert back to display units for serialization
             const unitMap = { 'mm': 1e3, 'μm': 1e6, 'GHz': 1e-9, 'm': 1 };
-            return siValue * (unitMap[defaultUnit] || 1);
+            // 12 significant digits drop the float noise of the unit conversion
+            // (0.21 mm -> 0.21000000000000002), which would make defaults look changed.
+            return parseFloat((siValue * (unitMap[defaultUnit] || 1)).toPrecision(12));
         }
         case 'num': return getInputValueUnitless(id);
         case 'int': return parseInt(el.value);
@@ -395,6 +408,10 @@ function readSetting(id, kind) {
         // The input is in percent. The solvers (and saved settings / share links)
         // use the fraction.
         case 'pct': return getInputValueUnitless(id) / 100;
+        // A select value.
+        case 'text': return el ? el.value : '';
+        // An Eye tab quantity, in SI units.
+        case 'eye': return readEyeSetting(id);
     }
 }
 
@@ -459,6 +476,8 @@ const WAVEGUIDE_EXCLUDED_KEYS = new Set([
     // so interpolation is off, and the S-parameters are referenced to the modal impedance
     // rather than to sparam_z_ref.
     'interp_sweep', 'interp_tolerance', 'sparam_z_ref',
+    // No time-domain simulation of a waveguide.
+    ...Object.keys(EYE_DEFAULTS),
 ]);
 
 // Each type's own geometry keys, so a link for one type never carries another's.
@@ -494,6 +513,7 @@ function nonDefaultSettings(settings) {
     for (const key in settings) {
         if (excluded && excluded.has(key)) continue;
         if (otherTypeKeys.has(key)) continue;
+        if (key.startsWith('eye_') && !eyeKeyActive(settings, key)) continue;
 
         const value = settings[key];
         const defaultValue = DEFAULT_SETTINGS[key];
@@ -601,6 +621,7 @@ function restoreSettings(settings) {
         for (const [key, id, kind] of fieldsFor('s')) {
             const value = fullSettings[key];
             if (kind === 'unit') { setValueWithUnit(id, value); continue; }
+            if (kind === 'eye') { writeEyeSetting(id, value); continue; }
             if (key === 'min_converged_passes' && value === undefined) continue;
             const el = document.getElementById(id);
             if (kind === 'chk') el.checked = !!value;
@@ -1012,7 +1033,7 @@ function logPlotLimit(f) {
 // already logged the plot frequency limit.
 async function updatePlotFields(afterSolve = false) {
     if (!solver || solver !== plotFieldsSolver || !solver.solution_valid) return;
-    if (isSimulating || isSweeping || isSolvingModes) return;
+    if (isSimulating || isSweeping || isSolvingModes || eyeBusy()) return;
     if (plotFieldsBusy) { plotFieldsPending = true; return; }
     plotFieldsBusy = true;
     try {
@@ -1057,7 +1078,7 @@ function solveInputKey() {
 function replotInsteadOfSolve() {
     if (!solver || solver !== plotFieldsSolver || !solver.solution_valid) return false;
     // A running solve: runSimulation reports it.
-    if (isSimulating || isSweeping || isSolvingModes) return false;
+    if (isSimulating || isSweeping || isSolvingModes || eyeBusy()) return false;
     const key = solveInputKey();
     if (!key || key !== plotFieldsSolveKey) return false;
     const { f, limited } = keptPlotFrequency();
@@ -1206,6 +1227,8 @@ function switchTab(tabName) {
     } else if (tabName === 'geometry') {
         // Refresh the geometry plot when switching back
         draw();
+    } else if (tabName === 'eye') {
+        onEyeTabShown();
     } else if (tabName === 'modes') {
         const Plotly = getPlotly();
         const c = document.getElementById('modes-plot');
@@ -1231,7 +1254,7 @@ function switchTab(tabName) {
 
 async function runModesSolve() {
     if (isSolvingModes) return;
-    if (isSimulating || isSweeping) { setModesStatus('Cannot solve modes while a simulation is running.'); return; }
+    if (isSimulating || isSweeping || eyeBusy()) { setModesStatus('Cannot solve modes while a simulation is running.'); return; }
     flushCustomGeometryEdits();
 
     const freq = getInputValue('modes-freq');
@@ -1603,6 +1626,7 @@ function updateGeometry() {
     const keep = !built && isCustom && solver && solver.geometry_params;
     if (!keep) solver = built;
     if (plotFieldsSolver && solver !== plotFieldsSolver) releasePlotFields(plotFieldsJob);
+    if (currentTab === 'eye') updateEyeVisibility();
 }
 
 // Let the worker drop the solve kept for plots at other frequencies.
@@ -1643,7 +1667,7 @@ async function runSimulation() {
     // for a job that had not started, the two solves would fight over the
     // single heartbeat element, and Stop, one worker-wide flag, could land on
     // the wrong job.
-    if (isSimulating || isSweeping || isSolvingModes) {
+    if (isSimulating || isSweeping || isSolvingModes || eyeBusy()) {
         log('Cannot start a solve while another solve is running.');
         return;
     }
@@ -1673,6 +1697,7 @@ async function runSimulation() {
     const solvedGeometry = getGeometryHash();
     const solvedFrequency = getFrequencyHash();
     const solvedKey = solveInputKey();
+    const solvedParams = getParams();
     // The view model these fields belong to. A mid-solve edit runs
     // updateGeometry(), which replaces `solver` with one describing a different
     // cross-section. Identity is the exact test: updateGeometry() always
@@ -1902,6 +1927,8 @@ async function runSimulation() {
         // the solve started, so a mid-solve edit correctly reads as a change.
         lastSolvedGeometry = solvedGeometry;
         lastSolvedFrequency = solvedFrequency;
+        lastSolvedInterp = !!JSON.parse(solvedKey || '{}').interp;
+        lastSolvedParams = solvedParams;
         updateResultNotices();
         outcome = 'done';
 
@@ -2235,7 +2262,7 @@ async function runParameterSweep() {
 function resizeCanvas() {
     const Plotly = getPlotly();
     if (!Plotly) return;
-    for (const id of ['sim_canvas', 'modes-plot']) {
+    for (const id of ['sim_canvas', 'modes-plot', 'eye-plot']) {
         const container = document.getElementById(id);
         if (container && container.data) Plotly.Plots.resize(container);
     }
@@ -2272,7 +2299,7 @@ function bindEvents() {
 
     // Parameter sweep events
     document.getElementById('btn-run-sweep').addEventListener('click', () => {
-        if (isSweeping || isSimulating || isSolvingModes) {
+        if (isSweeping || isSimulating || isSolvingModes || eyeBusy()) {
             log('Cannot sweep while another solve is running.');
             return;
         }
@@ -2820,6 +2847,31 @@ function init() {
     });
 
     bindEvents();
+    initEyeTab({
+        getParams,
+        log,
+        isBusy: () => isSimulating || isSweeping || isSolvingModes,
+        isDifferential: () => !!(solver && solver.is_differential),
+        isSelfReferenced: () => !!(solver && solver.mode_type === 'waveguide'),
+        interpTolerance,
+        // The last solve's sweep rows, whether they belong to the current inputs, and
+        // the simulate job the worker still keeps (its interpolating sweep).
+        getSweepState: () => {
+            const current = !!frequencySweepResults && !isSimulating
+                && lastSolvedGeometry === getGeometryHash() && lastSolvedFrequency === getFrequencyHash();
+            const kept = solver && solver === plotFieldsSolver && plotFieldsSolveKey === solveInputKey();
+            return { rows: frequencySweepResults, current, params: lastSolvedParams, interp: lastSolvedInterp,
+                keptJob: kept ? plotFieldsJob : null };
+        },
+        // A stoppable job on the solve worker.
+        solveJob: async (type, payload, handlers) => {
+            const job = workerJob(type, payload, handlers);
+            const id = _workerJobId;
+            _stoppableJob = id;
+            try { return await job; } finally { if (_stoppableJob === id) _stoppableJob = null; }
+        },
+        stopSolveJob: () => workerStop(),
+    });
 
     // Check for URL parameters and restore settings if present
     const hasURLParams = loadSettingsFromURL();
@@ -2862,7 +2914,7 @@ function init() {
             queued = true;
             requestAnimationFrame(() => { queued = false; resizeCanvas(); });
         });
-        for (const id of ['sim_canvas', 'modes-plot']) {
+        for (const id of ['sim_canvas', 'modes-plot', 'eye-plot']) {
             const container = document.getElementById(id);
             if (container) observer.observe(container);
         }

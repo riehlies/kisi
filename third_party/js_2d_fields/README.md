@@ -13,13 +13,14 @@ Try it online: https://hforsten.com/field_solver.html
 - Full RLGC Extraction: Resistance, inductance, capacitance, conductance per unit length
 - Loss Modeling: Conductor losses (skin effect, surface roughness) and dielectric losses
 - S-Parameter Export: Touchstone .s2p and .s4p file generation
+- Time Domain (Eye tab): step, pulse, clock and PRBS/custom bit-pattern responses with eye diagrams; voltage- and current-mode (LVDS) drivers, AC coupling, pad capacitance, receiver terminations, TX FIR (PCIe presets), CTLE and DFE; presets for LVDS, PCIe Gen1-5, LVPECL and LVCMOS
 - Visualization: 2D potential plots, E-field streamlines, frequency-dependent plots
 - Adaptive Meshing: Automatic mesh refinement for accurate field solutions
 
 ## Quick Start
 
 1. Build (or obtain) the WASM solver binaries (see below). They are not checked into git.
-2. Host src folder on a web server (for example `python -m http.server 8000`). Open `src/field_solver.html` in a browser.
+2. Serve the project: `npm run serve` (or `node serve.mjs [port] [dir]`) in the project root, then open http://localhost:8000/src/field_solver.html.
 
 ### Validity
 
@@ -58,6 +59,7 @@ of them live in `src/wasm_solver/`:
 | `solver.{js,wasm}`       | `solver.cpp`       | quasi-static FDM backend |
 | `eigen_solver.{js,wasm}` | `eigen_solver.cpp` | full-wave backend        |
 | `gmsh.{js,wasm}`         | `gmsh/` submodule  | full-wave mesh generation |
+| `fft.{js,wasm}`          | `fft.cpp`          | Eye tab (time domain)    |
 
 #### Prerequisites
 
@@ -95,7 +97,7 @@ git submodule update --init --recursive
 
 ```bash
 cd src/wasm_solver
-make all          # builds solver.{js,wasm} and eigen_solver.{js,wasm}
+make all          # builds solver.{js,wasm}, eigen_solver.{js,wasm} and fft.{js,wasm}
 ```
 
 Building gmsh is heavier: it additionally needs OpenCASCADE cross-compiled to

@@ -20,6 +20,9 @@
 //   { id, type: 'plotFields', freq }         (after a 'simulate' job, same worker)
 //   { id, type: 'plotRelease', job }          (drops the solve 'plotFields' reads, if
 //                                              it is still the one of simulate job `job`)
+//   { id, type: 'eyeChannel', mode, job, params, fNeed, length, interpTolerance }
+//                                             (line parameters from DC to fNeed for the
+//                                              time-domain simulation, see jobEyeChannel)
 //   {     type: 'stop', job }                (cancels job `job`, running or queued)
 // worker to main:
 //   { id, type: 'log'     , msg }
@@ -34,6 +37,7 @@
 
 import { buildSolverFromParams } from './solver_factory.js';
 import { InterpolatingSweep } from './interpolating_sweep.js';
+import { channelLowFreq } from './eye/channel_grid.js';
 import { hasConductiveDielectric } from './conductive_dielectric.js';
 
 let stopRequested = false;
@@ -42,7 +46,14 @@ const stoppedJobs = new Set();
 let modesSolver = null;   // retained between 'modes' and its follow-up 'modeField' calls
 // The last simulate job's solver and converged solve, retained for 'plotFields', the id
 // of that job and its lowest frequency.
-let simSolver = null, simCached = null, simJob = null, simFMin = 0;
+let simSolver = null, simCached = null, simJob = null, simFMin = 0, simFMax = 0;
+// The interpolating sweep of that job, its frequency range and its DC row (null when the
+// job had no DC point, the Eye channel then solves it on the kept mesh).
+let simSweep = null, simDCRow = null, simSweepRange = null;
+// The sweep below that job's lowest frequency, filled for the Eye channel: { sweep, fLow, fTop }.
+let simLowSweep = null;
+// The Eye tab's own channel sweep: its parameters and tolerance, top frequency, rows and warnings.
+let eyeChannel = null;
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
 const fmtFreq = f => f >= 1e9 ? `${+(f / 1e9).toPrecision(4)} GHz` : f >= 1e6 ? `${+(f / 1e6).toPrecision(4)} MHz`
@@ -145,12 +156,7 @@ const MESH_PASS_COST = 0.5;
 const MESH_FRACTION = (EST_MESH_PASSES * MESH_PASS_COST) /
     (EST_MESH_PASSES * MESH_PASS_COST + EST_SWEEP_POINTS);
 
-async function jobSimulate({ params, frequencies, opts }) {
-    if (stopRequested) return { stopped: true, sweepResults: [], fields: null };
-    simSolver = null; simCached = null; simJob = null;
-    const solver = makeSolver(params);
-    const p = params;
-
+function validateParams(p) {
     if (p.sigma < 1e4) throw new Error('Signal line conductivity is too low to be considered a conductor.');
     if (p.rq < 0) throw new Error('Surface roughness cannot be negative.');
     if (p.use_plating) {
@@ -159,6 +165,29 @@ async function jobSimulate({ params, frequencies, opts }) {
         if (p.plating_rq < 0) throw new Error('Plating roughness cannot be negative.');
         if (p.plating_rq_iface < 0) throw new Error('Plating interface roughness cannot be negative.');
     }
+}
+
+// Adaptive mesh solve with the app settings.
+function adaptiveSolve(solver, p, onProgress) {
+    return solver.solve_adaptive({
+        max_iters: p.max_iters,
+        energy_tol: p.tolerance,
+        param_tol: 0.05,
+        max_nodes: p.max_nodes * 1000,
+        min_converged_passes: p.min_converged_passes,
+        certify: !!p.estimate_error,
+        onProgress,
+        shouldStop,
+    });
+}
+
+async function jobSimulate({ params, frequencies, opts }) {
+    if (stopRequested) return { stopped: true, sweepResults: [], fields: null };
+    simSolver = null; simCached = null; simJob = null;
+    simSweep = null; simDCRow = null; simSweepRange = null; simLowSweep = null;
+    const solver = makeSolver(params);
+    const p = params;
+    validateParams(p);
 
     let sweepResults = [];
     const maxFreq = Math.max(...frequencies);
@@ -174,21 +203,12 @@ async function jobSimulate({ params, frequencies, opts }) {
     log(`Running adaptive analysis (max ${p.max_iters} iterations, max ${p.max_nodes}k nodes, ` +
         `tolerance ${(100 * p.tolerance).toFixed(2)}%)...`);
 
-    const results = await solver.solve_adaptive({
-        max_iters: p.max_iters,
-        energy_tol: p.tolerance,
-        param_tol: 0.05,
-        max_nodes: p.max_nodes * 1000,
-        min_converged_passes: p.min_converged_passes,
-        certify: !!p.estimate_error,
-        onProgress: (info) => {
-            const frac = Math.min(info.iteration / EST_MESH_PASSES, 1) * MESH_FRACTION;
-            const meshStr = info.n_tris != null ? `Tris=${info.n_tris}` : `Grid=${info.nodes_x}x${info.nodes_y}`;
-            progress(frac, `Pass ${info.iteration}/${p.max_iters} · error ${info.energy_error.toExponential(2)}`);
-            log(`Pass ${info.iteration}: Energy error=${info.energy_error.toExponential(3)}, ` +
-                `Param error=${info.param_error.toExponential(3)}, ${meshStr}`);
-        },
-        shouldStop,
+    const results = await adaptiveSolve(solver, p, (info) => {
+        const frac = Math.min(info.iteration / EST_MESH_PASSES, 1) * MESH_FRACTION;
+        const meshStr = info.n_tris != null ? `Tris=${info.n_tris}` : `Grid=${info.nodes_x}x${info.nodes_y}`;
+        progress(frac, `Pass ${info.iteration}/${p.max_iters} · error ${info.energy_error.toExponential(2)}`);
+        log(`Pass ${info.iteration}: Energy error=${info.energy_error.toExponential(3)}, ` +
+            `Param error=${info.param_error.toExponential(3)}, ${meshStr}`);
     });
 
     post({ id: currentId, type: 'meshDone', meta: solveMeta(solver),
@@ -227,6 +247,7 @@ async function jobSimulate({ params, frequencies, opts }) {
         && fMax > fMinNonZero;
 
     let sweepWarnings = null;
+    let keptSweep = null;
 
     if (useInterpolation) {
         const tolerance = opts.interpTolerance;
@@ -292,6 +313,7 @@ async function jobSimulate({ params, frequencies, opts }) {
             const dc = hasDC ? sweepResults.find(r => r.freq === 0) : null;
             sweepResults = dc ? [dc, ...interpResults] : interpResults;
             log(`Interpolating sweep: ${nSamples + (hasDC ? 1 : 0)} exact solves for ${frequencies.length} output points`);
+            keptSweep = { sweep, dc, range: [fMinNonZero, fMax] };
         }
         sweepWarnings = sweep.warnings || null;
     } else {
@@ -336,7 +358,11 @@ async function jobSimulate({ params, frequencies, opts }) {
     if (!stopped) {
         simFMin = Math.min(...frequencies);
         plotted = await plotFields(solver, cachedResults, plotFreq, simFMin);
-        simSolver = solver; simCached = cachedResults; simJob = currentId;
+        simSolver = solver; simCached = cachedResults; simJob = currentId; simFMax = maxFreq;
+        simSweep = keptSweep ? keptSweep.sweep : null;
+        simDCRow = (keptSweep && keptSweep.dc) || sweepResults.find(r => r.freq === 0) || null;
+        simSweepRange = keptSweep ? keptSweep.range : null;
+        simLowSweep = null;
     }
     return {
         stopped,
@@ -375,8 +401,105 @@ async function jobPlotFields({ freq }) {
 }
 
 function jobPlotRelease({ job }) {
-    if (job === simJob) { simSolver = null; simCached = null; simJob = null; }
+    if (job === simJob) {
+        simSolver = null; simCached = null; simJob = null;
+        simSweep = null; simDCRow = null; simSweepRange = null; simLowSweep = null;
+    }
     return {};
+}
+
+// Eye channel
+
+// Log-spaced frequencies, `perDecade` per decade, from a to b inclusive.
+function logGrid(a, b, perDecade) {
+    const n = Math.max(2, Math.ceil(Math.log10(b / a) * perDecade) + 1);
+    return Array.from({ length: n }, (_, i) => i === n - 1 ? b : a * Math.pow(b / a, i / (n - 1)));
+}
+
+const EYE_TABLE_PER_DECADE = 40;
+
+// Line parameters for the Eye tab, as sweep rows from DC to (at least) fNeed.
+// mode 'reuse': the kept solve of simulate job `job`, extended downwards on its mesh
+// (never upwards: the top frequency sized the mesh). An interpolating sweep is evaluated
+// on a dense grid; for a discrete sweep (`discreteLow` = its lowest nonzero frequency)
+// only the rows below that point are returned, the caller appends its own.
+// mode 'solve': the Eye tab's own interpolating sweep, DC first then fLow..fNeed
+// (fLow from fNeed and the line length), on its own mesh solve. Kept, so a later request
+// with the same parameters and a band inside it needs no solve.
+async function jobEyeChannel({ mode, job, params, fNeed, length, interpTolerance, discreteLow }) {
+    const fLow = channelLowFreq(fNeed, length);
+    if (mode === 'reuse') {
+        const discrete = discreteLow != null;
+        if (!simSolver || simJob !== job || (!discrete && !simSweep))
+            throw new Error('The solve to reuse is no longer available.');
+        if (simSolver.allow_dc === false)
+            throw new Error(simSolver.dc_block_reason || 'This line type does not propagate at DC.');
+        const [a, b] = discrete ? [discreteLow, simFMax] : simSweepRange;
+        const warnings = [];
+        let dcSolved = false;
+        if (!simDCRow) {
+            log('Channel sweep: DC point on the kept mesh...');
+            simDCRow = { freq: 0, result: await simSolver.computeAtFrequency(0, simCached) };
+            dcSolved = true;
+            if (stopRequested) return { stopped: true };
+        }
+        warnings.push(...((simDCRow.result && simDCRow.result.warnings) || []));
+        if (!discrete) warnings.push(...(simSweep.warnings || []));
+        // A sweep starting well above fLow gets the band below it on the same mesh.
+        let low = [];
+        if (a > 2 * fLow) {
+            if (!simLowSweep || simLowSweep.fLow !== fLow || simLowSweep.fTop !== a) {
+                simLowSweep = null;
+                log(`Channel sweep: ${fmtFreq(fLow)} to ${fmtFreq(a)}, below the reused sweep...`);
+                const sweep = new InterpolatingSweep(simSolver, simCached, { tolerance: interpTolerance });
+                const n = await sweep.run(fLow, a, {
+                    onProgress: (info) => progress(Math.min(0.95, info.totalSamples / EST_SWEEP_POINTS),
+                        `Channel sweep: ${info.totalSamples} points`),
+                    shouldStop, sweepFmax: simFMax,
+                });
+                if (stopRequested) return { stopped: true };
+                log(`Channel sweep: ${n} exact solves from ${fmtFreq(fLow)} to ${fmtFreq(a)} (interpolating, tolerance ${(100 * interpTolerance).toPrecision(3)} %).`);
+                simLowSweep = { sweep, fLow, fTop: a };
+            }
+            low = simLowSweep.sweep.buildResults(logGrid(fLow, a, EYE_TABLE_PER_DECADE).slice(0, -1));
+            warnings.push(...(simLowSweep.sweep.warnings || []));
+        }
+        const upper = discrete ? [] : simSweep.buildResults(logGrid(a, b, EYE_TABLE_PER_DECADE));
+        const rows = [simDCRow, ...low, ...upper];
+        return { rows: stripSweep(rows), fMax: b, warnings, dcSolved, lowFill: low.length ? [fLow, a] : null };
+    }
+    const key = JSON.stringify({ params, interpTolerance });
+    if (eyeChannel && eyeChannel.key === key && eyeChannel.fMax >= fNeed && eyeChannel.fLow <= fLow) {
+        return { rows: eyeChannel.rows, fMax: eyeChannel.fMax, warnings: eyeChannel.warnings };
+    }
+    eyeChannel = null;
+    validateParams(params);
+    const solver = makeSolver(params);
+    if (solver.allow_dc === false) throw new Error(solver.dc_block_reason || 'This line type does not propagate at DC.');
+    solver.freq = fNeed;
+    solver.plot_freq_target = fNeed;
+    log(`Channel sweep: mesh solve at ${fmtFreq(fNeed)}...`);
+    solver.ensure_mesh();
+    const cached = await adaptiveSolve(solver, params, (info) => {
+        progress(Math.min(info.iteration / EST_MESH_PASSES, 1) * MESH_FRACTION,
+            `Channel mesh pass ${info.iteration}/${params.max_iters}`);
+    });
+    if (stopRequested) return { stopped: true };
+    const warnings = [];
+    const dc = await solver.computeAtFrequency(0, cached);
+    if (dc && dc.warnings) warnings.push(...dc.warnings);
+    const sweep = new InterpolatingSweep(solver, cached, { tolerance: interpTolerance });
+    const n = await sweep.run(fLow, fNeed, {
+        onProgress: (info) => progress(MESH_FRACTION + (1 - MESH_FRACTION) * Math.min(0.95, info.totalSamples / EST_SWEEP_POINTS),
+            `Channel sweep: ${info.totalSamples} points`),
+        shouldStop,
+    });
+    if (stopRequested) return { stopped: true };
+    if (sweep.warnings) warnings.push(...sweep.warnings);
+    log(`Channel sweep: ${n + 1} exact solves from DC to ${fmtFreq(fNeed)} (interpolating, tolerance ${(100 * interpTolerance).toPrecision(3)} %).`);
+    const rows = stripSweep([{ freq: 0, result: dc }, ...sweep.buildResults(logGrid(fLow, fNeed, EYE_TABLE_PER_DECADE))]);
+    eyeChannel = { key, fMax: fNeed, fLow, rows, warnings };
+    return { rows, fMax: fNeed, warnings };
 }
 
 function jobModeField({ idx }) {
@@ -452,6 +575,7 @@ const JOBS = {
     paramSweep: jobParamSweep,
     plotFields: jobPlotFields,
     plotRelease: jobPlotRelease,
+    eyeChannel: jobEyeChannel,
 };
 
 async function runJob(msg) {

@@ -75,6 +75,27 @@ The geometry text and the result contract need no change; sweeps (RLGC(f), α) w
 frequency models of the line where the backend is chosen, which is a model change with its own validation
 (`validation/cst_xs/compare.py`, loss sweep, with the independent MQS check `mqs_check.py`, is the start of it).
 
+## Vendored revision
+
+`b5ea9eb` (2026-10-18, "Test against PyChOpMarg"), since 2026-11-17; before it `3d5009c` (2026-10-15). It is the
+upstream base of the maintainer's fork `riehlies/js_2d_fields`, so kisi's impedances and the fork's field page come
+from one solver revision. What the 39 commits between them changed, and what that means for kisi:
+
+* **Eye diagram and time-domain simulation** (most of the diff: `src/eye/`, `app_solver.js`, `solve_worker.js`,
+  `field_solver.html`, `solver-style.css`, tests against ngspice, PyBERT and PyChOpMarg) and a new build artifact
+  `wasm_solver/fft.{js,wasm}` (`make fft`, Eigen's FFT). The page's own features: not imported by kisi's adapters, not
+  in the bundles (still the same 18 solver modules) and not needed by `tools/build_forsten_fullwave.sh`, which builds
+  only `eigen_solver` and `gmsh`.
+* **Rectilinear FDM** (`field_solver.js`): only the accuracy warnings carry more fields (`fBand`, `fOn`, `gap`,
+  `sigma`); no numerical change. kisi's results are bit-identical before and after (`tools/validate_field.sh`, the
+  620 cross-sections of `validation/cst_xs` at all four tolerances/boxes, the example boards).
+* **Full-wave backend** (`tri_solver/mqs_loss.js`, `tri_backend.js`): the roughness of meshed plating is weighted with
+  the perfect-conductor surface current (causal R/L pair) and a plating core's bare faces get their own roughness term;
+  conductors without plating, which is all kisi generates, are not affected. `interpolating_sweep.js`: a sweep that
+  extends an earlier one keeps its skin mesh (the page's sweeps).
+* Unchanged: the geometry text syntax (`custom_geometry_text.js`), `CustomGeometrySolver`, the `solve_adaptive`
+  options and result fields, `solve_sparse_multi`, the submodules (Eigen, Spectra, gmsh).
+
 ## Updating to a new upstream version
 
 ```sh

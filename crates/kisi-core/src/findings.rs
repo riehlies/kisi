@@ -24,8 +24,9 @@ const DETAIL_ITEMS: usize = 50;
 /// Most markers of one finding (gap items, vias over their estimate).
 const MARKERS: usize = 20;
 
-/// The findings and the board's outline for their sketches: (findings, sketch_board).
-pub fn findings(p: &Project, rep: &Value) -> (Value, Value) {
+/// The findings, their groups (one per net, each with its sketch) and the board's outline for the
+/// sketches: (findings, finding_groups, sketch_board).
+pub fn findings(p: &Project, rep: &Value) -> (Value, Value, Value) {
     let mut out: Vec<(u8, u8, f64, Value)> = Vec::new(); // (severity, area, margin, finding)
     let sev_rank = |s: &str| match s {
         "fail" => 0,
@@ -93,12 +94,22 @@ pub fn findings(p: &Project, rep: &Value) -> (Value, Value) {
             fx(win, 0)
         );
         let detail = "the location: the worst net's track that moves its mean impedance most".to_string();
-        out.push((
-            sev_rank(sev),
-            1,
-            (win - dev.abs()) / win,
-            finding(p, "impedance", &s(g(c, "class")), sev, what, detail, false, g(c, "location"), vec![], &[net]),
-        ));
+        out.push((sev_rank(sev), 1, (win - dev.abs()) / win, {
+            let mut f = finding(
+                p,
+                "impedance",
+                &s(g(c, "class")),
+                sev,
+                what,
+                detail,
+                false,
+                g(c, "location"),
+                vec![],
+                std::slice::from_ref(&net),
+            );
+            f["_names"] = json!([net]);
+            f
+        }));
     }
     // power: vias over their current capacity estimate, other warnings of a rail
     let pw = g(rep, "power");
@@ -246,7 +257,9 @@ pub fn findings(p: &Project, rep: &Value) -> (Value, Value) {
             f
         })
         .collect();
-    (json!(list), sketch_board(p))
+    let mut list = list;
+    let gs = groups(p, &mut list);
+    (json!(list), gs, sketch_board(p))
 }
 
 /// One finding: what, where and its sketch's geometry. `loc`: the location (a `Spot` as JSON, or
@@ -283,11 +296,103 @@ fn finding(
         "what": what.replace("{slash}", "/"), "detail": detail.replace("{slash}", "/"), "estimate": estimate,
         "location": spot, "markers": more,
     });
-    f["sketch"] = match &spot {
-        Some(sp) => sketch(p, &ids, sp, &more, area),
-        None => Value::Null,
-    };
+    // the nets the finding is on, for its group (a rail: the rail; parts and gaps: none)
+    let rail = spot.as_ref().filter(|_| area == "vias" || area == "power").and_then(|s| p.net_id(&s.net));
+    f["_nets"] = json!(match rail {
+        Some(r) => vec![r],
+        None if area == "temperature" || area == "gap" => vec![],
+        None => ids,
+    });
+    f["_rail"] = json!(rail.is_some());
     f
+}
+
+/// The findings in groups: one per net – the findings on the same nets (a lane's nets with both lines
+/// of a pair, a net class's worst net, a rail) together –, a part's or a gap's on their own; in the
+/// order of their worst finding. Each group gets one sketch: its nets, the place of its worst finding,
+/// markers at the others (numbered as listed). Removes the findings' working keys.
+fn groups(p: &Project, list: &mut [Value]) -> Value {
+    // (net ids, rail, members)
+    let mut gs: Vec<(Vec<u32>, bool, Vec<usize>)> = Vec::new();
+    for (i, f) in list.iter().enumerate() {
+        let nets: Vec<u32> =
+            crate::report_html::arr(g(f, "_nets")).iter().filter_map(|x| x.as_u64().map(|x| x as u32)).collect();
+        let rail = g(f, "_rail") == true;
+        match gs.iter_mut().find(|x| !nets.is_empty() && x.1 == rail && x.0.iter().any(|n| nets.contains(n))) {
+            Some(x) => {
+                x.2.push(i);
+                for n in nets {
+                    if !x.0.contains(&n) {
+                        x.0.push(n);
+                    }
+                }
+            }
+            None => gs.push((nets, rail, vec![i])),
+        }
+    }
+    let mut out = Vec::new();
+    for (nets, rail, members) in gs {
+        let first = &list[members[0]];
+        let area = s(g(first, "area"));
+        let title = match area.as_str() {
+            "impedance" => {
+                crate::report_html::arr(g(first, "_names")).first().map(s).unwrap_or_else(|| s(g(first, "item")))
+            }
+            "gap" => format!("gap {}", s(g(first, "item"))),
+            _ => s(g(first, "item")),
+        };
+        let kind = match area.as_str() {
+            "channel" | "impedance" => "net",
+            "vias" | "power" => "rail",
+            "temperature" => "part",
+            _ => "gap",
+        };
+        let id = s(g(first, "id"));
+        // the sketch: at the first finding with a place, markers at every place, numbered by member
+        let spots: Vec<(usize, Spot)> = members
+            .iter()
+            .enumerate()
+            .filter_map(|(k, &i)| Some((k + 1, serde_json::from_value::<Spot>(g(&list[i], "location").clone()).ok()?)))
+            .collect();
+        let sketch = match spots.first() {
+            Some((_, sp)) => {
+                // one marker per place (two findings at the same place: the first's number)
+                let mut marks: Vec<([f64; 2], usize)> = Vec::new();
+                let mut add = |at: [f64; 2], k: usize| {
+                    if !marks.iter().any(|m| (m.0[0] - at[0]).abs() < 0.05 && (m.0[1] - at[1]).abs() < 0.05) {
+                        marks.push((at, k));
+                    }
+                };
+                for (k, s) in &spots {
+                    add(s.at, *k);
+                }
+                for &i in &members {
+                    for m in crate::report_html::arr(g(&list[i], "markers")) {
+                        if let Ok(s) = serde_json::from_value::<Spot>(m.clone()) {
+                            add(s.at, 0);
+                        }
+                    }
+                }
+                sketch(p, &nets, sp, &marks, rail)
+            }
+            None => Value::Null,
+        };
+        let names: Vec<String> = nets.iter().map(|&n| p.board.net_name(n).replace("{slash}", "/")).collect();
+        let severity = g(first, "severity").clone();
+        for &i in &members {
+            list[i]["group"] = json!(id);
+        }
+        out.push(json!({"id": id, "title": title.replace("{slash}", "/"), "kind": kind, "severity": severity,
+            "findings": members.iter().map(|&i| g(&list[i], "id").clone()).collect::<Vec<_>>(), "nets": names, "sketch": sketch}));
+    }
+    for f in list.iter_mut() {
+        if let Some(o) = f.as_object_mut() {
+            o.remove("_nets");
+            o.remove("_rail");
+            o.remove("_names");
+        }
+    }
+    json!(out)
 }
 
 // ---- sketch geometry
@@ -376,14 +481,14 @@ fn sketch_board(p: &Project) -> Value {
 /// One finding's sketch: the highlighted nets over the whole board (`overview`: polylines per layer,
 /// simplified, their vias) and the copper around the location (`detail`: tracks, vias and pads of every
 /// net in a window, the highlighted ones marked), the focus layer and the markers.
-fn sketch(p: &Project, nets: &[u32], sp: &Spot, more: &[Spot], area: &str) -> Value {
+fn sketch(p: &Project, nets: &[u32], sp: &Spot, marks: &[([f64; 2], usize)], rail: bool) -> Value {
     let b = &p.board;
     let su = b.stackup();
     let li = |n: &str| su.layer_index(n).map(|i| i as i64).unwrap_or(-1);
     let focus = if !sp.layer.is_empty() { li(&sp.layer) } else { sp.layers.first().map(|l| li(l)).unwrap_or(-1) };
     // overview: the nets' tracks as simplified polylines per layer (not for rails: their copper is planes)
     let diag = b.bbox.map(|x| ((x.max[0] - x.min[0]).hypot(x.max[1] - x.min[1])).max(1.0)).unwrap_or(100.0);
-    let own: Vec<u32> = if area == "vias" || area == "power" { vec![] } else { nets.to_vec() };
+    let own: Vec<u32> = if rail { vec![] } else { nets.to_vec() };
     let mut eps = diag / 800.0;
     let lines = loop {
         let mut ls: Vec<Value> = Vec::new();
@@ -492,12 +597,12 @@ fn sketch(p: &Project, nets: &[u32], sp: &Spot, more: &[Spot], area: &str) -> Va
             kept.push(v);
         }
     }
-    let mk = |s: &Spot| json!([s.at[0], s.at[1]]);
     json!({
         "focus": focus,
         "overview": {"lines": lines, "vias": ov_vias},
         "detail": {"window": [r2(win[0]), r2(win[1]), r2(win[2]), r2(win[3])], "items": kept},
-        "markers": std::iter::once(sp).chain(more.iter()).map(mk).collect::<Vec<_>>(),
+        // [x, y, n]: the n-th finding of the group (0: a further place of one)
+        "markers": marks.iter().map(|m| json!([m.0[0], m.0[1], m.1])).collect::<Vec<_>>(),
     })
 }
 

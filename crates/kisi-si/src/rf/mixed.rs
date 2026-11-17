@@ -800,6 +800,19 @@ fn bp_via_seg(b: &Build, k: usize) -> usize {
     b.segs.iter().enumerate().filter(|(_, x)| x.kind == "via").nth(k).map(|(i, _)| i).unwrap_or(0)
 }
 
+/// Where the two lines of the pair of `net` differ (`imbalance_geo` on their main paths, positions along
+/// the positive line; delays at 6 ps/mm): for the place of a skew finding (`locate::skew_spot`). Empty
+/// when the net is not part of a pair or has no tracks.
+pub fn pair_imbalance(board: &Board, an: &Analysis, net: u32) -> Vec<Imbalance> {
+    let Some(partner) = crate::extract::diff_partners(&board.nets).get(net as usize).copied().flatten() else {
+        return vec![];
+    };
+    let (p, n) = if board.net_name(net).ends_with(['+', 'P', 'p']) { (net, partner) } else { (partner, net) };
+    let Some(pp) = net_path_info(board, an, p, false, None) else { return vec![] };
+    let Some(pn) = net_path_info(board, an, n, false, Some(pp.start.at)) else { return vec![] };
+    imbalance_geo(board, an, &pp, &pn, 6.0).0
+}
+
 /// Where P and N differ, from the geometry: every point of P (0.2 mm steps) is matched to the
 /// nearest point of N going forward; the length difference up to matching points stays constant
 /// where the lines run in parallel and changes at jogs, fan-outs and offset ends. Stretches where

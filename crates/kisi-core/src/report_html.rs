@@ -668,13 +668,13 @@ th{background:#eee;font-weight:600}td.n{text-align:right;font-variant-numeric:ta
 tr.warn td{background:#fff3d6}tr.fail td{background:#fde0e0}.v.ok{color:#126b35}.v.warn{color:#7a5200}.v.fail{color:#a4001d}\
 .meta{display:grid;grid-template-columns:max-content 1fr;gap:1pt 10pt;margin:5pt 0}.meta b{font-weight:600}\
 .note{margin:2pt 0 4pt;color:#444}.v.gap{color:#35506b}tr.gap td{background:#eef3f8}.sum{font-size:9pt}\
-table.ix td a{color:inherit}table.ix td:nth-child(5){width:30%}a{color:#0b4f8a}.fd{break-inside:avoid;margin:6pt 0 8pt;padding-top:2pt;border-top:.5pt solid #bbb}.fd h3{margin:2pt 0}\
+table.ix td a{color:inherit}table.ix td:nth-child(5){width:26%}.fi{margin:3pt 0 4pt}.fw{margin:2pt 0 0;font-weight:600}.no{display:inline-block;min-width:1.4em;text-align:center;border:.8pt solid #111;border-radius:50%;font-size:7pt;line-height:1.3em;margin-right:2pt}a{color:#0b4f8a}.fd{break-inside:avoid;margin:6pt 0 8pt;padding-top:2pt;border-top:.5pt solid #bbb}.fd h3{margin:2pt 0}\
 .sk{display:flex;gap:4mm;align-items:flex-start;margin:3pt 0}.sk svg{height:58mm;max-width:100%;border:.5pt solid #ccc;background:#fff}.sk svg.dt{width:58mm}\
 .sk path,.sk circle,.sk rect,.sk use{vector-effect:non-scaling-stroke}.ol{fill:none;stroke:#222;stroke-width:1px}.t{fill:none;stroke-linecap:round;stroke-linejoin:round}\
-.ov .t{stroke-width:1.2px}.ov .t.hf{stroke-width:2.2px}.hf{stroke:#d1242f;fill:#d1242f}.ho{stroke:#f0a0a6;fill:#f0a0a6}.cf{stroke:#9aa3ad;fill:#9aa3ad}.co{stroke:#dde1e6;fill:#dde1e6}\
+.ov .t{stroke-width:1.4px}.ov .t.ho{stroke:#e46a72}.ov .t.hf{stroke-width:2.4px}.hf{stroke:#d1242f;fill:#d1242f}.ho{stroke:#f0a0a6;fill:#f0a0a6}.cf{stroke:#9aa3ad;fill:#9aa3ad}.co{stroke:#dde1e6;fill:#dde1e6}\
 .p{stroke-linejoin:round;stroke-linecap:round}.sk .p{vector-effect:none}.sk .dt .t{vector-effect:none}.dr{stroke:#fff;stroke-width:2px;stroke-linecap:round}.hv{stroke:#d1242f;stroke-width:3px;stroke-linecap:round}.dw{fill:none;stroke:#555;stroke-width:.8px;stroke-dasharray:3 2}\
 .mk *{fill:none;stroke:#111;stroke-width:1.6px}.mk .h{stroke:#fff;stroke-width:4.5px}.m2 *{stroke:#1f4e8c}\
-.sb{stroke:#222;stroke-width:1.5px}.sk text{fill:#222;font-family:system-ui,sans-serif;paint-order:stroke;stroke:#fff}.cap{color:#555;font-size:7.5pt;margin:1pt 0}ul{margin:2pt 0;padding-left:14pt}footer{margin-top:10pt;padding-top:3pt;border-top:.5pt solid #999;color:#555;font-size:7.5pt}\
+.sb{stroke:#222;stroke-width:1.5px}.sk text{fill:#111;font-weight:600;font-family:system-ui,sans-serif;paint-order:stroke;stroke:#fff}.cap{color:#555;font-size:7.5pt;margin:1pt 0}ul{margin:2pt 0;padding-left:14pt}footer{margin-top:10pt;padding-top:3pt;border-top:.5pt solid #999;color:#555;font-size:7.5pt}\
 @media screen{body{padding:16px}}@media print{.hint{display:none}}.hint{background:#eef3f8;padding:4pt 6pt;border-radius:3pt}";
 
 /// The stackup's sources in one line: board file, kisi.json, a fab template, edited.
@@ -814,36 +814,55 @@ pub fn html(rep: &Value, date: &str) -> String {
     checked.push("the open gaps of the board's data".into());
     b.push_str("<h2>Summary</h2>");
     b.push_str(&format!("<p>Checked: {}.</p>", esc(&checked.join("; "))));
+    let ng = arr(g(rep, "finding_groups")).len();
     b.push_str(&format!(
-        "<p class=\"sum\"><b class=\"v fail\">{} fail</b> · <b class=\"v warn\">{} warning{}</b> · <b class=\"v gap\">{} open gap{}</b> – each finding below with where it is on the board (layer, coordinates in mm, part, pad, via or track) and a board sketch.</p>",
+        "<p class=\"sum\"><b class=\"v fail\">{} fail</b> · <b class=\"v warn\">{} warning{}</b> · <b class=\"v gap\">{} open gap{}</b> on {ng} net{}, part{} or gap{} – each below with where it is on the board (layer, coordinates in mm, part, pad, via or track) and a board sketch per net.</p>",
         nsev("fail"),
         nsev("warn"),
         if nsev("warn") == 1 { "" } else { "s" },
         nsev("gap"),
-        if nsev("gap") == 1 { "" } else { "s" }
+        if nsev("gap") == 1 { "" } else { "s" },
+        if ng == 1 { "" } else { "s" },
+        if ng == 1 { "" } else { "s" },
+        if ng == 1 { "" } else { "s" }
     ));
     b.push_str(&table_html(&counts, "h3"));
-    // the index: links to each finding
-    let an = anchors(fs);
+    // the index: per net (part, rail, gap) its findings, linking to its section
+    let gs = arr(g(rep, "finding_groups"));
+    let an = anchors(gs);
     b.push_str("<h2>Findings</h2>");
     if fs.is_empty() {
         b.push_str("<p class=\"note\">No finding: nothing over or near a limit, no open gap.</p>");
     } else {
-        b.push_str("<table class=\"ix\"><thead><tr><th>#</th><th>Verdict</th><th>Area</th><th>Finding</th><th>Where</th></tr></thead><tbody>");
-        for (i, f) in fs.iter().enumerate() {
-            let c = sev_class(f);
+        b.push_str("<table class=\"ix\"><thead><tr><th>#</th><th>Verdict</th><th>Net or part</th><th>Findings</th><th>Where (the first)</th></tr></thead><tbody>");
+        for (i, gr) in gs.iter().enumerate() {
+            let c = sev_class(gr);
+            let members: Vec<&Value> =
+                arr(g(gr, "findings")).iter().filter_map(|id| fs.iter().find(|f| g(f, "id") == id)).collect();
+            let list: Vec<String> = members
+                .iter()
+                .map(|f| {
+                    format!(
+                        "<div><b class=\"v {}\">{}</b> <a href=\"#{}\">{}</a></div>",
+                        sev_class(f),
+                        sev_word(f),
+                        fanchor(f),
+                        esc(&s(g(f, "what")))
+                    )
+                })
+                .collect();
             b.push_str(&format!(
-                "<tr class=\"{c}\"><td class=\"n\"><a href=\"#{}\">{}</a></td><td class=\"nw\"><b class=\"v {c}\">{}</b></td><td class=\"nw\">{}</td><td><a href=\"#{}\">{}</a></td><td>{}</td></tr>",
+                "<tr class=\"{c}\"><td class=\"n\"><a href=\"#{}\">{}</a></td><td class=\"nw\"><b class=\"v {c}\">{}</b></td><td><a href=\"#{}\">{}</a></td><td>{}</td><td>{}</td></tr>",
                 an[i],
                 i + 1,
-                sev_word(f),
-                esc(&s(g(f, "area"))),
+                sev_word(gr),
                 an[i],
-                esc(&s(g(f, "what"))),
-                esc(&where_line(g(f, "location")))
+                esc(&s(g(gr, "title"))),
+                list.join(""),
+                esc(&members.first().map(|f| where_line(g(f, "location"))).unwrap_or_default())
             ));
         }
-        b.push_str("</tbody></table><p class=\"note\">Coordinates: KiCad board coordinates in mm as KiCad shows them (x to the right, y down). Sorted: fail, warning, gap; then by area and margin.</p>");
+        b.push_str("</tbody></table><p class=\"note\">One row per net (a channel's nets with both lines of a pair, a net class's worst net, a rail), part or gap, with its findings. Coordinates: KiCad board coordinates in mm as KiCad shows them (x to the right, y down). Sorted: fail, warning, gap; then by area and margin.</p>");
     }
     b.push_str("<h2>Impedance</h2>");
     b.push_str(&table_html(&ts[0], "h3"));
@@ -961,7 +980,7 @@ fn pct(x: &str) -> String {
 }
 
 /// The viewer's link fragment for a finding: `#finding=<id>&at=<x>,<y>&layer=<layer>&layers=<a>,<b>&net=<net>
-/// &item=<item>&board=<board>` (each value percent-encoded, the parts without a value left out; the viewer
+/// &item=<item>&box=<x0>,<y0>,<x1>,<y1>&board=<board>` (`box`: a channel's whole extent; each value percent-encoded, the parts without a value left out; the viewer
 /// opens the board view there, docs/getting-started.md#export).
 #[inline(never)]
 pub fn finding_hash(f: &Value, board: &str) -> String {
@@ -985,6 +1004,10 @@ pub fn finding_hash(f: &Value, board: &str) -> String {
     }
     if !s(g(l, "item")).is_empty() {
         h.push_str(&format!("&item={}", pct(&s(g(l, "item")))));
+    }
+    let ch = f64s(g(l, "channel"));
+    if ch.len() == 4 {
+        h.push_str(&format!("&box={},{},{},{}", n2(ch[0]), n2(ch[1]), n2(ch[2]), n2(ch[3])));
     }
     if !board.is_empty() {
         h.push_str(&format!("&board={}", pct(board)));
@@ -1020,6 +1043,13 @@ fn anchors(fs: &[Value]) -> Vec<String> {
 #[inline(never)]
 pub fn finding_table(rep: &Value) -> Table {
     let fs = arr(g(rep, "findings"));
+    let group = |f: &Value| {
+        arr(g(rep, "finding_groups"))
+            .iter()
+            .find(|x| g(x, "id") == g(f, "group"))
+            .map(|x| s(g(x, "title")))
+            .unwrap_or_default()
+    };
     let rows = fs
         .iter()
         .enumerate()
@@ -1031,6 +1061,7 @@ pub fn finding_table(rep: &Value) -> Table {
                 vec![
                     (i + 1).to_string(),
                     s(g(f, "id")),
+                    group(f),
                     sev_word(f).into(),
                     s(g(f, "area")),
                     s(g(f, "what")),
@@ -1055,6 +1086,7 @@ pub fn finding_table(rep: &Value) -> Table {
         head: heads(&[
             "#",
             "Id",
+            "Net or part",
             "Severity",
             "Area",
             "Finding",
@@ -1116,10 +1148,10 @@ fn scale_bar(x: f64, y: f64, w: f64, h: f64) -> String {
     )
 }
 
-/// A marker at (x, y): a ring with a cross (`main`, the finding's place), else a smaller ring; dark on
-/// a white halo.
+/// A marker at (x, y): a ring with a cross (`main`, the first finding's place), else a smaller ring; dark
+/// on a white halo; `label`: the finding's number in its group, written next to it.
 #[inline(never)]
-fn marker(x: f64, y: f64, r: f64, main: bool) -> String {
+fn marker(x: f64, y: f64, r: f64, main: bool, label: usize) -> String {
     let c = format!("<circle cx=\"{}\" cy=\"{}\" r=\"{}\"", n2(x), n2(y), n2(if main { r } else { 0.7 * r }));
     let x_ = if main {
         format!(
@@ -1136,7 +1168,18 @@ fn marker(x: f64, y: f64, r: f64, main: bool) -> String {
     };
     let h = |t: &str| if t.is_empty() { String::new() } else { format!("{t} class=\"h\"/>") };
     let d = |t: &str| if t.is_empty() { String::new() } else { format!("{t}/>") };
-    format!("<g class=\"mk{}\">{}{}{}{}</g>", if main { "" } else { " m2" }, h(&c), h(&x_), d(&c), d(&x_))
+    let t = if label > 0 {
+        format!(
+            "<text x=\"{}\" y=\"{}\" font-size=\"{}\" stroke-width=\"{}\">{label}</text>",
+            n2(x + 1.9 * r),
+            n2(y - 1.2 * r),
+            n2(1.9 * r),
+            n2(0.45 * r)
+        )
+    } else {
+        String::new()
+    };
+    format!("<g class=\"mk{}\">{}{}{}{}</g>{t}", if main { "" } else { " m2" }, h(&c), h(&x_), d(&c), d(&x_))
 }
 
 /// The outline as path data.
@@ -1171,7 +1214,7 @@ fn poly_d(pts: &[[f64; 2]], o: [f64; 2]) -> String {
     d
 }
 
-/// A finding's sketch as SVG (`sketch` of a finding, `board` the report's `sketch_board`): the whole
+/// A group's sketch as SVG (`sketch` of a finding group, `board` the report's `sketch_board`): the whole
 /// board with the highlighted nets – their focus layer strong, the other layers light – and the
 /// markers, next to the copper around the location (the focus layer's copper grey, other layers light,
 /// the highlighted nets red). Board coordinates in mm, top view as KiCad shows it; the detail in
@@ -1197,7 +1240,10 @@ pub fn sketch_svg(board: &Value, f: &Value, shared: bool) -> String {
             format!("<path class=\"ol\"{tr} d=\"{}\"/>", outline_d(board))
         }
     };
-    let marks: Vec<Vec<f64>> = arr(g(sk, "markers")).iter().map(f64s).filter(|m| m.len() == 2).collect();
+    // [x, y, n]: n the finding's number in its group (0: a further place of one); numbers only for several
+    let marks: Vec<Vec<f64>> = arr(g(sk, "markers")).iter().map(f64s).filter(|m| m.len() >= 2).collect();
+    let several = marks.iter().filter(|m| m.get(2).copied().unwrap_or(0.0) >= 2.0).count() > 0;
+    let lab = |m: &Vec<f64>| if several { m.get(2).copied().unwrap_or(0.0) as usize } else { 0 };
     // overview
     let bb = f64s(g(board, "bbox"));
     let mut o = String::new();
@@ -1255,7 +1301,7 @@ pub fn sketch_svg(board: &Value, f: &Value, shared: bool) -> String {
             ));
         }
         for (i, m) in marks.iter().enumerate().rev() {
-            o.push_str(&marker(m[0], m[1], 0.022 * w.max(h), i == 0));
+            o.push_str(&marker(m[0], m[1], 0.022 * w.max(h), i == 0, lab(m)));
         }
         o.push_str(&scale_bar(x0 + 0.04 * w, y0 + h + 0.035 * w.max(h), w, 0.8 * w.max(h)));
         o.push_str("</svg>");
@@ -1335,7 +1381,7 @@ pub fn sketch_svg(board: &Value, f: &Value, shared: bool) -> String {
         }
         dt.push_str(&ol(org));
         for (i, m) in marks.iter().enumerate().rev() {
-            dt.push_str(&marker(m[0] - org[0], m[1] - org[1], 0.05 * w, i == 0));
+            dt.push_str(&marker(m[0] - org[0], m[1] - org[1], 0.05 * w, i == 0, lab(m)));
         }
         dt.push_str(&scale_bar(0.05 * w, 0.94 * h, w, h));
         dt.push_str("</svg>");
@@ -1343,72 +1389,116 @@ pub fn sketch_svg(board: &Value, f: &Value, shared: bool) -> String {
     format!("<div class=\"sk\">{o}{dt}</div>")
 }
 
-/// Each finding in detail: what, where, the viewer link, the sketch.
+/// A finding's place and viewer link (rows of the page's `.meta` grid).
+#[inline(never)]
+fn place_rows(f: &Value, board: &str) -> String {
+    let l = g(f, "location");
+    if l.is_null() {
+        return "<div class=\"meta\"><b>Where</b><span>board-wide (no single place on the board)</span></div>".into();
+    }
+    let mut rows = vec![("Where", where_line(l)), ("Object", s(g(l, "what")))];
+    if !s(g(l, "net")).is_empty() {
+        rows.push(("Net", s(g(l, "net"))));
+    }
+    let layers: Vec<String> = arr(g(l, "layers")).iter().map(s).collect();
+    if layers.len() > 1 {
+        rows.push(("Layers", layers.join(", ")));
+    }
+    let more = arr(g(f, "markers"));
+    if !more.is_empty() {
+        rows.push((
+            "Also",
+            more.iter().map(where_line).take(8).collect::<Vec<_>>().join("; ")
+                + if more.len() > 8 { "; …" } else { "" },
+        ));
+    }
+    let mut b = String::from("<div class=\"meta\">");
+    for (k, v) in rows {
+        b.push_str(&format!("<b>{k}</b><span>{}</span>", esc(&v)));
+    }
+    b.push_str(&format!(
+        "<b>Viewer</b><span><a class=\"jump\" href=\"{}\" data-finding=\"{}\">show in the viewer</a> <span class=\"cap\">(kisi.html with this link's #finding=…)</span></span></div>",
+        esc(&finding_hash(f, board)),
+        esc(&s(g(f, "id")))
+    ));
+    b
+}
+
+/// The findings in detail, one section per group (a net with its findings, a rail, a part, a gap): each
+/// finding with what, where and the viewer link, then the group's sketch.
 #[inline(never)]
 fn findings_html(rep: &Value) -> String {
     let fs = arr(g(rep, "findings"));
-    let an = anchors(fs);
+    let gs = arr(g(rep, "finding_groups"));
+    let an = anchors(gs);
     let board = s(g(g(rep, "overview"), "board"));
     let sb = g(rep, "sketch_board");
     let mut b = String::new();
-    for (i, f) in fs.iter().enumerate() {
-        let l = g(f, "location");
-        let c = sev_class(f);
+    for (i, gr) in gs.iter().enumerate() {
+        let c = sev_class(gr);
+        let members: Vec<&Value> =
+            arr(g(gr, "findings")).iter().filter_map(|id| fs.iter().find(|f| g(f, "id") == id)).collect();
+        let kind = match g(gr, "kind").as_str() {
+            Some("net") => "net",
+            Some("rail") => "rail",
+            Some("part") => "part",
+            _ => "",
+        };
         b.push_str(&format!(
-            "<section class=\"fd {c}\" id=\"{}\"><h3><b class=\"v {c}\">{}</b> {}. {}</h3>",
+            "<section class=\"fd {c}\" id=\"{}\"><h3><b class=\"v {c}\">{}</b> {}. {}{}{}</h3>",
             an[i],
-            sev_word(f),
+            sev_word(gr),
             i + 1,
-            esc(&s(g(f, "what")))
+            if kind.is_empty() { String::new() } else { format!("{kind} ") },
+            esc(&s(g(gr, "title"))),
+            if members.len() > 1 {
+                format!(" <span class=\"cap\">– {} findings</span>", members.len())
+            } else {
+                String::new()
+            }
         ));
-        b.push_str(&format!("<p class=\"note\">{}</p>", esc(&s(g(f, "detail")))));
-        if l.is_null() {
-            b.push_str("<p>Where: board-wide (no single place on the board).</p>");
-        } else {
-            let mut rows = vec![("Where", where_line(l)), ("Object", s(g(l, "what")))];
-            if !s(g(l, "net")).is_empty() {
-                rows.push(("Net", s(g(l, "net"))));
-            }
-            let layers: Vec<String> = arr(g(l, "layers")).iter().map(s).collect();
-            if layers.len() > 1 {
-                rows.push(("Layers", layers.join(", ")));
-            }
-            let more = arr(g(f, "markers"));
-            if !more.is_empty() {
-                rows.push((
-                    "Also",
-                    more.iter().map(where_line).take(8).collect::<Vec<_>>().join("; ")
-                        + if more.len() > 8 { "; …" } else { "" },
-                ));
-            }
-            b.push_str("<div class=\"meta\">");
-            for (k, v) in rows {
-                b.push_str(&format!("<b>{k}</b><span>{}</span>", esc(&v)));
-            }
-            let h = finding_hash(f, &board);
-            let at = arr(g(l, "at"));
+        for (k, f) in members.iter().enumerate() {
+            let fc = sev_class(f);
             b.push_str(&format!(
-                "<b>Viewer</b><span><a class=\"jump\" href=\"{}\" data-finding=\"{}\">{}</a></span></div>",
-                esc(&h),
-                esc(&s(g(f, "id"))),
-                if at.len() == 2 { "show in the viewer (kisi.html with this link's #finding=…)" } else { "" }
+                "<div class=\"fi\" id=\"{}\"><p class=\"fw\"><b class=\"v {fc}\">{}</b> {}{}</p><p class=\"note\">{}</p>",
+                fanchor(f),
+                sev_word(f),
+                if members.len() > 1 { format!("<span class=\"no\">{}</span> ", k + 1) } else { String::new() },
+                esc(&s(g(f, "what"))),
+                esc(&s(g(f, "detail")))
             ));
-            b.push_str(&sketch_svg(sb, f, true));
-            if !g(f, "sketch").is_null() {
-                let focus = g(g(f, "sketch"), "focus").as_i64().unwrap_or(-1);
-                let ln = arr(g(sb, "layers")).get(focus.max(0) as usize).map(s).unwrap_or_default();
-                b.push_str(&format!(
-                    "<p class=\"cap\">Top view as KiCad shows it (x →, y ↓, mm). Left: the board, {}the finding ⊕{}. Right: the copper around it – {} grey, other layers light{}.</p>",
-                    if s(g(l, "net")).is_empty() { String::new() } else { format!("the net{} in red ({} strong), ", if arr(g(g(g(f, "sketch"), "overview"), "lines")).is_empty() { " (not drawn here)" } else { "" }, esc(&ln)) },
-                    if arr(g(f, "markers")).is_empty() { String::new() } else { ", ○ the further places".into() },
-                    esc(&ln),
-                    if s(g(l, "net")).is_empty() { String::new() } else { ", the highlighted nets red".into() }
-                ));
-            }
+            b.push_str(&place_rows(f, &board));
+            b.push_str("</div>");
+        }
+        b.push_str(&sketch_svg(sb, gr, true));
+        if !g(gr, "sketch").is_null() {
+            let sk = g(gr, "sketch");
+            let focus = g(sk, "focus").as_i64().unwrap_or(-1);
+            let ln = arr(g(sb, "layers")).get(focus.max(0) as usize).map(s).unwrap_or_default();
+            let drawn = !arr(g(g(sk, "overview"), "lines")).is_empty();
+            b.push_str(&format!(
+                "<p class=\"cap\">Top view as KiCad shows it (x →, y ↓, mm). Left: the board{}, ⊕ the first finding's place{}. Right: the copper around it – {} grey, other layers light{}.</p>",
+                if drawn { format!(", the {} red ({} strong, other layers light)", if kind == "net" { "channel" } else { "net" }, esc(&ln)) } else { String::new() },
+                if arr(g(sk, "markers")).len() > 1 { if members.len() > 1 { ", ○ the other places (numbered as the findings above)" } else { ", ○ the further places" } } else { "" },
+                esc(&ln),
+                if drawn || kind == "rail" { ", the highlighted nets red" } else { "" }
+            ));
         }
         b.push_str("</section>");
     }
     b
+}
+
+/// A finding's anchor on the page: `f-` and its id with other characters as `_`.
+#[inline(never)]
+fn fanchor(f: &Value) -> String {
+    format!(
+        "fi-{}",
+        s(g(f, "id"))
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+            .collect::<String>()
+    )
 }
 
 /// SHA-256 of `data` as hex (FIPS 180-4): the board file's hash in the report's header.
@@ -1526,18 +1616,28 @@ mod tests {
     fn renders_a_finding() {
         let loc = json!({"at": [12.5, 30.25], "layer": "In1.Cu", "layers": ["In1.Cu"], "net": "/A{slash}B", "item": "track",
             "refs": [], "what": "track 0.127 mm wide on In1.Cu", "bbox": [10.0, 28.0, 15.0, 32.0]});
+        let sketch = json!({"focus": 1, "overview": {"lines": ["1 10 30 15 30", "0 15 30 15 35"], "vias": ["15 30"]},
+            "detail": {"window": [10.0, 27.75, 15.0, 32.75], "items": ["t 1 0.13 10 30.25 15 30.25 1", "v 15 30 0.6 0.3 0", "p 0 0 11 29 1 0.5 90 0.1 0"]},
+            "markers": [[12.5, 30.25, 1], [14.0, 31.0, 2]]});
         let f = json!({"id": "channel:/A/B", "severity": "fail", "area": "channel", "item": "/A/B", "what": "/A/B: eye height (%) 30 (limit ≥ 65)",
-            "detail": "bus U1 ↔ U2", "estimate": false, "location": loc, "markers": [],
-            "sketch": {"focus": 1, "overview": {"lines": ["1 10 30 15 30", "0 15 30 15 35"], "vias": ["15 30"]},
-                "detail": {"window": [10.0, 27.75, 15.0, 32.75], "items": ["t 1 0.13 10 30.25 15 30.25 1", "v 15 30 0.6 0.3 0", "p 0 0 11 29 1 0.5 90 0.1 0"]},
-                "markers": [[12.5, 30.25]]}});
-        let rep = json!({"overview": {"board": "b"}, "findings": [f],
+            "detail": "bus U1 ↔ U2", "estimate": false, "location": loc, "markers": [], "group": "channel:/A/B"});
+        let f2 = json!({"id": "impedance:D", "severity": "warn", "area": "impedance", "item": "D", "what": "net class D: worst net /A/B",
+            "detail": "", "estimate": false, "location": {"at": [14.0, 31.0], "layer": "In1.Cu", "layers": ["In1.Cu"], "net": "/A/B", "item": "track", "refs": [], "what": "track", "bbox": [0.0, 0.0, 1.0, 1.0]},
+            "markers": [], "group": "channel:/A/B"});
+        let rep = json!({"overview": {"board": "b"}, "findings": [f, f2],
+            "finding_groups": [{"id": "channel:/A/B", "title": "/A/B", "kind": "net", "severity": "fail", "findings": ["channel:/A/B", "impedance:D"], "nets": ["/A/B"], "sketch": sketch}],
             "sketch_board": {"outline": [[0.0, 0.0, 40.0, 0.0, 40.0, 50.0, 0.0, 50.0, 0.0, 0.0]], "bbox": [0.0, 0.0, 40.0, 50.0], "layers": ["F.Cu", "In1.Cu", "B.Cu"]}});
         let h = html(&rep, "2026-01-02");
         assert!(
             h.contains("<a href=\"#f-channel__A_B\">1</a>")
                 && h.contains("<section class=\"fd fail\" id=\"f-channel__A_B\">")
         );
+        // one group (the net with its two findings): one index row, one section, one sketch, numbered markers
+        assert!(
+            h.contains("<a href=\"#fi-impedance_D\">net class D: worst net /A/B</a>") && h.contains("– 2 findings")
+        );
+        assert_eq!((h.matches("<svg class=\"ov\"").count(), h.matches("<section class=\"fd").count()), (1, 1));
+        assert!(h.contains(">2</text>"), "the second finding's number at its marker");
         assert!(h.contains("In1.Cu · (12.50, 30.25) mm"), "{h}");
         assert!(h.contains("#finding=channel%3A%2FA%2FB&amp;at=12.50,30.25&amp;layer=In1.Cu&amp;net=%2FA%2FB&amp;item=track&amp;board=b"));
         assert!(
@@ -1554,6 +1654,6 @@ mod tests {
         assert!(!h.contains("<script"));
         let csv = csv_files(&rep);
         let fc = &csv.iter().find(|f| f.0 == "findings.csv").unwrap().1;
-        assert!(fc.contains("\r\n1,channel:/A/B,fail,channel,/A/B: eye height (%) 30 (limit ≥ 65),bus U1 ↔ U2,,In1.Cu,In1.Cu,12.50,30.25,/A/B,"), "{fc}");
+        assert!(fc.contains("\r\n1,channel:/A/B,/A/B,fail,channel,/A/B: eye height (%) 30 (limit ≥ 65),bus U1 ↔ U2,,In1.Cu,In1.Cu,12.50,30.25,/A/B,"), "{fc}");
     }
 }

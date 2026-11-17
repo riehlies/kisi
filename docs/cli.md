@@ -188,43 +188,52 @@ correlations, e.g. for the inside of a closed case). See [Models and limits](mod
 ### `report`
 Everything into `analysis/kisi.json` next to the board (`--out FILE` elsewhere); prints a summary. For file-based
 review tools and later sessions. Needs an assembly variant on boards that have them. Runs the field solver. The
-viewer's Export → Results (JSON) gives the same document ([getting started](getting-started.md#export)).
-Besides the results of `overview`, `interfaces`, `check --all`, `power` and `thermal` it holds `board_file` (name
-and SHA-256 of the board file), `options` (tolerances, `via_cavity`, `via_returns`), `impedance` (per net class the
-worst net's mean impedance against the class window – the profile's tolerance, else the default – with `status`
-as the check's impedance criterion), `gaps` (as `kisi gaps`), `stackup_used`, `findings` and `sketch_board`.
+viewer's Findings & Export → Results (JSON) gives the same document ([getting
+started](getting-started.md#findings-and-export)). Besides the results of `overview`, `interfaces`, `check --all`,
+`power` and `thermal` it holds `board_file` (name and SHA-256 of the board file), `options` (tolerances,
+`via_cavity`, `via_returns`), `impedance` (per net class the worst net's mean impedance against the class window –
+the profile's tolerance, else the default – with `status` as the check's impedance criterion), `gaps` (as `kisi
+gaps`), `stackup_used`, `findings` and `sketch_board`.
 
 **Findings** (`findings`, worst first: fail, warning, gap) are what the report's verdicts flag: channel rows that
 are not green (with their worst criterion), net classes whose worst net's mean impedance is outside or near the
 window, rails with vias over their current capacity estimate (`vias:`), rails with other warnings (`power:`), parts
 over or within 10 K of Tj max (estimate) and the open gaps. Each has a stable `id` – `<area>:<item>`: `channel:<lane
 or net>`, `impedance:<net class>`, `vias:<rail>`, `power:<rail>`, `temperature:<part>`, `gap:<gap id>` (a second one
-with the same id gets `#2`) –, `severity` (`fail`, `warn`, `gap`), `what`, `detail`, `estimate`, and `location`:
-where it applies on the board – `at` (mm, KiCad board coordinates as KiCad shows them: x to the right, y down),
-`layer`, `layers`, `net`, `item` (`track`, `pad`, `via`, `part` or `net`), `refs` (parts and pads, `U3.12`), `what`
-(the object in one line) and `bbox`; `markers` are further places (other vias over their estimate, the parts a gap
+with the same id gets `#2`) –, `severity` (`fail`, `warn`, `gap`), `what`, `detail`, `estimate`, `group` and
+`location`: where it applies on the board – `at` (mm, KiCad board coordinates as KiCad shows them: x to the right, y
+down), `layer`, `layers`, `net`, `item` (`track`, `pad`, `via`, `part` or `net`), `refs` (parts and pads, `U3.12`),
+`what` (the object in one line), `bbox` and, for a channel, `channel` (the box of the whole channel: every net of
+the lane, both lines of a pair); `markers` are further places (other vias over their estimate, the parts a gap
 names). Which place: the impedance at the track that pulls the net's mean furthest to the side it is on (a track
-through an SMD pad stands for the pad), the return loss at the track with the largest deviation from the target, a
-via stub at the via with the lowest stub resonance, the eye, the loss and the skew at the receiver's pad, a rail's
-drop at the load with the largest drop, a via at the via, a part at its pads. The channel rows of `check` and
-`report` carry the same `location` (yellow and red rows), the rails of `power` their `max_at`. `sketch` holds the
-geometry of the finding's board sketch: the highlighted nets over the board (`overview`, simplified), the copper
-around the location (`detail`, at most 50 items of other nets) and the markers; `sketch_board` the outline.
+through an SMD pad stands for the pad), the return loss at the track with the largest deviation from the target, the
+skew where the pair's lines differ most in length, a via stub at the via with the lowest stub resonance, the eye and
+the loss at the receiver's pad (where they are measured), a rail's drop at the load with the largest drop, a via at
+the via, a part at its pads. The channel rows of `check` and `report` carry the same `location` (yellow and red
+rows), the rails of `power` their `max_at`. **`finding_groups`** puts the findings together per net – the findings
+on the same nets (a lane's nets with both lines of a pair, a net class's worst net, a rail) in one group, a part's
+or a gap's on their own –, in the order of their worst finding: `id`, `title` (the net, rail, part or gap), `kind`
+(`net`, `rail`, `part`, `gap`), `severity`, `findings` (their ids), `nets` and `sketch`, the geometry of the group's
+board sketch: the highlighted nets over the board (`overview`, simplified), the copper around the first finding's
+place (`detail`, at most 50 items of other nets) and the markers (`[x, y, n]`, n the finding's number in the group);
+`sketch_board` the outline.
 
 `--html FILE` also writes the **printable report**, light, for A4 and Letter, no external resources: the header
 (board, file and hash, assembly variant, configuration, stackup sources, options, kisi version and date); a summary
-– what was checked, the findings by severity, counts of ok / warning / fail per area – and the index of findings,
-each linking to its section; the impedance per net class, per bus its worst lane and margin with the failing lanes,
-the largest DC drop per rail, the temperature's hot spots and the junctions over or near Tj max, the estimates and
-the open gaps; then every finding with where it is (layer, coordinates, net, part, pad, via or track), a link for
-the viewer (`#finding=…`, [getting started](getting-started.md#export)) and a **board sketch**: the whole board with
-the net (its layer strong, other layers light) and the marker, next to the copper around the place (that layer grey,
-other layers light, the net red), top view as KiCad shows it, with scale bars. Maps, curves and per-net details are
-left out (they are in the viewer and the JSON). Size: about 340 KB for ThunderScope (66 findings), 90 KB for
-LibreVNA (17 findings). `--csv DIR` writes the report's tables as CSV files in the format of the viewer's table
-export, `findings.csv` with the location's columns (layer, layers, x, y, net, parts and pads, object). The date is
-today's (UTC), or that of `SOURCE_DATE_EPOCH` for reproducible files; the summary lists the files under `html` and
-`csv`. The viewer's Export → Report gives the same page.
+– what was checked, the findings by severity, counts of ok / warning / fail per area – and the index of findings per
+net (rail, part, gap), each linking to its section and to each finding; the impedance per net class, per bus its
+worst lane and margin with the failing lanes, the largest DC drop per rail, the temperature's hot spots and the
+junctions over or near Tj max, the estimates and the open gaps; then per net its findings, each with where it is
+(layer, coordinates, net, part, pad, via or track) and a link for the viewer (`#finding=…`, [getting
+started](getting-started.md#findings-and-export)), and one **board sketch**: the whole board with the channel or net
+(its first finding's layer strong, other layers light) and the markers (numbered as the findings when there are
+several), next to the copper around the first place (that layer grey, other layers light, the nets red), top view as
+KiCad shows it, with scale bars. Maps, curves and per-net details are left out (they are in the viewer and the
+JSON). Size: about 350 KB for ThunderScope (66 findings on 64 nets, parts and gaps), 95 KB for LibreVNA (16
+findings). `--csv DIR` writes the report's tables as CSV files in the format of the viewer's table export,
+`findings.csv` with the group and the location's columns (layer, layers, x, y, net, parts and pads, object). The
+date is today's (UTC), or that of `SOURCE_DATE_EPOCH` for reproducible files; the summary lists the files under
+`html` and `csv`. The viewer's Findings & Export page gives the same page (Report) and the same findings (its list).
 
 ### `export`
 A lane (`--lane NAME`, a net of the lane) or a whole bus (`--bus NAME`, as `kisi interfaces` names it, e.g.

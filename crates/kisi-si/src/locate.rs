@@ -29,6 +29,9 @@ pub struct Spot {
     pub what: String,
     /// the area to show (x0, y0, x1, y1 in mm): the item with its surroundings
     pub bbox: [f64; 4],
+    /// a channel's place: the box of the whole channel (all nets of the lane, both lines of a pair)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub channel: Option<[f64; 4]>,
 }
 
 /// Coordinates rounded to 0.01 mm for files (`+ 0.0`: no negative zero).
@@ -178,6 +181,7 @@ pub fn worst_track(b: &Board, an: &Analysis, nets: &[u32], target: Option<Target
         refs,
         what,
         bbox: bbox_of([tr.a, tr.b], 1.5),
+        ..Default::default()
     }))
 }
 
@@ -203,6 +207,7 @@ pub fn pad_spot(b: &Board, refdes: &str, pin: &str) -> Option<Spot> {
         item: "pad".into(),
         refs: vec![r],
         bbox: bbox_of([p.at], 3.0),
+        ..Default::default()
     }))
 }
 
@@ -252,6 +257,7 @@ pub fn part_spot(b: &Board, refdes: &str, net: Option<&str>) -> Option<Spot> {
         item: "part".into(),
         refs: if on.len() == 1 { vec![pad_ref(b, on[0])] } else { vec![refdes.to_string()] },
         bbox: bbox_of(all.iter().map(|p| p.at).chain([f.at]), 3.0),
+        ..Default::default()
     }))
 }
 
@@ -291,6 +297,7 @@ pub fn via_spot(b: &Board, at: P, from: &str, to: &str, drill: f64, plated_hole:
         refs: pad.map(|p| vec![pad_ref(b, p)]).unwrap_or_default(),
         what,
         bbox: bbox_of([at], 3.0),
+        ..Default::default()
     })
 }
 
@@ -312,6 +319,7 @@ pub fn route_spot(b: &Board, nets: &[u32]) -> Option<Spot> {
         refs: vec![],
         what: format!("the route of {}", name.join(", ")),
         bbox: bbox_of(pts, 2.0),
+        ..Default::default()
     }))
 }
 
@@ -340,8 +348,8 @@ pub fn worst_criterion(cs: &[Criterion]) -> Option<&Criterion> {
 
 /// Where a channel row's criterion `key` applies: the impedance (`z`) at the track that moves the mean
 /// most, the return loss (`rl`) at the largest deviation from the target, a via stub (`stub`) at the via with the lowest stub resonance (`stub_at`, the
-/// check row's), everything measured at the receiver (eye, loss, return loss, skew, an error) at the
-/// receiver's pad (`rx`: reference, pad) – else the route of the row's nets.
+/// check row's), the skew where the pair's lines differ most (`skew_spot`), everything measured at the
+/// receiver (eye, loss, an error) at the receiver's pad (`rx`: reference, pad) – else the route of the row's nets.
 pub fn channel_spot(
     b: &Board,
     an: &Analysis,
@@ -359,11 +367,70 @@ pub fn channel_spot(
             let v = b.vias.iter().find(|v| nets.contains(&v.net) && geom::len(geom::sub(v.at, at)) < 0.05)?;
             Some(via_spot(b, v.at, &lname(b, v.from), &lname(b, v.to), v.drill, false))
         }),
+        "skew" => skew_spot(b, an, nets).or_else(|| rx.and_then(|(r, p)| pad_spot(b, r, p))),
         _ => rx.and_then(|(r, p)| pad_spot(b, r, p)),
     };
     let mut s = spot.or_else(|| route.clone())?;
-    if let (Some(r), true) = (&route, s.net.is_empty()) {
-        s.net = r.net.clone();
+    if let Some(r) = &route {
+        if s.net.is_empty() {
+            s.net = r.net.clone();
+        }
+        // the whole channel: the route's box, with the place in it
+        let (a, c) = (r.bbox, s.bbox);
+        s.channel = Some([a[0].min(c[0]), a[1].min(c[1]), a[2].max(c[2]), a[3].max(c[3])]);
     }
     Some(s)
+}
+
+/// Where the lines of a pair differ most in length (`rf::pair_imbalance` of each pair among
+/// `nets`): the stretch with the largest |P − N|, on the longer line.
+pub fn skew_spot(b: &Board, an: &Analysis, nets: &[u32]) -> Option<Spot> {
+    let partners = crate::extract::diff_partners(&b.nets);
+    let mut best: Option<(crate::rf::Imbalance, u32)> = None;
+    for &n in nets {
+        let Some(m) = partners.get(n as usize).copied().flatten() else { continue };
+        // each pair once: from its positive line
+        if !b.net_name(n).ends_with(['+', 'P', 'p']) && nets.contains(&m) {
+            continue;
+        }
+        for im in crate::rf::pair_imbalance(b, an, n) {
+            if best.as_ref().is_none_or(|x| im.dl_mm.abs() > x.0.dl_mm.abs()) {
+                best = Some((im, n));
+            }
+        }
+    }
+    let (im, n) = best?;
+    // the layer: of the track nearest to the place
+    let near = b
+        .tracks
+        .iter()
+        .filter(|t| t.net == n || partners.get(n as usize).copied().flatten() == Some(t.net))
+        .map(|t| {
+            let d = geom::sub(t.b, t.a);
+            let l2 = geom::dot(d, d).max(1e-12);
+            let u = (geom::dot(geom::sub(im.at, t.a), d) / l2).clamp(0.0, 1.0);
+            (geom::len(geom::sub(geom::lerp(t.a, t.b, u), im.at)), t)
+        })
+        .min_by(|x, y| x.0.total_cmp(&y.0))
+        .map(|x| x.1);
+    let layer = near.map(|t| lname(b, t.layer)).unwrap_or_default();
+    let net = near.map(|t| b.net_name(t.net).to_string()).unwrap_or_else(|| b.net_name(n).to_string());
+    Some(finish(Spot {
+        at: im.at,
+        layers: if layer.is_empty() { vec![] } else { vec![layer.clone()] },
+        what: format!(
+            "where the pair's lines differ most: P − N {:+.2} mm ({:+.1} ps) between {:.1} and {:.1} mm along P{}",
+            im.dl_mm,
+            im.dt_ps,
+            im.s_from_mm,
+            im.s_to_mm,
+            if im.vias_differ { ", the vias of P and N differ here" } else { "" }
+        ),
+        layer,
+        net,
+        item: "track".into(),
+        refs: vec![],
+        bbox: bbox_of([im.at], 2.0),
+        ..Default::default()
+    }))
 }

@@ -1567,8 +1567,9 @@ pub fn report(
         "stackup_used": stackup_used(p),
         "gaps": crate::gaps::gaps(p, profiles),
     });
-    let (f, b) = crate::findings::findings(p, &rep);
+    let (f, gs, b) = crate::findings::findings(p, &rep);
     rep["findings"] = f;
+    rep["finding_groups"] = gs;
     rep["sketch_board"] = b;
     Ok(rep)
 }
@@ -1804,7 +1805,10 @@ mod tests {
         );
         assert_eq!(l["layers"], json!(["F.Cu", "B.Cu"]));
         assert!(l["what"].as_str().unwrap().starts_with("via 0.30/0.60 mm (drill/pad) at (9.00, 2.00) mm"), "{l:#}");
-        assert!(f["sketch"]["detail"]["items"]
+        // its group: the rail, with the sketch
+        let gr = rep["finding_groups"].as_array().unwrap().iter().find(|x| x["id"] == f["group"]).expect("its group");
+        assert_eq!((gr["kind"].as_str(), gr["title"].as_str()), (Some("rail"), Some("+3V3")));
+        assert!(gr["sketch"]["detail"]["items"]
             .as_array()
             .unwrap()
             .iter()

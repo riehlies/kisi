@@ -2233,7 +2233,13 @@ mod wasm {
             let spec: super::VolumeSpec = serde_json::from_value(v["volume"].clone()).map_err(|e| e.to_string())?;
             let port = v["port"].as_u64().unwrap_or(0) as usize;
             drop(txt);
-            let (r, vf) = super::simulate_volume(&case, mesh, port, &spec, &mut |_, _, _| {});
+            let (r, vf) = super::simulate_volume(&case, mesh, port, &spec, &mut |_, _s, _db| {
+                #[cfg(feature = "proto-viewer")]
+                // SAFETY: an imported JS function taking two numbers, no memory access
+                unsafe {
+                    fd_progress(_s as u32, _db)
+                }
+            });
             Ok(vf.to_bytes(super::volume_header(&r)))
         })();
         let (code, s) = match res {
@@ -2241,6 +2247,29 @@ mod wasm {
             Err(e) => (1, serde_json::json!({ "error": e }).to_string().into_bytes()),
         };
         OUT.with(|o| *o.borrow_mut() = s);
+        code
+    }
+    #[cfg(feature = "proto-viewer")]
+    #[link(wasm_import_module = "env")]
+    extern "C" {
+        /// progress of `fd_run_volume` (every 200 steps): time step and field energy below its maximum (dB)
+        fn fd_progress(step: u32, energy_db: f64);
+    }
+    /// Prototype viewer: input {"case"}; output the mesh lines of `make_mesh` (JSON, PML included) or {"error"}.
+    #[cfg(feature = "proto-viewer")]
+    #[no_mangle]
+    pub extern "C" fn fd_mesh(p: *const u8, n: usize) -> i32 {
+        let txt = String::from_utf8_lossy(unsafe { std::slice::from_raw_parts(p, n) }).into_owned();
+        let res = (|| -> std::result::Result<String, String> {
+            let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+            let case: super::Case = serde_json::from_value(v["case"].clone()).map_err(|e| e.to_string())?;
+            Ok(serde_json::to_string(&super::make_mesh(&case)).unwrap())
+        })();
+        let (code, s) = match res {
+            Ok(s) => (0, s),
+            Err(e) => (1, serde_json::json!({ "error": e }).to_string()),
+        };
+        OUT.with(|o| *o.borrow_mut() = s.into_bytes());
         code
     }
 }

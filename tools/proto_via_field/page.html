@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Via Field View</title>
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #ffffff; --fg: #1d2330; --muted: #5d6676; --line: #d9dde4; --accent: #1f6fd1;
+  --accent-fg: #ffffff; --warn-bg: #fff4d6; --warn-fg: #6b4a00; --chip: #eef1f5; --est: #8a4b00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151b; --panel: #1a1f27; --fg: #e5e8ee; --muted: #9aa3b2; --line: #2d3441; --accent: #5b9dff;
+    --accent-fg: #0b1220; --warn-bg: #3a2e10; --warn-fg: #ffd98a; --chip: #232a35; --est: #ffb866;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151b; --panel: #1a1f27; --fg: #e5e8ee; --muted: #9aa3b2; --line: #2d3441; --accent: #5b9dff;
+  --accent-fg: #0b1220; --warn-bg: #3a2e10; --warn-fg: #ffd98a; --chip: #232a35; --est: #ffb866;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 14px 16px 6px; }
+h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+h1 .tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; background: var(--warn-bg); color: var(--warn-fg); padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 6px; }
+header p { margin: 4px 0 0; color: var(--muted); max-width: 980px; }
+main { display: grid; gap: 12px; padding: 10px 16px 16px; grid-template-columns: 300px minmax(0, 1fr) 340px; align-items: start; }
+@media (max-width: 1260px) { main { grid-template-columns: 300px minmax(0, 1fr); } aside.side { grid-column: 2; } }
+@media (max-width: 820px) { main { grid-template-columns: minmax(0, 1fr); } aside.side { grid-column: 1; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 8px; font-weight: 650; }
+h2:not(:first-child) { margin-top: 16px; }
+.row { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+.row > label, .lab { min-width: 92px; color: var(--muted); font-size: 13px; }
+input[type=number], input[type=text], select { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; min-width: 0; }
+input[type=number] { width: 78px; }
+.grid2 { display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; }
+.grid2 label { color: var(--muted); font-size: 13px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--fg); padding: 4px 9px; cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--accent); color: var(--accent-fg); }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--chip); color: var(--fg); padding: 3px 9px; border-radius: 999px; cursor: pointer; }
+.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+button.primary, button.btn { font: inherit; border-radius: 6px; padding: 6px 12px; cursor: pointer; border: 1px solid var(--line); background: var(--chip); color: var(--fg); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+button:disabled { opacity: 0.5; cursor: default; }
+.note { color: var(--muted); font-size: 12px; margin: 4px 0; }
+.est { color: var(--est); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.warn { background: var(--warn-bg); color: var(--warn-fg); border-radius: 6px; padding: 6px 8px; font-size: 12.5px; margin: 6px 0; }
+.estimate { font-size: 12.5px; background: var(--bg); border-radius: 6px; padding: 6px 8px; margin: 6px 0; }
+.estimate b { font-weight: 600; }
+progress { width: 100%; height: 8px; }
+.prog { font-size: 12px; color: var(--muted); margin: 3px 0 6px; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 6px; }
+.controls .grp { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.controls .grp > span { color: var(--muted); font-size: 12.5px; }
+input[type=range] { accent-color: var(--accent); }
+#planeSlider { flex: 1 1 200px; min-width: 140px; }
+.canvaswrap { width: 100%; position: relative; }
+canvas { display: block; }
+#cv { touch-action: none; cursor: crosshair; }
+.hover { font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg); min-height: 36px; margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
+.info { font-size: 13px; margin: 6px 0 0; }
+.info b { font-weight: 650; }
+.dstitle { font-weight: 600; margin-bottom: 2px; }
+.dssub { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+td { padding: 3px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr.sub td:first-child { padding-left: 14px; color: var(--muted); }
+tr.head td { font-weight: 650; padding-top: 8px; border-bottom: 1px solid var(--muted); }
+.locwrap { width: 100%; }
+.hidden { display: none !important; }
+footer { padding: 0 16px 20px; color: var(--muted); font-size: 12px; max-width: 1100px; }
+footer p { margin: 4px 0; }
+.files { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.files input[type=file] { max-width: 100%; font-size: 12px; }
+@media (max-width: 560px) { main { padding: 8px; } header { padding: 10px 12px 4px; } .row > label { min-width: 78px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Via field view <span class="tag">prototype</span></h1>
+  <p>kisi-fdtd (3D FDTD, PEC metal) runs in your browser in a Web Worker. Choose a via or a differential via pair,
+  the frequencies and the mesh, run, then move a cut plane through the fields. A precomputed example is shown right away.</p>
+</header>
+<main>
+<section class="panel setup" id="setup">
+  <h2>Case</h2>
+  <div class="row"><div class="seg" id="kind"><button data-v="single" class="on">Single via</button><button data-v="pair">Differential pair</button></div></div>
+  <div class="grid2">
+    <label for="stackup">Stackup</label>
+    <select id="stackup"><option value="s4">4-layer 1.6 mm FR-4 (L1→L4)</option><option value="s8">8-layer 1.6 mm FR-4 (L1→L8)</option><option value="uniform">Uniform (enter below)</option></select>
+    <label class="uni" for="layers">Copper layers</label><input class="uni" id="layers" type="number" min="2" max="12" step="1" value="4">
+    <label class="uni" for="thickness">Thickness (mm)</label><input class="uni" id="thickness" type="number" min="0.2" max="4" step="0.1" value="1.6">
+    <label class="uni" for="er">εr</label><input class="uni" id="er" type="number" min="1" max="12" step="0.1" value="4.3">
+    <label class="uni" for="tand">tanδ</label><input class="uni" id="tand" type="number" min="0" max="0.1" step="0.001" value="0.02">
+    <label for="drill">Drill ⌀ (mm)</label><input id="drill" type="number" min="0.1" max="1" step="0.05" value="0.2">
+    <label for="pad">Pad ⌀ (mm)</label><input id="pad" type="number" min="0.2" max="1.5" step="0.05" value="0.5">
+    <label for="antipad">Antipad ⌀ (mm)</label><input id="antipad" type="number" min="0.3" max="2" step="0.05" value="0.6">
+    <label class="pr" for="pitch">Pitch (mm)</label><input class="pr" id="pitch" type="number" min="0.5" max="3" step="0.05" value="1.0">
+    <label for="gnd">GND vias</label><select id="gnd"><option value="0">none</option><option value="2">2</option><option value="4" selected>4</option></select>
+    <label for="gndDist">GND via distance (mm)</label><input id="gndDist" type="number" min="0.5" max="3" step="0.05" value="1.0">
+    <label for="feed">Feed length (mm)</label><input id="feed" type="number" min="1" max="5" step="0.5" value="2">
+  </div>
+  <p class="note" id="traceNote"></p>
+  <h2>Solver settings</h2>
+  <div class="row"><span class="lab">Frequencies</span><div class="chips" id="fchips"><button class="chip" data-f="5">5 GHz</button><button class="chip on" data-f="10">10 GHz</button><button class="chip on" data-f="20">20 GHz</button><button class="chip on" data-f="30">30 GHz</button></div></div>
+  <div class="row"><label for="fother">Other (GHz)</label><input id="fother" type="text" placeholder="e.g. 12.5, 25" style="width:130px"></div>
+  <p class="note" id="flossNote"></p>
+  <div class="row"><label for="mesh">Mesh</label><select id="mesh"><option value="coarse">coarse (0.08 mm at metal)</option><option value="standard" selected>standard (0.05 mm)</option><option value="fine">fine (0.035 mm, as the references)</option></select></div>
+  <div class="row"><span class="lab">Excite</span><span id="exciteBox"></span></div>
+  <div class="estimate" id="estimate">Estimating…</div>
+  <div class="warn hidden" id="warn"></div>
+  <div class="row"><button class="primary" id="run">Run</button><button class="btn" id="cancel" disabled>Cancel</button></div>
+  <div id="progress"></div>
+  <h2>Data</h2>
+  <div class="files"><input type="file" id="file" multiple accept=".kvf,.bin,.json,.gz"><button class="btn" id="save" disabled>Save .kvf</button><button class="btn" id="example">Example</button></div>
+  <p class="note">Load a saved <code>.kvf</code>, or the blobs of <code>kisi-fdtd case.json --volume out.bin</code> (one per excited port) together with the case JSON.</p>
+</section>
+
+<section class="panel viewer">
+  <div class="dstitle" id="dsTitle">–</div>
+  <div class="dssub" id="dsSub"></div>
+  <div class="controls">
+    <div class="grp"><span>Excitation</span><select id="exc"></select></div>
+    <div class="grp"><span>Frequency</span><select id="freq"></select></div>
+  </div>
+  <div class="controls">
+    <div class="grp"><div class="seg" id="view"><button data-v="E" class="on">|E|</button><button data-v="H">|H|</button><button data-v="S">S</button><button data-v="loss">Loss</button></div></div>
+    <div class="grp"><span>Component</span><div class="seg" id="comp"><button data-v="mag" class="on">mag</button><button data-v="0">x</button><button data-v="1">y</button><button data-v="2">z</button></div></div>
+    <div class="grp"><label><input type="checkbox" id="arrows" checked> arrows</label><label><input type="checkbox" id="outline" checked> outline</label></div>
+  </div>
+  <div class="controls">
+    <div class="grp"><span>Plane</span><div class="seg" id="axis"><button data-v="0">x</button><button data-v="1" class="on">y</button><button data-v="2">z</button></div></div>
+    <input type="range" id="planeSlider" min="0" max="10" value="5" aria-label="cut plane position">
+    <div class="grp"><span id="planePos" style="min-width:110px;color:var(--fg)">–</span><select id="jump" aria-label="jump to"></select></div>
+  </div>
+  <div class="controls">
+    <div class="grp"><span>Scale</span><div class="seg" id="scale"><button data-v="log" class="on">log</button><button data-v="lin">linear</button></div>
+      <select id="range" aria-label="log range"><option value="20">20 dB</option><option value="30">30 dB</option><option value="40" selected>40 dB</option><option value="60">60 dB</option></select>
+      <label><input type="checkbox" id="lock"> lock scale</label></div>
+    <div class="grp"><span>Time</span><div class="seg" id="tmode"><button data-v="avg" class="on">phasor / average</button><button data-v="inst">instantaneous</button></div></div>
+    <div class="grp"><button class="btn" id="play" aria-label="play">▶</button><input type="range" id="phase" min="0" max="359" value="0" style="width:120px" aria-label="phase"><span id="phaseLab" style="min-width:36px">0°</span>
+      <select id="speed" aria-label="speed"><option value="0.25">¼ period/s</option><option value="0.5" selected>½ period/s</option><option value="1">1 period/s</option></select></div>
+  </div>
+  <div class="canvaswrap" id="cvwrap"><canvas id="cv"></canvas></div>
+  <div class="hover" id="hover">Move the pointer over the plane for values.</div>
+  <div class="info" id="planeInfo"></div>
+</section>
+
+<aside class="panel side">
+  <h2>Where is the plane</h2>
+  <div class="locwrap"><canvas id="loc"></canvas></div>
+  <h2 id="totHead">Power</h2>
+  <table id="totals"></table>
+  <h2>S-parameters</h2>
+  <table id="sparams"></table>
+  <p class="note" id="normNote"></p>
+</aside>
+</main>
+<footer>
+  <p><b>Prototype</b> (branch proto/via-field-viewer, docs/research/fdtd-field-view.md). Metal is a perfect conductor in the solver;
+  the conductor loss is a perturbation <span class="est">estimate</span> from the tangential H at the metal surfaces.
+  Fields within a cell of a metal edge are not resolved (edge singularities). Not part of kisi's product.</p>
+  <p id="buildNote"></p>
+</footer>
+<!--SCRIPTS-->
+</body>
+</html>

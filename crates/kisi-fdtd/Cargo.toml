@@ -14,6 +14,12 @@ crate-type = ["cdylib", "rlib"]
 name = "kisi-fdtd"
 path = "src/main.rs"
 
+[features]
+# Prototype via field viewer (tools/proto_via_field.py, wasm only): `fd_mesh` and progress reports through the
+# imported `env.fd_progress(step, energy_db)` during `fd_run_volume`. Off by default: the default WebAssembly module
+# has no imports.
+proto-viewer = []
+
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "1"

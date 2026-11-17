@@ -1,6 +1,7 @@
 # 3D field view of a via (kisi-fdtd in the browser) – design note and effort estimate
 
-Status: research (17 November 2026, branch `research/fdtd-field-view`). A small prototype of the field output is
+Status: research (17 November 2026, branch `research/fdtd-field-view`); a browser prototype of the cut-plane viewer
+is on `proto/via-field-viewer` (section 7). A small prototype of the field output is
 on the branch (`kisi_fdtd::simulate_volume`, `fd_run_volume`, `validation/fdtd/volume_fields.py`); the product
 does not use it. Numbers marked **measured** come from runs on this branch (`fdtd-field-view/measurements.json`);
 everything marked **estimate** is a judgement, not a measurement.
@@ -264,6 +265,54 @@ the case JSON for the `kisi-fdtd` CLI, and the reference page as a gallery of it
 - A time-domain view (the pulse running through the via, plane snapshots) as well? Different output
   (snapshots, 24 B per node and frame); planes are affordable, volumes not.
 
+## 7. Prototype viewer
+Branch `proto/via-field-viewer` (17 November 2026), following the decisions of that day (viewer first, cut planes,
+frequencies chosen before the run, conductor loss as an estimate, 1 V, animation, a warning instead of a cell cap).
+`tools/proto_via_field.py` builds the self-contained `dist/kisi-via-field-proto.html` (4.5 MB); not wired into
+`kisi.html`.
+- **Page:** a single via or a differential pair from a few parameters (`tools/proto_via_field/case.js`, after
+  `via_cases.py`: s4/s8 or a uniform stack, drill, pad, antipad, pitch, GND vias, feed length), frequency presets
+  5/10/20/30 GHz plus free entry (several per run), mesh coarse/standard/fine with cells, memory and time estimated
+  from `fd_mesh` before the run and a warning above 300 MB per worker (no cap). kisi-fdtd runs in Web Workers (blob
+  URL, one per excited port, two at a time) with progress and cancel; the viewer then picks among the computed
+  frequencies. Cut plane x/y/z with slider and jump list; |E|, |H|, S = ½Re(E×H*), loss; magnitude or a component;
+  arrows; metal/dielectric outline; log/linear; CVD-safe maps (viridis, inferno, a purple–orange diverging map, a
+  blue ramp for the conductor estimate); hover readout; ∫S·dA through the plane; the power balance per region; an
+  isometric locator of the plane; Re{F·e^{jφ}} animated with a fixed colour scale over the period; `.kvf` save/load
+  (f16 fields, gzip) and the raw `kisi-fdtd --volume` blobs. One example (the default single via, 10/20/30 GHz) is
+  embedded with a 7-bit mantissa (0.4 %).
+- **Solver:** cargo feature `proto-viewer` of kisi-fdtd (WebAssembly only): `fd_mesh` and a progress import
+  `env.fd_progress`; the default module is unchanged (no imports), `simulate()` untouched.
+- **Normalisation:** 1 V peak incident voltage wave at the driven port into its reference impedance (a = 1 V/√Z0,
+  10 mW at 50 Ω); the blob's 1 W fields are scaled by 1/√(2·Z0) on loading. Pair modes by superposition of the two
+  single-port runs: odd = (F1 − F2)/√2, even = (F1 + F2)/√2 (±1/√2 V per port, the same 10 mW).
+- **f_loss:** the run sets the solver's conductivity from tanδ at the geometric mean of the chosen frequencies (exact
+  for one frequency). The loss view and the totals use the solver's ½σ|E|² (consistent with the S-parameters); the
+  totals add ½ωε0εr·tanδ·|E|² at the shown frequency (= ×f/f_loss) as an **estimate**.
+- **Conductor loss (estimate):** ½·Rs·|H_t|², Rs = √(πfμ0/σ_Cu), σ_Cu = 1/1.72e-8 Ω·m (`data/thermal.json`, IEC 60028):
+  on every z-face of a sheet with all four edges metal, H half a cell above and below (dielectric sides only); on
+  the barrels H_φ sampled 1.5 cells off the surface and scaled by the 1/ρ decay. Smooth copper, edge crowding not
+  resolved. Checked: the GND plane under a feed against Rs·I²/(4πh) within 1 %, the barrel against ½·Rs·I²·L/(2πr)
+  within 22 %. At 20 GHz 0.07 mW of 10 mW for the default via (dielectric 0.82 mW).
+- **Fix found on the way:** ∫S·dA through planes that cut conformal edges (barrels, antipads) must weight each E edge
+  by its free fraction; unweighted, the flux down through the core was 3–8 % too high. With it the half box above
+  the core closes within 0.5 % (port 1's 1 − |S11|² = outflow + loss).
+- **Checks** (`tools/proto_via_field/check_physics.mjs`, 66 checks, all pass): port voltages 1 + S11 and S21 from Ez
+  within 10⁻³; trace flux against (|a|² − |b|²) within 3 % (port side at 30 GHz 5 %: the lumped port radiates
+  0.8–2.6 % into the air, the feed loses 1.4 %/mm) and within 1 % on the far side, for the via and the pair modes;
+  the closed balance within 0.8 % of the incident power (even mode 1.2 %: 35 % goes into the plane pair; ending at
+  −70 dB instead of −50 dB gives 0.75 %); period mean of e(t)×h(t) = ½Re(E×H*) to 3·10⁻⁸; odd + even = port 1 +
+  port 2 for every quadratic total to 10⁻⁹; KVF storage at 7 bits within 0.07 %. Headless Chromium
+  (`check_page.cjs`, 17 checks): example, slider, animation, save/load, cancel, runs, warning, phone width, no
+  console errors.
+- **Measured** (headless Chromium 153, 2-vCPU VM, one worker per port): single via standard mesh, 10/20/30 GHz:
+  231 k cells, 2201 steps, **8.0 s**, 47.5 MB WebAssembly memory (estimate 51 MB); pair, both ports in parallel:
+  292 k cells, **11.6 s** wall, 62 MB per worker; coarse single via at 20 GHz 4.1 s, 12 MB. Natively 6.3 s for the
+  single via.
+- **Open:** fields within a cell of metal edges unresolved; stride > 1 and crop boxes not offered; no zero-copy
+  export (the blob is a copy); the 3D view (three.js) not started; ports along y (`x1`) not handled by the port
+  voltage; effort to a production cut-plane view from here ≈ 8–10 d (estimate; was 12–13 d), the board-via exporter and the via panel being most of it.
+
 ## Reproduce
 ```
 CARGO_TARGET_DIR=… cargo build --release -p kisi-fdtd
@@ -276,4 +325,10 @@ python3 validation/fdtd/volume_fields.py plot out.bin pics --freq 2e10 --y 0 --z
 python3 validation/fdtd/volume_fields.py vtk out.bin field.vtk --freq 2e10   # ParaView
 python3 docs/research/fdtd-field-view/vtk3d.py field.vtk 3d.png              # pip: vtk
 cargo test --release -p kisi-fdtd volume_power_flux
+# prototype viewer (section 7): wasm with the proto-viewer feature, page, physics and browser checks
+RUSTFLAGS="-C target-feature=+simd128" cargo build --release -p kisi-fdtd --lib --target wasm32-unknown-unknown --features proto-viewer
+cp $CARGO_TARGET_DIR/wasm32-unknown-unknown/release/kisi_fdtd.wasm /tmp/kisi_fdtd_proto.wasm
+python3 tools/proto_via_field.py /tmp/kisi_fdtd_proto.wasm $CARGO_TARGET_DIR/release/kisi-fdtd dist/kisi-via-field-proto.html
+node tools/proto_via_field/check_physics.mjs $CARGO_TARGET_DIR/release/kisi-fdtd /tmp/proto_phys
+node tools/proto_via_field/check_page.cjs dist/kisi-via-field-proto.html /tmp/proto_shots   # playwright
 ```

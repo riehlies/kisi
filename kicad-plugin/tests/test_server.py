@@ -86,7 +86,7 @@ class ServerTests(unittest.TestCase):
 
     def test_field_page_at_its_fixed_path(self):
         adv = pathlib.Path(self.b.root, "kisi-advanced.html")
-        adv.write_text(ADVANCED, encoding="utf-8")
+        adv.write_bytes(ADVANCED.encode())  # bytes: no newline translation on Windows
         s = self.start(advanced=str(adv))
         # next to the viewer's /open/<token>: no token needed (the same file for every board, no board data)
         for path in ("/open/kisi-advanced.html", "/open/kisi-advanced.html?kisi=1"):

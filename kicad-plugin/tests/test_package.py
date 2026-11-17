@@ -48,7 +48,7 @@ class PackageTests(unittest.TestCase):
         cls.cli = os.path.join(cls.tmp, "kisi.mjs")
         pathlib.Path(cls.cli).write_text(encoding="utf-8", data=CLI)
         cls.advanced = os.path.join(cls.tmp, "kisi-advanced.html")
-        pathlib.Path(cls.advanced).write_text(encoding="utf-8", data=ADVANCED)
+        pathlib.Path(cls.advanced).write_bytes(ADVANCED.encode())  # bytes: no newline translation on Windows
         cls.r = pcm.build(cls.viewer, cls.cli, os.path.join(cls.tmp, "dist"), version="0.0.0", test_viewer=True,
                           advanced=cls.advanced, require_full=True)
 
@@ -104,7 +104,7 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(json.loads(board.with_suffix(".kisi.json").read_bytes())["notes"], ["from the installed host"])
             self.assertNotIn(bridge["token"], pathlib.Path(board.parent, "analysis", "Live.kisi.html").read_text(encoding="utf-8"))
             # the field page: next to the page from disk, and at its fixed path of the host
-            self.assertEqual(pathlib.Path(board.parent, "analysis", "kisi-advanced.html").read_text(encoding="utf-8"), ADVANCED)
+            self.assertEqual(pathlib.Path(board.parent, "analysis", "kisi-advanced.html").read_bytes(), ADVANCED.encode())
             conn = http.client.HTTPConnection(url.hostname, url.port, timeout=5)
             conn.request("GET", "/open/kisi-advanced.html")
             response = conn.getresponse()

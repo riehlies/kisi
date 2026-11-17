@@ -113,17 +113,17 @@ class PageTests(unittest.TestCase):
         keep = tempfile.mkdtemp(prefix="kisi-adv-test-")
         self.addCleanup(shutil.rmtree, keep, True)
         adv = os.path.join(keep, "kisi-advanced.html")
-        pathlib.Path(adv).write_text(ADVANCED, encoding="utf-8")
+        pathlib.Path(adv).write_bytes(ADVANCED.encode())  # bytes: the same file on Windows
         page, _ = self.make(advanced=adv)
         placed = os.path.join(os.path.dirname(page), "kisi-advanced.html")
         self.assertEqual(sorted(os.listdir(os.path.dirname(page))), sorted([self.b.stem + ".kisi.html", "kisi-advanced.html"]))
-        self.assertEqual(pathlib.Path(placed).read_text(encoding="utf-8"), ADVANCED)
+        self.assertEqual(pathlib.Path(placed).read_bytes(), ADVANCED.encode())
         # the same version is not written again (9 MB), another one is
         t = time.time() - 3600
         os.utime(placed, (t, t))
         self.make(advanced=adv)
         self.assertEqual(os.path.getmtime(placed), t)
-        pathlib.Path(adv).write_text(ADVANCED.replace("fields", "fields v2"), encoding="utf-8")
+        pathlib.Path(adv).write_bytes(ADVANCED.replace("fields", "fields v2").encode())
         self.make(advanced=adv)
         self.assertIn("fields v2", pathlib.Path(placed).read_text(encoding="utf-8"))
         # analysis/ not writable: both in the plugin's folder

@@ -71,6 +71,34 @@ def curves(S, group="", f=None, z0=50.0):
             "Sdd21": r2(dm["dd"][:, 1, 0]), "Sdd11": r2(dm["dd"][:, 0, 0]), "Scd21": r2(dm["cd"][:, 1, 0]), "Scc21": r2(dm["cc"][:, 1, 0])}
 
 
+DEEMBED_MATCHED = ("2×thru per port, matched as in the accuracy scores (sparam.deembed_matched_nport, TESTS.md section 19): each port is "
+                   "referred to its feed line's own impedance Zc(f) before the NZC fixture of its 2×thru is removed, because the 3D feed lines "
+                   "are not 50 Ω at low frequency (their dielectric loss is a conductivity fixed at f_loss)")
+DEEMBED_SHIFT = ("2×thru, first order (feed delay and loss per port, no reflection): the feeds of a coupled line are the coupled line "
+                 "itself, which the matched per-port de-embedding does not model")
+TDR_DE = dict(rise=25e-12, tmax=80e-12)  # the via alone: edge and window of the accuracy scores (rust_models.py, compare_kisi.py)
+
+
+def deembed(f, S, fixtures, group):
+    """the case with each port's feed removed by its 2×thru → (D, label, Z∞ per port or None): the matched
+    de-embedding of the accuracy scores (rust_models.py, compare_kisi.py); the coupled lines of group T, whose feeds
+    are coupled, with the first-order shift"""
+    T = [x[: len(f)] for x in fixtures]
+    if S.shape[1] == 4 and group == "T":
+        return sparam.deembed_shift(S, [sparam.fixture_shift(f, x) for x in T]), DEEMBED_SHIFT, None
+    D, zinf = sparam.deembed_matched_nport(f, S, T)
+    return D, DEEMBED_MATCHED, zinf
+
+
+def tdr_de(f, S, diff=False):
+    """TDR of port 1 of a de-embedded result or of a via model, 25 ps edge, 80 ps: Z of a 2-port; of a 4-port, and of
+    a pair's differential-mode 2-port (diff), Zdiff (100 Ω) → (t ps, Z)"""
+    if S.shape[1] == 4:
+        S, diff = sparam.mixed_mode(S)["dd"], True
+    t, z = sparam.tdr(f, S[:, 0, 0], z0=100.0 if diff else 50.0, **TDR_DE)
+    return t * 1e12, z
+
+
 def model_check(nm, d):
     """tables of the reduced-model comparisons"""
     if nm == "via_pbm":
@@ -85,8 +113,9 @@ def model_check(nm, d):
                 "text": ["Physics-based ladder along the barrel: via–plate capacitances from an axisymmetric r–z Laplace solve (pads, antipads, "
                          "layered εr), between the planes the parallel-plate impedance ωμd/4 · H0⁽²⁾(ka) with the GND vias as shorted ports, "
                          "plane pairs split into ≤ 0.2 mm sections, the barrel above the outermost planes as a short coax to the antipad, stubs as "
-                         "the open rest of the ladder. Ports at the via; the 3D result is de-embedded with the 2×thru of each feed layer. "
-                         "TDR with a 25 ps edge. Script: via_pbm.py.",
+                         "the open rest of the ladder. Ports at the via; the 3D result is de-embedded with the 2×thru of each feed layer, "
+                         "here still with the prototype's own 50 Ω-referred NZC (pairs: first-order shift), unlike the curves of the cases and "
+                         "the table “Rust port”, which use the matched de-embedding (TESTS.md section 19). TDR with a 25 ps edge. Script: via_pbm.py.",
                          "kisi now uses this ladder (Rust port kisi_si::via_pbm, see the tables “Rust port” and “kisi's fast channel model”); "
                          "the former coax-section model is the fallback for vias without a plane."],
                 "cols": ["case", "max Δ|S21| to 20 GHz (dB)", "max |ΔS11| to 20 GHz", "TDR Z min 3D / model (Ω)", "TDR Z max 3D / model (Ω)", "stub notch 3D / model (GHz)"],
@@ -120,14 +149,17 @@ def model_check(nm, d):
                 ["Rust, kisi's ladder (graded grid, equivalent antipad, junction)", sm["rust_graded"]["single_tdr_err_pct_median"], sm["rust_graded"]["single_tdr_err_pct_p90"], sm["rust_graded"]["single_dS21_max_db_median"], sm["rust_graded"]["pairs_dS21_max_db_median"], "model differs", f"{t['rust_graded_build']} + {t['rust_eval']} ms"]]
         cv = sm.get("cavity", {})
         text = ["The reduced models in Rust: the via ladder (kisi_si::via_pbm), the plane cavity and the PDN loop (kisi_pi::cavity_modal). "
-                "Same metrics as the prototype: TDR minimum and maximum (25 ps, 80 ps window) against the de-embedded 3D result, both values "
+                "Same metrics as the prototype: TDR minimum and maximum (25 ps, 80 ps window) against the 3D result de-embedded as on the case pages "
+                "(matched: each port referred to its feed line's impedance first, TESTS.md section 19), both values "
                 "of every single-via case pooled; |S21| up to 20 GHz. Parity: largest |ΔS21| (linear) against the Python result over all via cases. "
                 "kisi's ladder adds to the prototype the junction model fitted to the 3D references (series inductance μ0/(2π)·pad radius where a trace "
                 "enters the via, the trace over the antipad scaled from its own line, striplines kept up to 2/3 of the pad radius from the via centre) and "
                 "the equivalent radius of non-round antipads. Time per via for 400 frequencies: build (r–z Laplace solve) + evaluation; the Laplace result is cached per via "
                 "geometry, so a board solves it once per via type. Script: rust_models.py.",
-                "This table and the curves “via ladder in kisi (Rust)” are regenerated with every model change (TESTS.md section 18). "
-                "The parity with Python no longer holds since section 14 changed the Rust model under the prototype switch (TESTS.md section 5)."]
+                "This table and the curves “via ladder in kisi (Rust)” are regenerated with every model change (TESTS.md sections 18 and 19). "
+                f"Parity holds again since TESTS.md section 19 brought section 14's radial-line matrix and pair modes into the Python prototype: "
+                f"max |ΔS21| {sm['parity_rust']['dS21_lin_max_max']:g} (linear), phase {sm['parity_rust']['dphase21_max_deg_max']:.2f}° over all via cases; "
+                "what remains is the interpolation of Z/f on the 0.25 GHz grid (TESTS.md section 5)."]
         if cv:
             text.append(f"Cavity model: Rust within {cv['dZ_rel_max']:.1e} of Python; {cv['nf']} frequencies × {cv['modes']} modes in "
                         f"{' / '.join(str(x) for x in cv['rust_eval_ms'])} ms (Python {' / '.join(str(x) for x in cv['python_ms'])} ms). "
@@ -171,17 +203,20 @@ def model_check(nm, d):
             "model), ports at the ends of the feed lines as in 3D. TDR with a 35 ps edge; coupling as the peak of the step response "
             "(35 ps) at the victim's near and far end. kisi exports S-parameters up to 25 GHz; the comparison stops there. Script: compare_kisi.py.",
             "The full-channel TDR minimum also holds the low-frequency offset of the 3D lumped ports (a 49 Ω line shows 43–45 Ω after 100 ps), "
-            "so the via itself is compared de-embedded: kisi's channel with kisi's own 2×thru, 3D with the 3D 2×thru (TDR 25 ps, 80 ps window, up to 25 GHz)."]
+            "so the via itself is compared de-embedded: kisi's channel with kisi's own 2×thru, 3D with the 3D 2×thru (TDR 25 ps, 80 ps window, up to 25 GHz)" +
+            (", both matched (each fixture referred to its own line impedance first, TESTS.md section 19)." if nm == "kisi_models" else
+             ". This table is a record of an earlier model version, kept as such (TESTS.md section 17): before the stripline feed trim (section 18) and "
+             "with the former de-embedding (50 Ω-referred NZC, pairs: first-order shift; section 19); it is not regenerated.")]
     sm = d.get("summary") or {}
     if sm.get("via_cases"):
         old = d.get("_coax") or {}
         text.append(f"Via alone, {sm['via_cases']} single vias: TDR error median {sm['via_tdr_err_pct_median']} %, 90th percentile {sm['via_tdr_err_pct_p90']} %, "
-                    f"max Δ|S21| median {sm['via_dS21_max_db_median']} dB" + (f" (former coax model: {old['via_tdr_err_pct_median']} / {old['via_tdr_err_pct_p90']} %, {old['via_dS21_max_db_median']} dB)" if old else "") +
+                    f"max Δ|S21| median {sm['via_dS21_max_db_median']} dB" + (f" (former coax model, a record with the former de-embedding: {old['via_tdr_err_pct_median']} / {old['via_tdr_err_pct_p90']} %, {old['via_dS21_max_db_median']} dB)" if old else "") +
                     ". Stub notch: " + ", ".join(f"{k} {v:+.1f} %" for k, v in (sm.get("stub_err_pct") or {}).items()) + ".")
         if sm.get("pair_cases"):
             text.append(f"Via pairs alone (differential mode, {sm['pair_cases']} cases): Zdiff TDR error median {sm['pair_zdiff_err_pct_median']} %, 90th percentile {sm['pair_zdiff_err_pct_p90']} %, "
                         f"max ΔSdd21 median {sm['pair_dSdd21_max_db_median']} dB, phase {sm['pair_dphase_max_deg_median']}°" +
-                        (f" (former coax model: {old.get('pair_zdiff_err_pct_median')} / {old.get('pair_zdiff_err_pct_p90')} %, {old.get('pair_dSdd21_max_db_median')} dB, {old.get('pair_dphase_max_deg_median')}°)" if old.get("pair_cases") else "") + ".")
+                        (f" (former coax model, a record with the former de-embedding: {old.get('pair_zdiff_err_pct_median')} / {old.get('pair_zdiff_err_pct_p90')} %, {old.get('pair_dSdd21_max_db_median')} dB, {old.get('pair_dphase_max_deg_median')}°)" if old.get("pair_cases") else "") + ".")
     return {"title": title,
             "text": text,
             "cols": ["case", "metric", "value", "metric", "3D / kisi", "note"], "rows": rows}
@@ -322,9 +357,12 @@ def openems_check(d):
             "Δτ = τ kisi-fdtd − τ openEMS from the phase above f max / 4. Script: openems_refs.py; method, outliers and causes: TESTS.md section 16."]
     if lad.get("kisi") and lad.get("openems"):
         k, o = lad["kisi"], lad["openems"]
-        text.append(f"kisi's via ladder judged against either 3D result (single vias: TDR error median / p90, max Δ|S21| median; pairs: max ΔSdd21 median): "
+        text.append(f"kisi's via ladder judged against either 3D result, de-embedded as in this table (single vias: TDR error median / p90, max Δ|S21| median; "
+                    "pairs: max ΔSdd21 median): "
                     f"kisi-fdtd {k['single_tdr_err_pct_median']} / {k['single_tdr_err_pct_p90']} %, {k['single_dS21_max_db_median']} dB, {k['pairs_dS21_max_db_median']} dB; "
-                    f"openEMS {o['single_tdr_err_pct_median']} / {o['single_tdr_err_pct_p90']} %, {o['single_dS21_max_db_median']} dB, {o['pairs_dS21_max_db_median']} dB.")
+                    f"openEMS {o['single_tdr_err_pct_median']} / {o['single_tdr_err_pct_p90']} %, {o['single_dS21_max_db_median']} dB, {o['pairs_dS21_max_db_median']} dB. "
+                    "This table still uses the former de-embedding (50 Ω-referred NZC, pairs: first-order shift); the ladder's scores with the matched "
+                    "de-embedding of the case pages, against all three solvers: TESTS.md section 19.")
     inv = d.get("invalid") or {}
     if inv:
         text.append("Invalid openEMS runs (left out of the table, judged on the other mesh where it is valid): " +
@@ -332,7 +370,7 @@ def openems_check(d):
     return {"title": "Every reference case in openEMS", "text": text,
             "cols": ["group", "cases", "Δ|S21| kisi-fdtd vs openEMS fine: median of the case means / largest mean / largest max (dB)", "Δτ median (ps)",
                      "same mesh, both staircase: median / largest mean (dB)", "openEMS base → fine: median (dB)", "against openEMS extrapolated (2·fine − base): median (dB)",
-                     "TDR of the via alone (de-embedded): median / max difference"],
+                     "TDR of the via alone (both de-embedded, 50 Ω-referred NZC): median / max difference"],
             "rows": rows}
 
 
@@ -426,17 +464,23 @@ def main():
                     off = sorted({f"{t.split('_')[-1]} on the {CST_MESH_NAME[dict(CST_MESHES)[m]]}" for t, m in zip(names, fmesh) if m and m != ctool})
                     if off:
                         entry["cst_de_note"] = f"2×thru {', '.join(off)}"
+                tdr = {}
                 for tag, SS, fxs in [("deembedded", S, fx)] + other:
-                    if SS is None or not all(fxs):
+                    if SS is None or not all(fxs) or SS.shape[1] != S.shape[1] or len(SS) < len(f):
                         continue
-                    if SS.shape[1] == 2:
-                        FL, _ = sparam.fixture_2xthru(f, fxs[0][1])
-                        FR, _ = sparam.fixture_2xthru(f, fxs[1][1])
-                        res[tag] = curves(sparam.deembed2(SS, FL, FR))
-                        entry["deembed"] = "2×thru (IEEE P370-style, NZC)"
-                    else:
-                        res[tag] = curves(sparam.deembed_shift(SS, [sparam.fixture_shift(f, x[1]) for x in fxs]))
-                        entry["deembed"] = "2×thru, first order (feed delay and loss per port)"
+                    D, entry["deembed"], zinf = deembed(f, SS[: len(f)], [x[1] for x in fxs], grp)
+                    res[tag] = curves(D)
+                    tdr[tag] = tdr_de(f, D)
+                    if tag == "deembedded" and zinf:
+                        entry["deembed_zc"] = [round(z, 1) for z in zinf]  # kisi-fdtd's feed lines, Z∞ of the Zc(f) fit
+                if tdr:
+                    # the via models next to it (ports at the via; a pair's model is its differential mode)
+                    for tool in ("ladder", "pbm"):
+                        f2, S2 = load(nm, tool)
+                        if S2 is not None and len(f2) == len(f) and np.allclose(f2, f):
+                            tdr[tool] = tdr_de(f, S2, diff=S.shape[1] == 4)
+                    t = next(iter(tdr.values()))[0]
+                    entry["tdr_de"] = {"t": r2(t, 1), "diff": S.shape[1] == 4, **{k: r2(v[1], 2) for k, v in tdr.items()}}
             if grp == "T" and nm.endswith("_20") and S.shape[1] == 2:
                 f10, S10 = load(nm[:-3] + "_10", "kisi")
                 tl = sparam.line_params(f, S, S10 if S10 is not None and len(f10) == len(f) else None)

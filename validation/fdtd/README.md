@@ -85,8 +85,9 @@ and the lumped R–L–C.
   de-embedding (NZC: fixture S11 from the gated 2×thru reflection, then S22 and S21 from the cascade), the matched
   form of it for 2- and N-ports (`deembed_matched`, `deembed_matched_nport`: every fixture referred to its own line
   impedance first), a first-order plane shift, mixed mode and TDR.
-- `make_viewer.py` builds `dist/kisi-references-3d.html`: geometry, S-parameters (at the ports and de-embedded, with
-  kisi's fast model and the reduced via model), TDR, mixed mode, line parameters (T), Z (G, H), and the electric
+- `make_viewer.py` builds `dist/kisi-references-3d.html`: geometry, S-parameters (at the ports and de-embedded with the
+  matched 2×thru de-embedding of the accuracy scores, with kisi's fast model and the reduced via model), TDR (at the
+  ports, and of the de-embedded via with the models), mixed mode, line parameters (T), Z (G, H), and the electric
   field of port 1 (top view in the thickest dielectric, animated; section through the via; collapsed by default).
 - `rust_models.py` runs the Rust port of the reduced models (`kisi-validate models`) against the Python prototypes
   and the 3D results (each port de-embedded with its 2×thru, the fixtures referred to their own line impedance first,

@@ -1255,8 +1255,11 @@ result, median / p90 / max as in section 18, z0-referred NZC (pairs: first-order
 
 The delay does not depend on the de-embedding (section 18's gain stays: stripline exits |Δτ| 0.16 / 0.09 ps median
 single / pairs against kisi-fdtd). `rust_models.py` and `compare_kisi.py` score with the matched de-embedding now
-(the pairs' TDR also in `rust_models.json`); `kisi_deembedded.s2p` (z0-referred NZC, written by `via_pbm.py`) and
-the reference page's de-embedded curves are unchanged.
+(the pairs' TDR also in `rust_models.json`); `kisi_deembedded.s2p` (z0-referred NZC, written by `via_pbm.py`) is
+unchanged. The reference page (`make_viewer.py`) draws its de-embedded curves of kisi-fdtd, openEMS and CST with the
+same matched de-embedding (the coupled lines of group T, whose feeds are the coupled line, with the first-order shift),
+and in that view the TDR of the via alone (25 ps, 80 ps window: the values scored here, within 0.02 %); its tables
+from `via_pbm.json`, `openems_refs.json` and `kisi_models_field.json` say that they keep the former de-embedding.
 
 **kisi's channel, via alone** (`compare_kisi.py`, `results/kisi_models.json`, both sides matched):
 

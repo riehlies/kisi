@@ -468,7 +468,7 @@ function renderCase(c) {
   if (!c.res) { const p = document.createElement("p"); p.className = "pending"; p.textContent = "Not computed yet."; box.appendChild(p); return; }
   const bar = document.createElement("div"); bar.className = "bar";
   const hasDe = !!c.res.deembedded;
-  bar.innerHTML = `<div class="seg" role="group" aria-label="Reference planes"><button data-m="raw" aria-pressed="${mode === "raw"}">At the ports</button><button data-m="de" aria-pressed="${mode === "de"}" ${hasDe ? "" : "disabled"}>De-embedded</button></div><span class="note">${hasDe ? (mode === "de" ? "Feed lines removed: " + esc(c.deembed) + "." : "50 Ω lumped ports at the ends of the feed lines.") : "Fixture of this case: no de-embedding."}</span>`;
+  bar.innerHTML = `<div class="seg" role="group" aria-label="Reference planes"><button data-m="raw" aria-pressed="${mode === "raw"}">At the ports</button><button data-m="de" aria-pressed="${mode === "de"}" ${hasDe ? "" : "disabled"}>De-embedded</button></div><span class="note">${hasDe ? (mode === "de" ? "Feed lines removed: " + esc(c.deembed) + "." + (c.deembed_zc ? ` kisi-fdtd's feed lines: Z∞ ${c.deembed_zc.join(" / ")} Ω (ports ${c.deembed_zc.map((_, i) => i + 1).join(" / ")}).` : "") : "50 Ω lumped ports at the ends of the feed lines.") : "Fixture of this case: no de-embedding."}</span>`;
   bar.querySelectorAll("button[data-m]").forEach((b) => b.onclick = () => { mode = b.dataset.m; renderCase(c); });
   box.appendChild(bar);
   const f = c.f, grid = document.createElement("div"); grid.className = "grid";
@@ -511,6 +511,15 @@ function renderCase(c) {
       lg([["εeff, " + c.tl.source, "var(--s2)", ""]]), "Propagation constant from " + esc(c.tl.source) + "; loss (dB/mm) in the readout of the next chart."));
     grid.appendChild(panel("Attenuation", chart({ x: f, series: [{ name: "α", y: c.tl.loss_db_per_mm, color: "var(--s3)" }], xlabel: "frequency GHz", ylabel: "dB/mm", w: pw }),
       lg([["α (dielectric loss as σ fixed at f_loss: constant over frequency)", "var(--s3)", ""]])));
+  }
+  if (mode === "de" && c.tdr_de) {
+    // the via alone: the de-embedded results and the via models, edge and window of the accuracy scores
+    const tq = c.tdr_de, zn = tq.diff ? "Zdiff" : "Z";
+    const dSer = ["deembedded", "openems_de", "cst_de", "ladder", "pbm"].filter((t) => tq[t]).map((t) => ({ name: TOOLS[t][0], y: tq[t], color: TOOLS[t][1], dash: TOOLS[t][2] === "dash" }));
+    grid.appendChild(panel(`TDR at port 1, de-embedded (${zn}, 25 ps edge)`, chart({ x: tq.t, series: dSer, xlabel: "time ps", ylabel: "Ω", w: pw }), lg(dSer.map((s) => [s.name, s.color, s.dash ? "dash" : ""])),
+      `The via alone between ideal ${tq.diff ? "100 Ω differential" : "50 Ω"} lines, from the de-embedded S11${tq.diff ? " (differential mode)" : ""}; the via models with their ports at the via. Edge and 80 ps window of the accuracy scores (TDR minimum and maximum, TESTS.md section 19).`));
+    box.appendChild(grid);
+    return;
   }
   const td = c.tdr;
   const tdSer = [{ name: two ? "Z" : "Z single-ended", y: td.z, color: "var(--s1)" }];

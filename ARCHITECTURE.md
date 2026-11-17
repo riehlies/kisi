@@ -84,7 +84,10 @@ to one thread.
   and `kisi report` in Web Workers through the CLI's calls `kisi_cli_project`, `kisi_cli_check_part`, `kisi_cli_run`
   with the browser's field results, so the result is the CLI's; the printable report from it, `kisi_report_html`) ·
   `main`
-  (start-up, files, hand-over).
+  (start-up, files, hand-over). Only in a build with `tools/bundle.py --advanced` (prototype,
+  `docs/research/advanced-solvers.md`): `advanced` before `main` – the option "Advanced solvers", "Fields…" in a
+  net's detail, the cross-section handed to `kisi-advanced.html` (`tools/advanced_bundle.py`, `web/advanced/`) or the
+  fork's hosted page.
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver
   script (gzip + base64, unpacked at start), fonts (`web/fonts`, OFL), `data/*.json` and, optionally, example
   boards (`tools/fetch_examples.sh`) with their configuration `web/samples/<key>.kisi.json` → `kisi-examples.html`.

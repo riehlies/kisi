@@ -47,7 +47,7 @@ BUSY = "document.getElementById('busy').hidden === true"
 SEGMENTS = [("microstrip", "Net-(C1012_4-Pad1)", "F.Cu", 0.213),
             ("pair", "/TS-PCIe Components/PCIe_PET0_N", "F.Cu", 0.19079),
             ("stripline", "/FPGA/FPGA Config and Transceivers/DONE", "In3.Cu", 0.127)]
-R = {"sizes": {}, "embedded": {}, "adv_alone": {}, "variant1": {}, "variant2": {}, "variant3": {}, "problems": []}
+R = {"sizes": {}, "embedded": {}, "baseline_blank_mb": None, "adv_alone": {}, "variant1": {}, "variant2": {}, "variant3": {}, "problems": []}
 problems = R["problems"]
 
 
@@ -231,6 +231,12 @@ def set_option(pg, target, backend, view, freq=1):
 with sync_playwright() as pw:
     adv = path("kisi-advanced.html")
     fw = False
+    # the browser alone (about:blank): the base the other memory figures include
+    br = Browser(pw)
+    br.ctx.pages[0].goto("about:blank")
+    time.sleep(1.5)
+    R["baseline_blank_mb"] = mb(br.rss())
+    br.close()
     # ---- kisi-advanced.html alone ----------------------------------------------------------------------------------
     if adv:
         br = Browser(pw)

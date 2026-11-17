@@ -5,7 +5,13 @@
 #   kisi.mjs           – the command line with the field solver (node kisi.mjs help; Node.js >= 18; smoke-tested
 #                        on Node 22 and 20, the viewers headless in Chromium)
 #   kisi-docs.pdf      – the documentation in docs/ as one PDF (tools/docs_pdf.py)
-#   kisi-kicad-<version>.zip – the KiCad plugin (tools/build_kicad_pcm.py): KiCad's "Install from File…", and the
+#   kisi-advanced.html – the field page of the viewer's "Fields…" (option "Advanced solvers"): the js_2d_fields fork with
+#                        kisi's patches and the full-wave WebAssembly modules (job fullwave: tools/build_forsten_fullwave.sh,
+#                        cached, 30-40 min without the cache; job advanced: tools/advanced_bundle.py), every view
+#   kisi-advanced-lite.html – the same page without the full-wave modules: quasi-static, potential and |E| only
+#   kisi-advanced.build-info.json – what the full-wave modules were built from (versions, commits, SHA-256) and the
+#                        SHA-256 of both field pages, each built twice and compared (reproducible)
+#   kisi-kicad-<version>.zip – the KiCad plugin with kisi-advanced.html (tools/build_kicad_pcm.py, job advanced): KiCad's "Install from File…", and the
 #                        download of the entry in KiCad's PCM repository; kisi-kicad-<version>.metadata.json is that
 #                        entry (download URL = this release's zip, its SHA-256 and sizes) for the merge request to
 #                        gitlab.com/kicad/addons/metadata (packages/com.github.riehlies.kisi/, done by hand)
@@ -15,7 +21,8 @@
 #                        validation/cst_xs/make_viewer.py, from the committed results only)
 #                        – each reference page built here, not kept in the repository, and attached only when its
 #                        cases or its page builder changed since the previous release
-# and publish the viewers and the documentation PDF (not the reference pages) with the landing page
+# The release notes get the corresponding source of the field pages (.github/release-notes.md, tools/release_notes.py).
+# Publish the viewers, both field pages and the documentation PDF (not the reference pages) with the landing page
 # (web/pages/index.html) on GitHub Pages
 # (repository settings: Pages → Source "GitHub Actions"; needs a public repository on the free plan).
 # Run it by hand (workflow_dispatch) to get the files as a build artifact without a release.
@@ -26,7 +33,67 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+env:
+  EMSDK_VERSION: "6.0.5"  # as in fullwave-xs.yml: the cache of one is the cache of the other
+  OCCT_TAG: V7_5_1
+  FW: /home/runner/forsten-fw
 jobs:
+  # the full-wave WebAssembly modules of kisi-advanced.html, in parallel to the build (cached on the pinned versions)
+  fullwave:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - id: k
+        name: Cache keys (pinned versions, as fullwave-xs.yml)
+        run: |
+          echo "dist=forsten-fw-$(cat third_party/UPSTREAM_REV)-emsdk$EMSDK_VERSION-$OCCT_TAG-${{ hashFiles('tools/build_forsten_fullwave.sh') }}" >> "$GITHUB_OUTPUT"
+          echo "occt=occt-wasm-$OCCT_TAG-emsdk$EMSDK_VERSION-v1" >> "$GITHUB_OUTPUT"
+      - id: dist
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ env.FW }}/dist
+          key: ${{ steps.k.outputs.dist }}
+      - name: Build tools
+        if: steps.dist.outputs.cache-hit != 'true'
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends ninja-build cmake
+      - id: occt
+        if: steps.dist.outputs.cache-hit != 'true'
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            ${{ env.FW }}/occt-install
+            ${{ env.FW }}/emsdk
+          key: ${{ steps.k.outputs.occt }}
+      - name: Build the WASM modules
+        if: steps.dist.outputs.cache-hit != 'true'
+        run: bash tools/build_forsten_fullwave.sh "$FW"
+      - name: Build logs
+        if: failure()
+        run: tail -n 80 "$FW"/logs/*.log || true
+      - id: occt_done
+        if: always() && steps.dist.outputs.cache-hit != 'true' && steps.occt.outputs.cache-hit != 'true'
+        name: OCCT built?
+        run: if ls "$FW"/occt-install/.kisi-* > /dev/null 2>&1; then echo "ok=1" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/cache/save@v5
+        if: always() && steps.occt_done.outputs.ok == '1'
+        with:
+          path: |
+            ${{ env.FW }}/occt-install
+            ${{ env.FW }}/emsdk
+          key: ${{ steps.k.outputs.occt }}
+      - uses: actions/cache/save@v5
+        if: steps.dist.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.FW }}/dist
+          key: ${{ steps.k.outputs.dist }}
+      - run: cat "$FW/dist/BUILD_INFO.json"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: forsten-fw-wasm
+          path: ${{ env.FW }}/dist
+          retention-days: 3
+
   build:
     runs-on: ubuntu-24.04
     steps:
@@ -64,14 +131,13 @@ jobs:
           python3 -m pip install --quiet playwright==1.64.1 markdown==3.10.3 pypdf==5.9.0
           sh tools/ci_install.sh playwright chromium
           python3 tools/docs_pdf.py dist/kisi-docs.pdf
-      - name: KiCad plugin package
+      - name: KiCad plugin tests (the package is built with kisi-advanced.html in job advanced)
         run: |
           python3 -m pip install --quiet jsonschema==4.26.0 kicad-python==0.8.0
           python3 -m unittest discover -s kicad-plugin/tests
           V=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)
           # the repository entry downloads the zip from the release of the tag: tag and version must agree
           if [ "${GITHUB_REF_NAME#v}" != "$V" ] && [ "$GITHUB_REF_TYPE" = tag ]; then echo "::error::tag $GITHUB_REF_NAME, version $V"; exit 1; fi
-          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist
       - name: Field solver validation (HFSS / baseline, viewer bundle)
         run: sh tools/validate_field.sh
       - name: Smoke test of kisi.mjs
@@ -99,7 +165,6 @@ jobs:
           python3 tools/check_viewer.py dist/kisi-examples.html --quick --layouts light
           python3 tools/check_viewer.py dist/kisi.html --quick --layouts light \
             --board examples/VNA.kicad_pcb examples/VNA.kicad_pro --config web/samples/vna.kisi.json
-          python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip examples/VNA.kicad_pcb --config web/samples/vna.kisi.json
       - uses: actions/upload-artifact@v6
         with:
           name: kisi
@@ -110,15 +175,116 @@ jobs:
             dist/kisi-docs.pdf
             dist/kisi-references-3d.html
             dist/kisi-references-2d.html
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kisi-sparse-wasm
+          path: target/wasm32-unknown-unknown/release/kisi_sparse.wasm
+          retention-days: 3
+
+  # the field pages (full-wave and lite) from the fork with kisi's patches, reproducible; "Fields…" with each in
+  # headless Chromium; the KiCad plugin with the full-wave page, checked as installed (from disk and the loopback host)
+  advanced:
+    needs: [build, fullwave]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v7
+        with:
+          name: kisi
+          path: dist
+      - uses: actions/download-artifact@v7
+        with:
+          name: kisi-sparse-wasm
+          path: wasm
+      - uses: actions/download-artifact@v7
+        with:
+          name: forsten-fw-wasm
+          path: ${{ env.FW }}/dist
+      - name: Field pages, twice each (reproducible), sizes, build info
+        run: |
+          sh tools/fetch_fork.sh target/js2d-fork
+          mkdir -p again
+          for o in dist again; do
+            python3 tools/advanced_bundle.py target/js2d-fork wasm/kisi_sparse.wasm $o/kisi-advanced.html --fw "$FW/dist"
+            python3 tools/advanced_bundle.py target/js2d-fork wasm/kisi_sparse.wasm $o/kisi-advanced-lite.html
+          done
+          python3 tools/ci_checks.py same dist/kisi-advanced.html again/kisi-advanced.html
+          python3 tools/ci_checks.py same dist/kisi-advanced-lite.html again/kisi-advanced-lite.html
+          python3 tools/ci_checks.py sizes dist
+          python3 tools/release_notes.py build-info "$FW/dist/BUILD_INFO.json" dist/kisi-advanced.html dist/kisi-advanced-lite.html \
+            > dist/kisi-advanced.build-info.json
+          cat dist/kisi-advanced.build-info.json
+      - name: Install Playwright and Chromium
+        timeout-minutes: 30
+        run: |
+          python3 -m pip install --quiet playwright==1.64.1 jsonschema==4.26.0
+          sh tools/ci_install.sh playwright chromium
+      - name: '"Fields…" with both pages (a segment and a pair, every view, light and dark)'
+        run: |
+          sh tools/fetch_examples.sh examples
+          python3 tools/check_advanced.py dist/kisi-examples.html dist/kisi-advanced.html dist/kisi-advanced-lite.html \
+            --out advanced-screenshots --md advanced.md --json advanced.json
+          cat advanced.md >> "$GITHUB_STEP_SUMMARY"
+      - name: KiCad plugin package with the full-wave field page
+        run: |
+          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --advanced dist/kisi-advanced.html --require-full --out dist
+          python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip examples/VNA.kicad_pcb --config web/samples/vna.kisi.json \
+            --out advanced-screenshots/kicad
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kisi-advanced
+          path: |
+            dist/kisi-advanced.html
+            dist/kisi-advanced-lite.html
+            dist/kisi-advanced.build-info.json
             dist/kisi-kicad-*.zip
             dist/kisi-kicad-*.metadata.json
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: advanced-screenshots
+          path: advanced-screenshots
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # the release: its files and the corresponding source of the field pages in the notes
+  publish:
+    needs: [build, advanced]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # tags, to see whether the reference cases changed since the previous release
+      - uses: actions/download-artifact@v7
+        with:
+          name: kisi
+          path: dist
+      - uses: actions/download-artifact@v7
+        with:
+          name: kisi-advanced
+          path: dist
       - name: Attach to the release
-        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes
-          files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-docs.pdf $(ls dist/kisi-kicad-*.zip dist/kisi-kicad-*.metadata.json)"
+          python3 tools/release_notes.py notes .github/release-notes.md dist/kisi-advanced.build-info.json "$GITHUB_REF_NAME" > notes.md
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            # a release made by hand keeps its text; the source offer is added once
+            gh release view "$GITHUB_REF_NAME" --json body -q .body > body.md
+            grep -q "Corresponding source of the field pages" body.md || { printf '\n\n' >> body.md; cat notes.md >> body.md; gh release edit "$GITHUB_REF_NAME" --notes-file body.md; }
+          else
+            gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes --notes-file notes.md
+          fi
+          files="dist/kisi.html dist/kisi-examples.html dist/kisi.mjs dist/kisi-docs.pdf dist/kisi-advanced.html dist/kisi-advanced-lite.html"
+          files="$files dist/kisi-advanced.build-info.json $(ls dist/kisi-kicad-*.zip dist/kisi-kicad-*.metadata.json)"
           # each reference page only when its cases or builder changed since the previous release tag
           prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
           changed() { [ -z "$prev" ] || ! git diff --quiet "$prev" "$GITHUB_REF_NAME" -- "$@"; }
@@ -137,7 +303,7 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" $files --clobber
 
   pages:
-    needs: build
+    needs: [build, advanced]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -152,10 +318,16 @@ jobs:
         with:
           name: kisi
           path: site
+      - uses: actions/download-artifact@v7
+        with:
+          name: kisi-advanced
+          path: site
       - name: Site
         run: |
           cp web/pages/index.html site/
-          rm -f site/kisi-references-*.html site/kisi-kicad-*   # the reference pages and the KiCad plugin stay release files
+          # the reference pages, the KiCad plugin and the build info stay release files; both field pages next to the
+          # viewers (kisi.html finds kisi-advanced.html at the same path)
+          rm -f site/kisi-references-*.html site/kisi-kicad-* site/kisi-advanced.build-info.json
           mkdir -p site/fonts site/img
           cp web/fonts/fonts.css web/fonts/*.woff2 web/fonts/OFL-*.txt site/fonts/
           cp docs/img/*.png site/img/

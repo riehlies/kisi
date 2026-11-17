@@ -6,7 +6,10 @@
 #   rust                formatting (cargo fmt --check) · clippy without warnings (native and wasm) · cargo test ·
 #                       the CLI commands and options named in README, docs/ and the skills exist
 #   viewer              unit formatter (test_units.mjs) · viewer in headless Chromium (check_viewer.py: all views,
-#                       light/dark/phone, no console errors)
+#                       light/dark/phone, no console errors) · the quasi-static field page kisi-advanced-lite.html
+#                       (the fork fetched and patched, reproducible, its size) and "Fields…" with it (check_advanced.py:
+#                       a segment and a pair, light and dark); the full-wave page is built by the release and the
+#                       fullwave-xs workflow only
 #   cli                 Node CLI against the native CLI on the example boards (compare_cli.py)
 #   solver              2D field solver against HFSS / baseline (validate_field.sh)
 #   models              stored results of the example boards and kisi's models on the 3D via references
@@ -19,8 +22,9 @@
 #   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
 #   kicad               the KiCad plugin's unit tests (also with kicad-python), its package against KiCad's schemas
-#                       (kicad-plugin/tests); with the bundles: the package with this kisi.html, installed as KiCad's
-#                       PCM does and its page in headless Chromium (tools/check_kicad_plugin.py, viewer step)
+#                       (kicad-plugin/tests); with the bundles: the package with this kisi.html and the lite field page,
+#                       installed as KiCad's PCM does and its page in headless Chromium, from disk and from the loopback
+#                       host (tools/check_kicad_plugin.py, viewer steps)
 #   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
 #   full runs only      kisi.mjs on Windows
 #   weekly / manual     the viewer in Firefox and WebKit · dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
@@ -254,8 +258,26 @@ jobs:
           node tools/test_units.mjs
           node tools/test_local_save.mjs
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
-          # the KiCad plugin package with this viewer: installed as KiCad's PCM does, its page from disk
-          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist
+      - name: Field page (quasi-static) and "Fields…"
+        if: env.VIEWER == 'true'
+        timeout-minutes: 25
+        run: |
+          # after the viewer check: with no field page next to it, that one checks the not-found line
+          W=target/wasm32-unknown-unknown/release
+          sh tools/fetch_fork.sh target/js2d-fork
+          python3 tools/advanced_bundle.py target/js2d-fork $W/kisi_sparse.wasm dist/kisi-advanced-lite.html
+          python3 tools/advanced_bundle.py target/js2d-fork $W/kisi_sparse.wasm $RUNNER_TEMP/kisi-advanced-lite.html
+          python3 tools/ci_checks.py same dist/kisi-advanced-lite.html $RUNNER_TEMP/kisi-advanced-lite.html
+          python3 tools/ci_checks.py sizes dist
+          python3 tools/check_advanced.py dist/kisi-examples.html dist/kisi-advanced-lite.html --out viewer-screenshots/advanced \
+            --md advanced.md
+          cat advanced.md >> "$GITHUB_STEP_SUMMARY"
+      - name: KiCad plugin package with this viewer and the lite field page
+        if: env.VIEWER == 'true'
+        timeout-minutes: 30
+        run: |
+          # installed as KiCad's PCM does, its page from disk and from the loopback host, "Fields…" in both
+          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --advanced dist/kisi-advanced-lite.html --out dist
           python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip examples/Thunderscope_Rev5.3.kicad_pcb \
             --config web/samples/ts.kisi.json --out viewer-screenshots/kicad
       - name: Documentation PDF (and the link and heading check of docs/)

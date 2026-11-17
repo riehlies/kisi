@@ -1039,7 +1039,7 @@ pub fn channel_check_rows(
 /// With finite plane cavities (`--via-cavity`): a first pass over the check's rows that only
 /// registers the vias' cavity grids (`via_cavity::set_register_only`, its results dropped), so the
 /// real pass factorises each plane-pair region once per frequency for all vias that cross it
-/// instead of once per via (validation/fdtd/BOARD_RESONANCES.md section 9). The rows are the same
+/// instead of once per via (validation/vias.md). The rows are the same
 /// with and without it. Not with return groups (`--via-returns`): they leave the pairs a floating
 /// return bridges as infinite plates, few regions are left and the pass would cost more than it
 /// saves. KISI_CAVITY_PASS=0 / 1 switches it off / on.

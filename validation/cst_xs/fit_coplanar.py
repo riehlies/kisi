@@ -28,7 +28,7 @@ formula values for every case at the code's constants) with free constants:
      coplanar copper (grounded CPW with and without mask, stripline with coplanar ground).
 It prints the fitted values against the code's, and the error statistics (Z0, Zdiff, Zeven against the field
 solver) per family with the code's and with the fitted constants. The field solver itself is within 0.2–0.5 % of
-CST (README.md); the coplanar formulas' check against CST is compare.py.
+CST (validation/cross-sections.md); the coplanar formulas' check against CST is compare.py.
 Run time: the sweep about 20 min on 2 cores (--jobs 2), the fit alone about a second.
 """
 import argparse, json, math, os, random, subprocess, sys, tempfile, time
@@ -174,7 +174,7 @@ def run_sweep(a):
              "field": field}
         e.update(formula_entry(c, fx))
         out.append(e)
-    doc = {"about": "Synthetic cross-sections for the fit of kisi's coplanar-formula constants (fit_coplanar.py; README.md): "
+    doc = {"about": "Synthetic cross-sections for the fit of kisi's coplanar-formula constants (fit_coplanar.py; validation/cross-sections.md): "
                     "per case the parameters p (mm), kisi's field solution (tools/solve_xs.mjs), kisi's formula (kisi) and the "
                     "plain line's formula without the coplanar copper (plain), both from kisi-validate xs-cases, at the "
                     "constants `constants`.",

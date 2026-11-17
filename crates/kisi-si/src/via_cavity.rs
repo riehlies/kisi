@@ -1,4 +1,4 @@
-//! Plane-pair cavities of finite boards for the via ladder (validation/fdtd/BOARD_RESONANCES.md).
+//! Plane-pair cavities of finite boards for the via ladder (validation/vias.md).
 //!
 //! The ladder (`via_pbm`) treats every plane pair a via crosses as an infinite radial line with
 //! the nearby return vias as shorts: Z_ij = ωμd/4 · H0⁽²⁾(kρij). A real plane pair is finite: its
@@ -1802,7 +1802,7 @@ mod tests {
             }
         }
         // (the registering pass, a process-wide switch, is checked on the boards: a check gives
-        // the same rows with and without it, BOARD_RESONANCES.md section 9)
+        // the same rows with and without it, validation/vias.md)
     }
 
     #[test]

@@ -1,4 +1,4 @@
-# kisi-fdtd references too large for one machine (validation/fdtd/fdtd_refs.py, TESTS.md section 17): the shards of
+# kisi-fdtd references too large for one machine (validation/fdtd/fdtd_refs.py, validation/vias.md): the shards of
 # validation/fdtd/fdtd_plan.json in parallel (at most 15 at a time), each on a 4-vCPU runner, kisi-fdtd with four
 # threads per task. The raw results (one JSON per case and excited port, with the runner's CPU) are committed to the
 # branch the workflow runs on, under validation/fdtd/fdtd_raw/; tasks whose result is already there are skipped, so a

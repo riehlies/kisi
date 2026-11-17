@@ -200,7 +200,7 @@ pub fn cps(w: f64, s: f64, h: f64, t: f64, er: f64) -> (f64, f64) {
 // cross-sections (grounded CPW with and without mask, stripline with coplanar ground, coupled grounded
 // CPW, CPW without a plane; h 0.1–1.6 mm, εr 3–10, t 17.5–70 µm, w/h 0.5–4, gap/h 0.1–4):
 // validation/cst_xs/fit_coplanar.py, the sweep stored in validation/cst_xs/coplanar_fit.json (the fit
-// re-runs from it with --from-json); checked on the CST cases of validation/cst_xs (README.md there).
+// re-runs from it with --from-json); checked on the CST cases of validation/cst_xs (validation/cross-sections.md).
 
 /// Corner term of a slot between two copper side walls (C/ε0 = t/s + SLOT_CORNER·(t/s)^SLOT_CORNER_EXP):
 /// fitted to kisi's field solver (validation/cst_xs/fit_coplanar.py on coplanar_fit.json, the sweep of

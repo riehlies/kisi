@@ -16,7 +16,7 @@ formula impedance, a via ladder or a channel's return loss typically is from a r
 | formula | closed-form impedance, Wheeler/Huray/Djordjevic-Sarkar line models | everywhere (native CLI, viewer step 2) |
 | 2D field solver | Forstén's solver per cross-section | `kisi.mjs` (default for nets with a target), viewer step 3 |
 | model of its own | the via ladder (physics-based), its coaxial fallback, pads from their cross-section, the no-plane estimate | everywhere |
-| 3D | kisi-fdtd | validation only today; the planned “3D check in the viewer” (BOARD_VIAS.md section 5.6) would add it per selected structure |
+| 3D | kisi-fdtd | validation only today; the planned “3D check in the viewer” (ROADMAP.md) would add it per selected structure |
 
 ## Quantities and where the numbers come from
 Every number is a *typical* deviation from kisi's own validation, kept with its source in
@@ -24,17 +24,17 @@ Every number is a *typical* deviation from kisi's own validation, kept with its 
 
 | Quantity | Level | Uncertainty | Source |
 |---|---|---|---|
-| impedance of a cross-section | field solver | 1 % (2 % until the 2D validation) | 620 cross-sections against CST (`validation/cst_xs`): median 0.18 %, p90 0.47 %, max 1.03 %; Forstén's suite vs HFSS/Ansys 1.7 % (`validate_field.sh`) |
+| impedance of a cross-section | field solver | 1 % (2 % until the 2D validation) | 620 cross-sections against CST (`validation/cross-sections.md`): median 0.18 %, p90 0.47 %, max 1.03 %; Forstén's suite vs HFSS/Ansys 1.7 % (`validate_field.sh`) |
 | | formula, single microstrip | 2 % | docs/models.md table (+1.4 %), HFSS microstrip −0.6 % |
-| | formula, microstrip with coplanar copper | 2 % | `validation/cst_xs`, 104 cases: median 0.9 %, p90 1.7 % |
+| | formula, microstrip with coplanar copper | 2 % | `validation/cross-sections.md`, 104 cases: median 0.9 %, p90 1.7 % |
 | | formula, coupled pair (also with coplanar ground) | 8 % | diff microstrip +5.6 / +7.8 % |
 | | formula, stripline | 11 % | asymmetric stripline +10.3 %, 3D stripline +11 % (`T_ts6_sl`) |
 | | formula over a cut-out (flag “rough”) | 25 % | the 3313 launch over a 0.465 mm opening |
-| | no plane (coplanar estimate) | 15 % | gold-finger cases, TESTS.md section 15 |
+| | no plane (coplanar estimate) | 15 % | gold-finger cases (group P, `validation/vias.md`) |
 | impedance of a net / lane | the cross-sections' values, weighted by length | | |
-| via | ladder, single | TDR error median 2.4 %, p90 5.1 % (5.9 % until the refined inner-exit references and the stripline feed trim, 5.5 % until the matched de-embedding, TESTS.md sections 17–19) | `compare_kisi.py` (`results/kisi_models.json`) |
-| | ladder, pair | Zdiff median 4.0 %, p90 5.7 % (11.0 / 13.7 % with the first-order de-embedding of the pairs, TESTS.md section 19) | same |
-| | coaxial fallback | 8.0 / 25.5 % | `results/kisi_models_coax.json` |
+| via | ladder, single | TDR error median 2.4 %, p90 5.1 % (5.9 % until the refined inner-exit references and the stripline feed trim, 5.5 % until the matched de-embedding; `validation/vias.md`) | `compare_kisi.py` (`results/kisi_models.json`) |
+| | ladder, pair | Zdiff median 4.0 %, p90 5.7 % (11.0 / 13.7 % with the first-order de-embedding of the pairs) | same |
+| | coaxial fallback | 8.0 / 25.5 % | `results/kisi_models_coax.json` (scored before the ladder) |
 | loss (IL) | from lines and vias | lines: RLGC within 2 % (HFSS); per via \|ΔS21\| median 0.10 dB up to 20 GHz | planned |
 | return loss | from the impedance uncertainty | Δ\|Γ\| ≈ ε/2 per discontinuity → an RL range | planned |
 | eye | from the channel | not quantified; the loss and RL ranges propagated through the eye | later |

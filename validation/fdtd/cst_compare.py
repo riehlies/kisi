@@ -1,7 +1,7 @@
 """Compare CST results (via_ref/<case>/cst[_xfine|_fine|_mid].sNp, each case on its finest mesh: CST_MESHES) with
 kisi-fdtd (kisi.sNp) and, where present, openEMS (openems.sNp), and the former kisi-fdtd reference (kisi_base.sNp)
-where the reference was recomputed on a refined mesh (TESTS.md section 17): raw S-parameters at the ports, the via
-de-embedded with the 2×thru of each feed layer (same NZC method as via_pbm.py / kisi_deembedded.s2p, the thru taken
+where the reference was recomputed on a refined mesh (validation/vias.md, section Solvers and meshes): raw S-parameters at the ports, the via
+de-embedded with the 2×thru of each feed layer (NZC referred to 50 Ω, pairs first order, board vias matched; the thru taken
 from the same solver and, for CST, on the case's mesh: cst_fixture), mixed mode for pairs, TDR. Prints a table and writes results/cst_compare.json.
 
 usage: python3 cst_compare.py [case-id substrings ...] [--fmax-cmp 20e9] [--md FILE] [--openems DIR]
@@ -22,7 +22,7 @@ CASE_DIRS = ("via_cases", "board_cases", "resonance_cases", "return_cases")
 
 
 # CST's meshes, finest first: result file prefix, mesh key in results/cst_compare.json (run_cst.py --tag; settings in
-# each *_meta.json, CST.md). A case is reported on its finest mesh; each mesh against the next coarser is the mesh check.
+# each *_meta.json, validation/vias.md). A case is reported on its finest mesh; each mesh against the next coarser is the mesh check.
 CST_MESHES = (("cst_xfine", "xfine"), ("cst_fine", "fine"), ("cst_mid", "mid"), ("cst", "base"))
 CST_MESH_NAME = {"xfine": "extra-fine mesh", "fine": "fine mesh", "mid": "intermediate mesh", "base": "base mesh"}
 CST_TOOL = {m: t for t, m in CST_MESHES}
@@ -87,7 +87,7 @@ def deembed(c, tool, f, S):
         if tool.startswith("cst"):
             r = load(t, cst_fixture(REF, t, tool) or tool)
         else:
-            r = load(t, "kisi" if tool == "kisi_base" else tool)  # the fixtures stayed on the base mesh (TESTS.md section 17)
+            r = load(t, "kisi" if tool == "kisi_base" else tool)  # the fixtures stayed on the base mesh (validation/vias.md, section Solvers and meshes)
         if r is None:
             return None
         th.append(r[1])
@@ -278,7 +278,7 @@ def main():
         rk = load(cid, "kisi")
         if rk is not None and not np.isnan(rk[1]).any() and len(rk[0]) == len(f):
             k_ref = rk[1]
-        # kisi_base: the former kisi-fdtd reference of the cases recomputed on a refined mesh (TESTS.md section 17)
+        # kisi_base: the former kisi-fdtd reference of the cases recomputed on a refined mesh (validation/vias.md, section Solvers and meshes)
         for tool in ("kisi", "kisi_base", "openems"):
             r = load(cid, tool)
             if r is None:

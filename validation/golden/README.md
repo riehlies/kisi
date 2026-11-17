@@ -15,4 +15,4 @@ python3 tools/golden.py vias target/release/kisi --update      # validation/fdtd
 ```
 
 The diff of these files in the review is the list of what the change moved. Whether the new values are better is
-decided against the references (`validation/`, `validation/fdtd/TESTS.md`), not here.
+decided against the references ([validation/README.md](../README.md)), not here.

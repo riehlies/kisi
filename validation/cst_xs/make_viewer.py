@@ -135,7 +135,7 @@ def simulated(rec, kisi_rec, fw, stems, results_dir):
 
 
 def explain(rec, c):
-    """known causes of a case's outliers (README, Results)"""
+    """known causes of a case's outliers (validation/cross-sections.md, known limits)"""
     v = rec["values"]
     notes = []
     if rec["asym"]:
@@ -149,7 +149,7 @@ def explain(rec, c):
         notes.append("kisi's field geometry and its formula use the rectangle of the drawn width at full thickness; CST "
                      "and FW solve the trapezoid. kisi's error from it (same box): field " +
                      ", ".join(f"{q} {x:+.1f} %" for q, x in e.items()) + "; formula " + ", ".join(f"{q} {x:+.1f} %" for q, x in ef.items()) +
-                     ". A rectangle of width w − t/(2·etch factor) comes within 2 % for microstrips, −2…−4 % for striplines (README).")
+                     ". A rectangle of width w − t/(2·etch factor) comes within 2 % for microstrips, −2…−4 % for striplines (validation/cross-sections.md).")
     f = (rec.get("formula_meta") or {})
     e = compare.err(v.get("formula") or {}, v.get("cst_open_k") or {}, ("z0", "zdiff", "zeven"))
     big = {q: x for q, x in e.items() if abs(x) > 5} if rec["group"] != "etch" else {}

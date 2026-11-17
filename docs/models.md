@@ -58,7 +58,7 @@ percentile):
 | edge-coupled pair, Zdiff (microstrip / stripline) | 2.7 / 12 % · 4.3 / 33 % | within 1 % |
 | over a cut-out in a layer between trace and plane | flagged "rough", 25 % and more | within 1 % |
 
-**Known limits** (details and numbers in [validation/cst_xs](../validation/cst_xs/README.md)):
+**Known limits** (details and numbers in [validation/cross-sections.md](../validation/cross-sections.md)):
 - **Trace shape:** every trace is a rectangle of the drawn width and full copper thickness; KiCad's stackup has no
   etch factor. Real traces are etched to a trapezoid, so kisi's Z0 comes out about 2–4 % low for 35 µm copper,
   less for thin inner layers.
@@ -70,7 +70,7 @@ percentile):
   plane included; the rest of a part's pad is a shunt capacitance (without a cross-section, an estimate per
   package from `data/components.json`). Copper with no plane above or below takes its return in the coplanar
   copper and a pair's partner (an estimate); with nothing within 0.5 mm beside it the channel uses 1.5 × the
-  target impedance. Against 3D: [TESTS.md](../validation/fdtd/TESTS.md) section 15.
+  target impedance. Against 3D: [validation/vias.md](../validation/vias.md) (group P).
 
 **Fab tolerance band** (the option "Fab stackups & tolerances", off by default). The fab builds every board with
 some spread – dielectric thickness, εr, copper thickness, trace width –, and that usually moves the impedance more
@@ -127,8 +127,8 @@ uniform current, and a pair's modes are taken as (Z_PP + Z_NN)/2 ∓ Z_PN (the e
 with returns on one side a negative resistance from a few GHz). Vias that do not cross a plane are coaxial sections. Compared with 3D results of kisi's own
 FDTD solver ([Validation](#validation)): via impedance in the TDR median 2.4 %, 90th percentile 5.1 % (single
 vias), pairs 4.0 / 5.7 % in Zdiff; delay within 0.21 ps (single vias) and 0.18 ps (pairs, median); pairs within 1.8° phase (median); stub notch within 1.5 % (`validation/fdtd/results/kisi_models.json`; the 3D result and kisi's channel each de-embedded with their 2×thru, every fixture referred to its own line impedance first); the
-four board vias with a 3D reference within 0.03–0.44 dB up to 12 GHz. An estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
-the via's cage. Known limit: a via whose inner-layer exit has one plane close and the other far or missing comes out too capacitive – on the three such references (X_s8x4, B_ts6_L1L3_stub, X_s8x2) the TDR minimum is 7.5–11 % low and the via's loss can be overestimated (X_s8x4 −0.4 against −0.1 dB at 20 GHz); no model change tried so far fixed them without moving the other vias ([TESTS.md](../validation/fdtd/TESTS.md) section 19). A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
+three board vias with a 3D reference within 0.04–0.37 dB up to 12 GHz. An estimate, not a 3D result: above 12 GHz the ladder follows the 3D results only where its return posts close
+the via's cage. Known limit: a via whose inner-layer exit has one plane close and the other far or missing comes out too capacitive – on the three such references (X_s8x4, B_ts6_L1L3_stub, X_s8x2) the TDR minimum is 7.5–11 % low and the via's loss can be overestimated (X_s8x4 −0.4 against −0.1 dB at 20 GHz); no model change tried so far fixed them without moving the other vias ([validation/vias.md](../validation/vias.md)). A via whose path crosses a ground/supply plane pair that no return via bridges gets a warning.
 `--via-cavity` (finite plane pairs) and `--via-returns` (return groups per plane pair) are experimental options.
 
 ## Lanes and the channel check
@@ -282,16 +282,16 @@ kisi marks these as estimates in the viewer and in the CLI output:
 
 ## Validation
 Each model is checked against an independent reference; the details, tables and every case are in the linked
-documents and on the two reference pages attached to the releases (`kisi-references-2d.html`,
+documents ([validation/README.md](../validation/README.md) gives the overview) and on the two reference pages attached to the releases (`kisi-references-2d.html`,
 `kisi-references-3d.html`).
 
 | What | Reference | Result | Details |
 |---|---|---|---|
-| Impedance (formulas, field solver) | CST Studio Suite, 2D port modes, open boundary; 620 cross-sections of every line type, the example boards and the test-board coupons | field solver within 1 % (median 0.2 %); formulas see [Impedance](#impedance) | [validation/cst_xs](../validation/cst_xs/README.md) |
-| Line loss | full-wave FEM with eddy-current conductor loss (js_2d_fields), checked by an independent finite-difference solution | kisi's line model R about 2 % low | [validation/cst_xs](../validation/cst_xs/README.md) |
-| Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.4 / 5.1 %, pairs Zdiff 4.0 / 5.7 % (median / p90), delay 0.2 ps (median) | [TESTS.md](../validation/fdtd/TESTS.md), [CST.md](../validation/fdtd/CST.md) |
+| Impedance (formulas, field solver) | CST Studio Suite, 2D port modes, open boundary; 620 cross-sections of every line type, the example boards and the test-board coupons | field solver within 1 % (median 0.2 %); formulas see [Impedance](#impedance) | [validation/cross-sections.md](../validation/cross-sections.md) |
+| Line loss | full-wave FEM with eddy-current conductor loss (js_2d_fields), checked by an independent finite-difference solution | kisi's line model R about 2 % low | [validation/cross-sections.md](../validation/cross-sections.md) |
+| Vias and planes (fast models) | 3D FDTD (`crates/kisi-fdtd`) on 106 cases, itself checked against openEMS and CST | single vias TDR 2.4 / 5.1 %, pairs Zdiff 4.0 / 5.7 % (median / p90), delay 0.2 ps (median) | [validation/vias.md](../validation/vias.md) |
 | Field solver chain | HFSS/Ansys cases of Forstén's test suite | impedance within 1.7 %, RLGC within 2 % | `tools/validate_field.sh` |
-| Passivity and causality | unit tests and every lane of the example boards | passive to 25 GHz, causal | [TESTS.md](../validation/fdtd/TESTS.md) section 14 |
+| Passivity and causality | unit tests and every lane of the example boards | passive to 25 GHz, causal | `crates/kisi-core/tests/causality.rs` |
 | DC IR drop | analytic cases (vias in a plane, tracks at any angle, necks, cut cells); kisi's own raster refined uniformly (cell/4 … cell/8, barrels as discs, line tracks) on 21 rails of 7 boards | analytic within 1.5 %; largest drop median 1.0 %, max 10 % (before the corrections 6.9 / 28 %) | [research/pi-quadtree.md](research/pi-quadtree.md) |
 | Temperature | analytic cases; JEDEC JESD51-7 θJA | analytic within 0.2 %; θJA +4 … −20 % | – |
 | Channel export | ngspice on the exported circuits | S-parameters within 0.03–0.34 dB up to 1.5 × Nyquist | [research/channel-export.md](research/channel-export.md) |

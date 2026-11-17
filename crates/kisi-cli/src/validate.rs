@@ -193,17 +193,17 @@ fn main() {
         return;
     }
     if args.len() > 2 && args[1] == "via-case" {
-        // board → kisi-fdtd case of one via (validation/fdtd/BOARD_VIAS.md)
+        // board → kisi-fdtd case of one via (validation/vias.md)
         viacase::run(&args[2..]);
         return;
     }
     if args.len() > 2 && args[1] == "cavities" {
-        // plane-pair cavities the channel vias cross (validation/fdtd/BOARD_RESONANCES.md)
+        // plane-pair cavities the channel vias cross (validation/vias.md)
         cavities::run(&args[2..]);
         return;
     }
     if args.len() > 3 && args[1] == "cavity-model" {
-        // the ladder with a finite plane cavity on a resonance case (BOARD_RESONANCES.md)
+        // the ladder with a finite plane cavity on a resonance case (validation/vias.md)
         cavmodel::run(&args[2..]);
         return;
     }

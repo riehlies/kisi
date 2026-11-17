@@ -14,7 +14,8 @@
 //! * Every port is excited in turn with a Gaussian pulse up to `fmax`; voltages and currents at
 //!   the ports give the S-parameters.
 //!
-//! Validation: `validation/fdtd` (analytic cavity, mesh convergence, openEMS on the same mesh).
+//! Validation: `validation/vias.md` (every reference case also in openEMS and CST; the analytic cavity
+//! and the lumped R–L–C in the unit tests below).
 
 use serde::{Deserialize, Serialize};
 
@@ -2115,7 +2116,7 @@ mod tests {
     /// a board cut-out: the run decays. Smoke test of the rule that partial edges lie strictly
     /// inside the domain (with partial edges in the PML or on the domain faces, next to regular
     /// faces, the ThunderScope M.2 cut-out and a coarse mesh of REFINOUT2,
-    /// validation/fdtd/board_cases/quick/BV_ts_refinout2_q050f25s.json, grew without bound).
+    /// a quick-mesh copy of the board case BV_ts_refinout2, grew without bound).
     #[test]
     fn trace_into_pml_stable() {
         let mut cap: Vec<[f64; 2]> = Vec::new();

@@ -89,11 +89,11 @@ all alternative parts are fitted – need one for interfaces, check and report (
 list the variants); "variant" in <board>.kisi.json chooses one for every run.
 --via-cavity (net, check, report; experimental, off by default): the plane pairs of the via models
 as finite cavities – board edges, stitching vias, capacitors between supply and ground planes –
-instead of infinite plates (validation/fdtd/BOARD_RESONANCES.md); slower.
+instead of infinite plates (validation/vias.md); slower.
 --via-returns (net, check, report; experimental, off by default): return groups per plane pair in
 the via models – a return via shorts only the pairs whose two planes it joins, crosses supply
 planes as a floating return, capacitors between supply and ground planes nearby close a pair
-(validation/fdtd/BOARD_RETURNS.md).
+(validation/vias.md).
 field solver (kisi.mjs only; overview, net, check, crosstalk, report, stackups): used by default for the
 cross-sections of nets with a target, results cached on disk; --formula (no field solver),
 --field-time S (time budget for new solves, default 120), --field-all (all cross-sections, not

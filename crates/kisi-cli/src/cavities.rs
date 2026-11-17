@@ -1,12 +1,12 @@
 //! `kisi-validate cavities <board.kicad_pcb> [--config F | --no-config] [--variant NAME] [--json FILE]`
 //!
-//! Survey of the plane-pair cavities the channel vias cross (validation/fdtd/BOARD_RESONANCES.md):
+//! Survey of the plane-pair cavities the channel vias cross (validation/vias.md):
 //! for every via of every checked lane, the plane pairs between its entry and exit layer (and in
 //! its stub), the region of each pair (connected overlap of both planes), its size and the lowest
 //! resonances of its bounding rectangle, the posts that short the pair (stitching vias and plated
 //! holes of the plane net) and how close they are, against the return vias the ladder takes
 //! (plane-net vias and plated pads within 3 mm, the nearest 12), and the return group of every pair (the return vias
-//! that short it, that float across it, capacitors; validation/fdtd/BOARD_RETURNS.md). Prints a
+//! that short it, that float across it, capacitors; validation/vias.md). Prints a
 //! table; `--json` writes the details.
 
 use kisi_core::geom::{self, P};
@@ -111,7 +111,7 @@ pub fn run(args: &[String]) {
                         "shorts_within_10mm": near.iter().filter(|&&d| d < 10.0).count(), "ladder_returns_that_short_it": ladder_shorts,
                         "rect_modes_ghz": modes}));
                 }
-                // return groups (BOARD_RETURNS.md): per plane pair the return vias that short it (join both
+                // return groups (validation/vias.md): per plane pair the return vias that short it (join both
                 // planes), that float across it (join planes beyond it on both sides), capacitors within 3 mm
                 let groups: Vec<Value> = kisi_core::via::return_groups(board, v, net, partner, [vi.layer_in, vi.layer_out])
                     .iter()

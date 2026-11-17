@@ -86,7 +86,7 @@ def _fin(vals):
 
 # --- the solver domain (port size rule) -----------------------------------------------------------
 
-# Port size rule (documented in README.md): margins beyond the finite structure, in units of the
+# Port size rule (documented in validation/cross-sections.md): margins beyond the finite structure, in units of the
 # line's height scale H (largest vertical distance from a signal conductor to a reference plane that
 # covers it) and the width Ws of the signal conductor group.
 MARGIN_X = 12.0   # lateral: max(MARGIN_X * H, 4 * Ws) beyond the outermost finite edge

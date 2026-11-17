@@ -121,7 +121,7 @@
   }
  },
  "mesh_convergence": {
-  "note": "kisi-fdtd mesh convergence (TESTS.md section 17): the former reference on the base mesh against this one (cell at metal \u00f7 2)",
+  "note": "kisi-fdtd mesh convergence (validation/vias.md, section Solvers and meshes): the former reference on the base mesh against this one (cell at metal \u00f7 2)",
   "base_vs_fine": {
    "dS_thru_mean_db": 0.019,
    "dS_thru_max_db": 0.099,

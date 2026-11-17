@@ -1,6 +1,6 @@
 //! `kisi-validate cavity-model <case.json> <out dir> [--grid H] [--cap-r R] [--no-radiation] [--no-grid] [--suffix S]`
 //!
-//! kisi's via ladder on a finite-board case of validation/fdtd/board_resonances.py (group R): the
+//! kisi's via ladder on a finite-board case (group R, validation/fdtd/resonance_cases): the
 //! signal vias between the two planes of the case, read as `models.rs` reads the reference cases
 //! (same feed lines, the 3D loss model: dielectric conductivity fixed at fmax/2, lossless metal),
 //! with the plane pair as
@@ -15,7 +15,7 @@
 //! `--no-radiation`: magnetic walls without the edges' radiation loss; `--no-grid`: the rectangle
 //! only; `--suffix S`: files `ladder_<kind>_S.*`; `--returns`: return groups (each GND via joins
 //! the GND sheets with copper at it, the capacitors are posts between the planes of their lumped
-//! element, validation/fdtd/BOARD_RETURNS.md). A case with several plane pairs gets a cavity for
+//! element, validation/vias.md). A case with several plane pairs gets a cavity for
 //! each (the same outline). Prints the run times as JSON.
 
 use crate::models::{feed_line, freqs, planes_at, s_of, write_s2p};

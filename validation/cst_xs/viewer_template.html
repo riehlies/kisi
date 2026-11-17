@@ -127,7 +127,8 @@ footer.about { border-top: 1px solid var(--line); padding: 12px max(16px, env(sa
 </main>
 <footer class="about">Cross-sections solved by CST Studio Suite's 2D port-mode solver, by the full-wave (triangular FEM)
   backend of H. Forstén's js_2d_fields, by kisi's field solver (js_2d_fields' FDM backend, as kisi runs it) and by kisi's
-  closed-form formulas; method and results in validation/cst_xs/README.md. The 3D reference cases (vias, stubs, pairs,
+  closed-form formulas; method, results and known limits in
+  <a href="https://github.com/riehlies/kisi/blob/main/validation/cross-sections.md" target="_blank" rel="noopener">validation/cross-sections.md</a>. The 3D reference cases (vias, stubs, pairs,
   plane cavities) are on the page <a href="kisi-references-3d.html">kisi 3D references</a> (a release file next to this one;
   each is attached to the releases in which its cases changed:
   <a href="https://github.com/riehlies/kisi/releases" target="_blank" rel="noopener">releases</a>). ·
@@ -170,7 +171,7 @@ const colHead = (k, c) => { const d = COLS[k]; const two = k === "fw_E_cstdef" &
 const colTip = (k) => { const d = COLS[k]; return `${d[0]}${d[1] ? " · " + d[1] : ""}: ${d[2]} – ${d[3]}; boundary: ${d[4]}; ${d[5]}; ${d[6]}; εeff: ${d[7]}; deviation against: ${d[8]}.`; };
 const ROLES = {
   solver: "Solver check: CST and the full-wave FEM (and kisi's FDM) solve the identical closed box; their differences are numerical only.",
-  accuracy: "kisi's real accuracy: kisi as it reports (field solver on its open domain, formula) against CST's open-boundary estimate, whose uncertainty is the PEC/PMC spread (README, uncertainty table).",
+  accuracy: "kisi's real accuracy: kisi as it reports (field solver on its open domain, formula) against CST's open-boundary estimate, whose uncertainty is the PEC/PMC spread (validation/cross-sections.md, uncertainty of the CST results).",
   loss: "Loss: The full-wave FEM's MQS conductor loss is the reference (an independent finite-difference MQS check agrees within 1 %); CST's lossy-metal loss is a surface-impedance approximation, 4–23 % low.",
 };
 function legendBlock(open) {

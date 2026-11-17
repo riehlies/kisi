@@ -14,7 +14,7 @@ Per case:
   field_M      tol 0.002 in CST's box with natural walls = CST's magnetic walls ("open", ground straps)
 field_E / field_M solve exactly the problem CST solves with electric / magnetic walls: CST against
 them is the solver comparison without any boundary difference; their mean estimates the open
-boundary (README.md). Cases with a hand-written text (no kisi model) get the field values only.
+boundary (validation/cross-sections.md). Cases with a hand-written text (no kisi model) get the field values only.
 --formula-only recomputes the formula values and keeps the stored field results (a change of the
 formulas alone; the geometry texts must be unchanged – the run stops if kisi's text differs from
 cases.json).
@@ -135,7 +135,7 @@ def main():
     if (a.ids or a.tier) and os.path.isfile(a.out):
         prev = json.load(open(a.out)).get("results", {})
     prev.update(out)
-    doc = {"about": "kisi's results on validation/cst_xs/cases.json (run_kisi.py; README.md)", "kisi_rev": git_rev(),
+    doc = {"about": "kisi's results on validation/cst_xs/cases.json (run_kisi.py; validation/cross-sections.md)", "kisi_rev": git_rev(),
            "date": time.strftime("%Y-%m-%d"), "tol": tols, "upstream_rev": open(os.path.join(ROOT, "third_party/UPSTREAM_REV")).read().strip(),
            "results": prev}
     with open(a.out, "w", encoding="utf-8") as fh:

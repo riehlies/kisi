@@ -26,7 +26,7 @@ has one place there, and `python3 tools/docs_pdf.py` checks the links.
 - Build and checks: see `AGENTS.md` (the same notes are used by coding agents). Rust code is formatted with
   `cargo fmt` and free of clippy warnings with the Rust version pinned in `rust-toolchain.toml`; CI checks both.
 - Structure and rules: `ARCHITECTURE.md`. Changes to the models need a comparison against the references in
-  `validation/` (see `validation/fdtd/TESTS.md` for how the via and plane models were checked).
+  `validation/` (`validation/README.md`: what is checked against what, and how to rerun it).
 - The field solver in `third_party/js_2d_fields` is a vendored, unmodified copy of Henrik Forstén's
   js_2d_fields; changes to it belong upstream.
 - By contributing you agree that your contribution is licensed under GPL-3.0-only, like the rest of kisi.

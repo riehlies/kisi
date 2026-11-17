@@ -6,8 +6,9 @@
 //! * group G: cavity model Z matrix → `<out>/<case>/rust_model.s2p` (1 Ω reference)
 //! * group H: PDN loop inductance at 50 MHz
 //!
-//! The case geometry is read the way validation/fdtd/via_pbm.py reads it (same feed-line
-//! formulas, same loss treatment), so the Rust and Python results can be compared directly.
+//! The case geometry is read with the feed-line formulas of validation/fdtd/via_cases.py and the
+//! references' loss model, so the results compare directly with the 3D cases
+//! (validation/fdtd/via_ladder.py, validation/vias.md).
 //! Prints one JSON object with timings and the per-case results.
 
 use kisi_core::cavity_modal::{loop_inductance, Cavity};
@@ -90,7 +91,7 @@ pub(crate) fn feed_line(layers: &[Value], planes: &[Plane], w: f64, zt: f64, zre
     (z_microstrip(w, h, er), feed_eeff(w, h, er, layers, zt, zref))
 }
 
-/// via_pbm.py geometry(): planes (GND/PWR sheets) with the antipad radius around the via
+/// The case's planes (GND/PWR sheets) with the antipad radius around the via
 /// `equivalent`: the antipad as the round opening with the same in-plane capacitance
 /// (`via_pbm::equivalent_radius` around a barrel of radius `a`); else the prototype's rule (the
 /// hole centred on the via or the slot it lies on, else the nearest edge).
@@ -265,7 +266,7 @@ pub fn run(args: &[String]) {
                 }
                 let mut r = serde_json::Map::new();
                 for (tag, grid) in &grids {
-                    // the uniform grid runs the prototype's model (parity with via_pbm.py), the
+                    // the uniform grid runs the original model without the junction (kept for comparison), the
                     // graded grid kisi's (with the junction model)
                     let mut geom = if matches!(grid, Grid::Uniform { .. }) { geom0.clone() } else { geom_kisi.clone() };
                     geom.junction = !matches!(grid, Grid::Uniform { .. });

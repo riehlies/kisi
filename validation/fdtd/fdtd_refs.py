@@ -1,4 +1,4 @@
-"""kisi-fdtd references too large for one machine, on GitHub Actions runners (TESTS.md section 17).
+"""kisi-fdtd references too large for one machine, on GitHub Actions runners (validation/vias.md, section Solvers and meshes).
 
 The cases are cut into tasks (case × excited port), the tasks into shards (fdtd_plan.json); each shard runs on a
 4-vCPU runner (workflow `fdtd-refs`), kisi-fdtd with several threads per task. The raw results (one kisi-fdtd JSON

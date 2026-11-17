@@ -34,13 +34,12 @@ Research and concepts (`research/`):
   sources in KiCad's code), the package layout, what the plugin does, what only a test in KiCad can show.
 
 Validation (`../validation/`):
-- [fdtd/TESTS.md](../validation/fdtd/TESTS.md) – the 3D reference cases (kisi-fdtd) and kisi's models against
-  them; [fdtd/BOARD_VIAS.md](../validation/fdtd/BOARD_VIAS.md), [BOARD_RESONANCES.md](../validation/fdtd/BOARD_RESONANCES.md),
-  [BOARD_RETURNS.md](../validation/fdtd/BOARD_RETURNS.md) – vias, plane cavities and return paths of the example
-  boards in 3D; [fdtd/README.md](../validation/fdtd/README.md) – the scripts.
-- [cst_xs/README.md](../validation/cst_xs/README.md) – kisi's 2D impedance chain (geometry text, field solver,
-  formulas) against CST Studio Suite's 2D port-mode solver on 620 cross-sections: case matrix, CST runner,
-  comparison.
+- [README.md](../validation/README.md) – what kisi is checked against, the current accuracy, the known limits and
+  how to rerun each check.
+- [vias.md](../validation/vias.md) – the 3D reference cases (kisi-fdtd, checked against openEMS and CST): vias,
+  lines, pads, plane pairs and board vias, and kisi's models against them.
+- [cross-sections.md](../validation/cross-sections.md) – kisi's 2D impedance chain (geometry text, field solver,
+  formulas, line loss) against CST Studio Suite's 2D port modes and the full-wave FEM on 620 cross-sections.
 - `channel_export/` – `compare.py` (the export in ngspice against kisi, also in CI), `kicad_sheet.py`,
   `ltspice.py`, and the studies behind the research notes (`compact_study.py`, `ltspice_microtests.py`).
 - `golden/` – stored results of the example boards (`tools/golden.py`); the field-solver baselines
@@ -52,4 +51,4 @@ Board configurations: [examples/](examples/).
 
 For contributors: [ARCHITECTURE.md](../ARCHITECTURE.md) (structure and rules), [CONTRIBUTING.md](../CONTRIBUTING.md),
 [AGENTS.md](../AGENTS.md) (build and checks), [ROADMAP.md](../ROADMAP.md), [UPSTREAM.md](../UPSTREAM.md) (the field
-solver), [validation/](../validation/) (reference data and test logs).
+solver), [validation/](../validation/README.md) (references, results and how to rerun them).

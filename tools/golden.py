@@ -204,7 +204,7 @@ def vias(kisi, update):
     n = report("via references", norm(stored) if stored else None, new, update, VIAS)
     if update:
         dump(load(tmp), VIAS)
-    # the headline numbers (validation/via_references.md section 6), old and new
+    # the headline numbers (data/accuracy.json's via scores, validation/vias.md), old and new
     lines = ["### kisi's models on the 3D via references", "", f"{len(new['rows'])} cases, {secs:.1f} s", "",
              "| metric | stored | now |", "|---|---|---|"]
     for k, v in new["summary"].items():

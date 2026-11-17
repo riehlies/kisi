@@ -1,5 +1,5 @@
-//! Physics-based reduced via model (ported from validation/fdtd/via_pbm.py, checked
-//! against the kisi-fdtd 3D references, see validation/fdtd/TESTS.md).
+//! Physics-based reduced via model (first written as a Python prototype, now in the git history;
+//! checked against the kisi-fdtd 3D references, see validation/vias.md).
 //!
 //! A via is a ladder along its barrel:
 //! * nodes: the planes it crosses (with an antipad) and the layers where the traces join
@@ -25,7 +25,7 @@
 //! (Z_PP + Z_NN)/2 − Z_PN (the even mode + Z_PN) and scales the barrel capacitance inside the
 //! plane pairs by ln(R/a)/ln(p/a).
 //!
-//! Return groups (`Post::joins`, option `--via-returns`, validation/fdtd/BOARD_RETURNS.md): a
+//! Return groups (`Post::joins`, option `--via-returns`, validation/vias.md): a
 //! return via shorts only the pairs whose two planes it joins. Elsewhere it is a small ladder of
 //! its own – a span with its own current in every pair it does not short, a node with its
 //! capacitance to the plane at every plane it passes through an opening ([`post_plane_cap`]) –
@@ -52,7 +52,7 @@ const SUB: f64 = 0.2;
 
 /// junction model: a stripline feed (planes above and below) is kept up to this many pad radii from
 /// the via centre, the rest of the line removed for the ladder (fitted on the delay of the 10 stripline
-/// exits against the refined 3D references, the optimum per case 0.45–0.78; TESTS.md section 18)
+/// exits against the refined 3D references, the optimum per case 0.45–0.78; validation/vias.md)
 const STRIP_TRIM: f64 = 2.0 / 3.0;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -201,8 +201,8 @@ pub struct ViaGeom {
     pub f_loss: Option<f64>,
     /// junction model fitted to the 3D references (default): series inductance μ0/(2π)·pad
     /// radius where each trace enters the via, the trace over the antipad scaled from its own
-    /// line, striplines kept up to `STRIP_TRIM` pad radii from the via centre. false: the Python
-    /// prototype (via_pbm.py).
+    /// line, striplines kept up to `STRIP_TRIM` pad radii from the via centre. false: the original
+    /// model without it (`kisi-validate models --grid uniform`).
     #[serde(default = "yes")]
     pub junction: bool,
     /// conductivity of barrel and planes (S/m) for their skin-effect loss; None: lossless metal
@@ -213,7 +213,7 @@ pub struct ViaGeom {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub caps: Vec<CapPost>,
     /// heights (mm) of the `planes` that are pours on the via's own signal layers (the copper around
-    /// the pad and the trace, BOARD_VIAS.md): a coplanar return, not one side of a plane pair
+    /// the pad and the trace, validation/vias.md): a coplanar return, not one side of a plane pair
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub coplanar: Vec<f64>,
 }
@@ -1247,7 +1247,7 @@ impl PbmVia {
 
     /// As [`build`](Self::build), with finite cavities for some plane pairs (`CavityLink`).
     pub fn build_with(g: &ViaGeom, mode: Mode, grid: Grid, envs: Vec<CavityLink>) -> PbmVia {
-        // pours on the via's own signal layers (`coplanar`, BOARD_VIAS.md): in the Laplace solve
+        // pours on the via's own signal layers (`coplanar`, validation/vias.md): in the Laplace solve
         // (the pad's capacitance to the pour) and as a plate of the spans on the stub side of the
         // junction (the stub's current returns on them as on any plane), but not a plate of the
         // spans between the two signal layers – the trace's return turns into the via there on its
@@ -1594,14 +1594,14 @@ impl PbmVia {
                 .unwrap_or(0.0);
             let strip = plane_z.iter().any(|&pz| pz > zt + 1e-9) && plane_z.iter().any(|&pz| pz < zt - 1e-9);
             if g.junction {
-                // fitted to the 3D references (TESTS.md section 7): where the trace current turns
+                // fitted to the 3D references (validation/vias.md): where the trace current turns
                 // into the pad and the barrel, μ0/(2π)·pad radius (≈ 50–60 pH)
                 l_port[side] = MU0 / (2.0 * PI) * g.pad_r * 1e-3;
             }
             if g.junction && strip {
                 // a stripline keeps its line up to STRIP_TRIM pad radii from the via centre: between
                 // two planes the openings change it little (fitted to the refined 3D references,
-                // TESTS.md section 18)
+                // validation/vias.md)
                 feed_cut[side] = (fd.zc, fd.eeff, (fd.dropped - STRIP_TRIM * g.pad_r) * 1e-3);
                 continue;
             }

@@ -262,10 +262,10 @@ pub struct RfParams {
     /// assume every via is back-drilled to this residual stub (mm); None: as in the layout
     pub backdrill: Option<f64>,
     /// plane pairs of the via ladder as finite cavities (`via_cavity`, validation/fdtd/
-    /// BOARD_RESONANCES.md) instead of infinite plates; off by default
+    /// validation/vias.md) instead of infinite plates; off by default
     pub via_cavity: bool,
     /// return groups per plane pair in the via ladder (`via::ViaCtx::returns`, validation/fdtd/
-    /// BOARD_RETURNS.md)
+    /// validation/vias.md)
     pub via_returns: bool,
 }
 

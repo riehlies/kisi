@@ -104,48 +104,51 @@ validation, and every result says which level it used and how uncertain it is.
   (`validation/test_board.md`) and coupons v2 in branch `feat/test-board` (waiting for the RF group's advice on the
   measurement).
 - **Vias and planes in 3D** (merged into `main` at 98af58d with Blocks 1–6): Block 2 `feat/via-3d-board` (board via →
-  kisi-fdtd exporter, matched de-embedding, `BOARD_VIAS.md`), Block 3 `feat/board-resonances` (finite plane cavities
-  and via-to-via coupling, option `--via-cavity`, `BOARD_RESONANCES.md`), Block 4 `feat/return-groups` (return vias
-  per plane pair and decoupling capacitors as returns, option `--via-returns`, `BOARD_RETURNS.md`). Block 5 on the
+  kisi-fdtd exporter, matched de-embedding), Block 3 `feat/board-resonances` (finite plane cavities
+  and via-to-via coupling, option `--via-cavity`), Block 4 `feat/return-groups` (return vias
+  per plane pair and decoupling capacitors as returns, option `--via-returns`); the current state of all of them in
+  `validation/vias.md`, the study reports in the git history (`git show 3e4d835:validation/fdtd/BOARD_VIAS.md`,
+  `BOARD_RESONANCES.md`, `BOARD_RETURNS.md`). Block 5 on the
   same branch: done – a warning in the default path for channel vias across a GND/supply pair no via bridges
   (`check`, `net`, the viewer's details; none on the example boards); the pours on the via's signal layers as
   coplanar returns in the ladder (the default; M.2 pair phase 24° → 2°); two corrections of the comparisons (board
   vias at the via centre, the TDR of the validation scripts – the long-stub TDR maxima were this);
-  `--via-cavity` / `--via-returns` reassessed and kept off (`BOARD_VIAS.md` section 5, `BOARD_RETURNS.md`
-  sections 7–8). Block 6: done – the REFINOUT2 excess loss above 12 GHz was an open return cage: plated pads of
+  `--via-cavity` / `--via-returns` reassessed and kept off. Block 6: done – the REFINOUT2 excess loss above 12 GHz was an open return cage: plated pads of
   plane nets (connector pins) are return posts now, the nearest 12 (12–20 GHz 0.41 → 0.02 dB against 3D, loss at
-  20 GHz 16 → 7 %, 3D 9 %; `BOARD_VIAS.md` section 6); the cavity option shares its factorisations per region
-  (ThunderScope 105 → 57 s on one thread, results reproducible; `BOARD_RESONANCES.md` section 9). Next:
+  20 GHz 16 → 7 %, 3D 9 %); the cavity option shares its factorisations per region
+  (ThunderScope 105 → 57 s on one thread, results reproducible). Next:
   - the return groups' floating-plane loss is 1.6× the 3D on REFINOUT2 (0.29 dB off at 12–20 GHz) – what keeps
     them from the default; the cavity option is still 8× the default (per-via fill masks);
   - deferred, documented as a known limit (`docs/models.md`, Vias): the X exits without a plane on one side and
     B_ts6_L1L3_stub (TDR minimum 7.5–11 % low in kisi-fdtd and openEMS with the matched de-embedding; the ladder
-    9–37 fF too capacitive and 50–88 pH short on every L1→L3 via, TESTS.md section 19, where four model variants
-    were tried and not kept; what it needs first is a 3D study of the field inside the antipad opening);
+    9–37 fF too capacitive and 50–88 pH short on every L1→L3 via; four model variants
+    were tried and not kept, `git show 3e4d835:validation/fdtd/TESTS.md` section 19; what it needs first is a 3D study of the field inside the antipad opening);
   - the thick-core through via B_ts6_L1L6 (−50 fF); the s8 stripline fixture leaves ±4 % in the inner exits' TDR
     (|S11| ≠ |S22| by 0.045);
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
-    ladder at the via centre; about 8 days, a minimal version 4; design note `BOARD_VIAS.md` section 5.6);
+    ladder at the via centre; about 8 days, a minimal version 4; design note: `git show 3e4d835:validation/fdtd/BOARD_VIAS.md`,
+    sections 3, 4 and 5.6);
   - the ladder in WebAssembly is about 2 × slower than native.
 - **3D references cross-checked** (done, released in 0.3.2): every one of the 106 reference cases also in openEMS
-  and in CST Studio Suite (TESTS.md sections 16 and 17, `validation/fdtd/CST.md`); the cross-check found the
+  and in CST Studio Suite (`validation/vias.md`); the cross-check found the
   inner-layer exits and the board vias with an inner exit not mesh-converged, and they were recomputed on a refined
   mesh (kisi-fdtd − CST within ±0.07 ps on 16 of 17 cases, before +1.0 … +2.3 ps). The stripline feed trim followed
-  (`feat/via-model-b`, TESTS.md section 18): the stripline feed is kept up to 2/3 of the pad radius from the via
+  (`feat/via-model-b`): the stripline feed is kept up to 2/3 of the pad radius from the via
   centre, the stripline exits' delay error +1.26 → +0.02 ps, `data/accuracy.json` at the refined references (2.46 /
-  5.53 %, pairs 10.95 / 13.71 %), the stored ladders regenerated. Then (`feat/via-model-c`, TESTS.md section 19) the
+  5.53 %, pairs 10.95 / 13.71 %), the stored ladders regenerated. Then (`feat/via-model-c`) the
   via references scored with the matched de-embedding: the pairs' "7–10 % high" was their first-order de-embedding
   (now 1.5 / 3.3 % median / p90 against kisi-fdtd, `data/accuracy.json` pairs 4.0 / 5.7 %), the s8 L1→L3 exits are
-  within −4 … +0.5 %; the Python prototype at the Rust ladder of section 14 again (parity 0.005).
+  within −4 … +0.5 %. The validation was then cleaned up to its current state (`validation/README.md`; the test log
+  and the Python prototype of the ladder in the git history).
 - **Causal and passive models** (`feat/accuracy`, done): the via pairs' modes and the plane-pair matrix passive by
   construction, Djordjevic-Sarkar everywhere, the causal Huray roughness with its inductance, microstrip
-  dispersion below a resonance; every example lane passive and causal in a test (`validation/fdtd/TESTS.md`
-  section 14). Next: a microstrip on a thick dielectric (Getsinger corner inside the band) loses its mid-band
+  dispersion below a resonance; every example lane passive and causal in a test
+  (`crates/kisi-core/tests/causality.rs`). Next: a microstrip on a thick dielectric (Getsinger corner inside the band) loses its mid-band
   dispersion – a lossy Lorentz term (surface-wave leakage) would follow it.
 - **Pads and gold fingers without a reference plane** (`feat/accuracy`, done): pads and fingers from their own
   cross-section, a part's pads as shunts from it, copper without a plane on its coplanar return; five 3D
-  cases (TESTS.md section 15). Next: the finger pair without any plane reads ~15 % low (the coplanar estimate);
+  cases (group P, `validation/vias.md`). Next: the finger pair without any plane reads ~15 % low (the coplanar estimate);
   the finger's tip beyond the contact as a stub; a 3D case with the 0402 body (the ESL estimate).
 - **Accuracy levels** (`feat/accuracy`, first version): the impedance (formula / field solver, with the
   validated uncertainty) and the via models carry their level in `check`, `net` and the viewer

@@ -1,6 +1,6 @@
-//! Rectangular plane-pair cavity, modal (double cosine series) model (Okoshi), ported from
-//! validation/fdtd/cavity_model.py and checked against the kisi-fdtd references of group G
-//! (resonances ±0.8 %, transfer impedance ±0.7 %, see validation/fdtd/TESTS.md).
+//! Rectangular plane-pair cavity, modal (double cosine series) model (Okoshi), checked against the
+//! kisi-fdtd references of group G (validation/fdtd/via_ladder.py: resonances within 0.8 %, transfer
+//! impedance within 0.7 %; validation/vias.md).
 //!
 //! Plane pair a × b, height d, magnetic walls at the open board edges, square ports of side w:
 //!

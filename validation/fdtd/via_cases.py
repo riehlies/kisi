@@ -1,4 +1,4 @@
-"""Reference cases for vias (validation/via_references.md, groups A–E) as kisi-fdtd cases.
+"""Reference cases for vias (validation/vias.md, section Reference cases) as kisi-fdtd cases.
 
 Each case is a kisi-fdtd case JSON (also read by openems_case.py) with an extra "meta" block for
 the comparison and the viewer: group, title, parameters, stackup and the port list. Planes reach
@@ -38,7 +38,7 @@ STACKUPS = {
             "planes": [1, 4]},
 }
 C0 = 299792458.0
-# References computed with the cell at metal halved (run_refs.py reads meta.ref_refine; TESTS.md section 17): every
+# References computed with the cell at metal halved (run_refs.py reads meta.ref_refine; validation/vias.md, section Solvers and meshes): every
 # transition that ends on an inner layer, and the ThunderScope through via. At dfine 0.035 mm kisi-fdtd's delay was
 # 1.1–2.3 ps slow on the L1→L3 exits between the L2 and L4 planes and on B_ts6_L1L6; halved, they agree with openEMS
 # and CST (the other inner exits moved by ≤ 0.13 ps and are refined for one rule).
@@ -466,7 +466,7 @@ def cases(groups, fmax, dfine):
                               "ts6", 0, 2, 0.15, 0.4, fmax, dfine, stub_to=5, stitch=ring(4, 1.0)))
         out.append(single_via("B_ts6_L1L6", "B", "ThunderScope stack: L1→B.Cu, no stub", {**g, "stub": "none"},
                               "ts6", 0, 5, 0.15, 0.4, fmax, dfine, stitch=ring(4, 1.0)))
-    if "X" in groups:  # inner exit without one of its planes (junction diagnosis, TESTS.md section 7)
+    if "X" in groups:  # inner exit without one of its planes (junction diagnosis, validation/vias.md)
         for sk, what in (("s8x2", "L2 plane removed: L3 exits above the top plane"), ("s8x4", "L4 plane removed: L3 exits inside the thick L2–L5 pair")):
             out.append(single_via(f"X_{sk}_L1L3_bd_d200", "X", f"L1→L3 back-drilled, drill Ø0.2, {what}", {"drill_mm": 0.2, "antipad_mm": 0.7, "stitch": "4 × 1 mm", "stub": "0.2 mm residual"},
                                   sk, 0, 2, 0.1, 0.35, fmax, dfine, backdrill=0.2, stitch=ring(4, 1.0)))

@@ -156,7 +156,7 @@ pub struct ViaInfo {
 }
 
 /// A plane pair of two nets (a GND and a supply plane) in a via's path that no return via joins
-/// or bridges (validation/fdtd/BOARD_RETURNS.md): no via within 3 mm joins both planes, nor
+/// or bridges (validation/vias.md): no via within 3 mm joins both planes, nor
 /// planes above and below the pair. The ladder before return groups shorts such a pair with the
 /// GND vias and calls the transition nearly ideal, while the board's plane cavity can resonate.
 #[derive(Debug, Clone, Serialize)]
@@ -252,7 +252,7 @@ pub struct ViaCtx<'a> {
     pub cavity: bool,
     /// return groups per plane pair (also with KISI_VIA_RETURNS=1): a return via shorts only the
     /// pairs whose two planes it joins, floats across planes of other nets, and capacitors close
-    /// pairs of two nets (validation/fdtd/BOARD_RETURNS.md)
+    /// pairs of two nets (validation/vias.md)
     pub returns: bool,
 }
 
@@ -391,7 +391,7 @@ fn copper_z(su: &crate::board::Stackup) -> Vec<f64> {
 /// carries the planes of the ladder it joins (`clear`: plane opening and net per layer at the via;
 /// a plane whose net is the via's and whose fill reaches it) and its openings in the others, and
 /// only vias that join one of them are taken. A pour on one of the via's own signal layers `sig`
-/// (the copper around its trace, which the ladder takes as a plane – BOARD_VIAS.md) counts as joined
+/// (the copper around its trace, which the ladder takes as a plane – validation/vias.md) counts as joined
 /// by every return that spans it, as before return groups: it is the trace's coplanar return, not
 /// a plane of its own (the finite cavities leave such pairs alone for the same reason); a via joined
 /// only to such a pour is not taken.
@@ -464,7 +464,7 @@ pub fn return_posts(
 /// of plane-net pads (connector pins, mounting holes) as vias spanning the pad's layers. Before
 /// Block 6 only the vias (validation switch KISI_RET_PADS=0): a connector's GND pin 3 mm from the
 /// ThunderScope REFINOUT2 via closes the open side of its return-via cage, without it the ladder
-/// radiated 12 % of the power into the plane pairs at 20 GHz (BOARD_VIAS.md section 6).
+/// radiated 12 % of the power into the plane pairs at 20 GHz (validation/vias.md).
 pub fn plane_posts(board: &Board) -> Vec<Via> {
     let mut out: Vec<Via> = board
         .vias
@@ -840,7 +840,7 @@ fn ladder(
         sigma: ctx.sigma,
         caps,
         // pours on the via's own signal layers (their planes in `planes`); validation switch
-        // KISI_VIA_POURS=planes: as planes, the ladder before Block 5 (BOARD_VIAS.md)
+        // KISI_VIA_POURS=planes: as planes, the ladder before Block 5 (validation/vias.md)
         coplanar: if std::env::var("KISI_VIA_POURS").is_ok_and(|x| x == "planes") {
             vec![]
         } else {
@@ -1009,7 +1009,7 @@ fn cap_posts(
 
 /// leakage ratio below which a plane pair stays an infinite radial line (`PbmVia::pair_leakage`
 /// at 10 GHz): four returns at 1 mm give 0.006 and change the via by ≤ 0.2 dB in 3D up to 25 GHz,
-/// one return at 2 mm gives 0.84 (validation/fdtd/BOARD_RESONANCES.md)
+/// one return at 2 mm gives 0.84 (validation/vias.md)
 const CAVITY_LEAKAGE: f64 = 0.02;
 /// half-width of the window around the via for a plane pair of one net (mm) and its cell (mm)
 const CAVITY_WINDOW: (f64, f64) = (5.0, 0.3);
@@ -1054,7 +1054,7 @@ fn cavity_links(
     for w in planes.windows(2) {
         let ((ka, za), (kb, zb)) = (w[0], w[1]);
         // a pour on the via's own signal layer is a coplanar return around its pad, not one side of
-        // a plane pair (BOARD_VIAS.md): such pairs stay infinite radial lines
+        // a plane pair (validation/vias.md): such pairs stay infinite radial lines
         if signal.contains(&ka) || signal.contains(&kb) {
             continue;
         }
@@ -1067,7 +1067,7 @@ fn cavity_links(
         // return groups: a pair with floating returns (a plane of another net between two planes
         // the return vias join) stays an infinite radial line with its floating returns – they
         // short the pairs' common field, and the stitching beyond them is not in a cavity of one
-        // pair (BOARD_RETURNS.md)
+        // pair (validation/vias.md)
         if geom.returns.iter().any(|p| p.joins.is_some() && matches!(p.role(za, zb), crate::via_pbm::Role::Float(..))) {
             continue;
         }
@@ -1415,7 +1415,7 @@ mod tests {
         format!("  (zone (net {net}) (net_name \"{name}\") (layer \"{layer}\") (filled_polygon (layer \"{layer}\") (pts {})))\n", xy.join(" "))
     }
 
-    /// The 4-layer board of the 3D case RG_s4_pwr_n4 (BOARD_RETURNS.md): In1 GND, In2 PWR, a via
+    /// The 4-layer board of the 3D case RG_s4_pwr_n4 (validation/vias.md): In1 GND, In2 PWR, a via
     /// F.Cu → B.Cu whose B.Cu trace refers to the PWR plane, four GND vias at 1 mm that pass the
     /// PWR plane through openings (`joined`: they join it, i.e. it is a GND plane), optionally a
     /// capacitor between the planes 2 mm away.

@@ -32,7 +32,7 @@ FINE = 2.0
 # Cases on which openEMS' UPML lets the energy settle at −15 … −20 dB instead of decaying (board cut-outs with
 # copper running into the PML on several layers): the run would end only at max_steps and grows late. openEMS
 # stops these at TCAP × the physical time kisi-fdtd needed for its end criterion (same excited port), so both
-# DFTs cover a comparable window. With a Mur boundary the same cases decay normally (TESTS.md section 16).
+# DFTs cover a comparable window. With a Mur boundary the same cases decay normally (validation/vias.md, section Solvers and meshes).
 TCAP = {"BV_ts_m2_per0": 1.2, "BV_vna_rf_hblb1": 1.2, "BV_ts_m2_per0_q050f25s_e35_in2gnd": 1.2}
 C0 = 299792458.0
 sys.path.insert(0, HERE)
@@ -379,7 +379,7 @@ def z_peaks(f, S, z0):
 
 
 def deembed(f, S, case, tool, ref):
-    """the via alone with the 2×thru of each feed layer from the same tool (as via_pbm.py: NZC for
+    """the via alone with the 2×thru of each feed layer from the same tool (NZC referred to 50 Ω for
     2-ports, first-order shift for pairs)"""
     keys = [f"thru_{case['meta']['stackup']}_{q['layer']}" for q in case["meta"]["ports"]]
     th = [load(ref, k, tool)[1] for k in keys]
@@ -434,7 +434,7 @@ def compare(a):
             row["openems_base_vs_fine"] = stats(f, Ob, Of, fmax)
             X = 2 * Of - Ob  # first-order extrapolation of the staircase result to zero cell
             row["kisi_vs_openems_extrap"] = stats(f, K, X, fmax)
-        # references recomputed on the refined mesh (TESTS.md section 17): the former base-mesh result is kept as
+        # references recomputed on the refined mesh (validation/vias.md, section Solvers and meshes): the former base-mesh result is kept as
         # kisi_base.sNp – kisi-fdtd's own convergence, and the former reference against openEMS
         _, Kb = load(REF, n, "kisi_base")
         if Kb is not None:

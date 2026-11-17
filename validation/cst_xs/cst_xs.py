@@ -1,5 +1,5 @@
 """Solve the cross-sections of cases.json with CST Studio Suite's 2D port-mode solver and store one
-JSON per case in results/ (README.md: how to run, what is computed, how results come back).
+JSON per case in results/ (validation/cross-sections.md: how to run, what is computed, how results come back).
 
     python cst_xs.py [--tier 1] [--group G,..] [--ids a,b] [--limit N] [--skip-done]
                      [--walls both|electric|magnetic] [--freq 1] [--tol 0.1] [--max-levels 5]
@@ -28,7 +28,7 @@ Per case (all in one CST project, built from VBA history blocks through `cst.int
 
 Results: results/<id>[.tag].json with every level (mesh settings, cells, time, per mode Z, β, εeff),
 the converged values per wall kind, Z0 / Zdiff / Zcomm / Zodd / Zeven / εeff, and the open-boundary
-estimate (mean of the electric- and magnetic-wall values, README.md). Run with the Python that has
+estimate (mean of the electric- and magnetic-wall values, validation/cross-sections.md). Run with the Python that has
 CST's `cst` package (CST's python_cst_libraries on PYTHONPATH, as validation/fdtd/run_cst.py).
 Standard library only.
 """
@@ -106,7 +106,7 @@ With Material
 End With"""
 
 
-# options of the conductor-loss check (README, "CST re-run for the conductor loss"); the defaults are the runs so far
+# options of the conductor-loss check (validation/cross-sections.md, known limits); the defaults are the runs so far
 OPT = {"metal": "surface", "tet_scale": 1.0, "td_compat": True, "port_mesh_match": False, "cond_step_um": 0.0}
 
 
@@ -793,7 +793,7 @@ class Runner:
         er_max = max([r["er"] for r in g["rects"] if r["kind"] == "diel"] + [1.0])
         walls = ["electric", "magnetic"] if a.walls == "both" else [a.walls]
         if a.lossy:
-            walls = ["electric"]  # dispersion: electric walls only (README.md)
+            walls = ["electric"]  # dispersion: electric walls only (validation/cross-sections.md)
         if "magnetic" in walls and xsgeo.isolated_grounds(g, box):
             walls = [w for w in walls if w != "magnetic"] or ["electric"]
             log("   isolated ground: electric walls only (ground tied to the wall)")

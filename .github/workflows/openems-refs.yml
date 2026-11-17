@@ -1,4 +1,4 @@
-# openEMS for every 3D reference case (validation/fdtd/openems_refs.py, TESTS.md section 16): the shards of
+# openEMS for every 3D reference case (validation/fdtd/openems_refs.py, validation/vias.md): the shards of
 # validation/fdtd/openems_plan.json in parallel (at most 15 at a time), each on a 4-vCPU runner. The raw results
 # (one JSON per case, mesh and excited port, with the runner's CPU) are committed to the branch the workflow runs on,
 # under validation/fdtd/openems_raw/; tasks whose result is already there are skipped, so a second run completes

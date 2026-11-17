@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The full-wave (triangular FEM) backend of js_2d_fields on the cases of cases.json →
-validation/cst_xs/fullwave/<id>.json (README.md, "Full-wave backend").
+validation/cst_xs/fullwave/<id>.json (validation/cross-sections.md, section Solvers and meshes).
 
     python3 validation/cst_xs/run_fullwave.py [--ids a,b | --tier 1 | --group g | --plan fullwave_plan.json --shard K]
         [--kinds E,M,sweep] [--jobs N] [--wasm-dir target/forsten-fw/dist] [--out validation/cst_xs/fullwave]

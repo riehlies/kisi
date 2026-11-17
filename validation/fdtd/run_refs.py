@@ -1,7 +1,7 @@
 """Run the via reference cases (via_cases.py) and store the results per case:
 
   <out>/<case>/kisi.sNp        kisi-fdtd, conformal metal, the case's mesh (the cell at metal ÷ meta.ref_refine
-                               where the case asks for it: TESTS.md section 17)
+                               where the case asks for it: validation/vias.md, section Solvers and meshes)
   <out>/<case>/kisi_fine.sNp   kisi-fdtd on a mesh refined by --fine (convergence check)
   <out>/<case>/openems.sNp     openEMS (staircase), if --openems
   <out>/<case>/meta.json       case meta, cells, steps, run times, convergence, versions, date

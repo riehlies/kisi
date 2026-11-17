@@ -64,7 +64,9 @@ Locally, before pushing a branch, run the quick checks for what you changed:
 * Model code (`crates/`, `data/`): `python3 tools/golden.py boards target/release/kisi examples` and
   `python3 tools/golden.py vias target/release/kisi` – the stored results of the example boards and kisi's models on
   the 3D via references. An intended change: run them with `--update` and commit `validation/golden/` and
-  `validation/fdtd/results/kisi_models.json` with the change, so the review shows what moved.
+  `validation/fdtd/results/kisi_models.json` with the change, so the review shows what moved; a change of the via
+  ladder or the plane-cavity model also `python3 validation/fdtd/via_ladder.py --exe target/release/kisi-validate`
+  (commit `results/via_ladder.json` and the `ladder.s2p` / `model.s2p` files it writes).
 * Board parser or a change that may crash on unusual boards (`kisi-board`, the outline, the stackup, gaps): the
   corpus run, `python3 tools/corpus.py fetch && python3 tools/corpus.py compare target/release/kisi` (32 open-source
   boards at pinned commits from `data/corpus.json`, about 10 min; `--set robustness` about 200 boards,
@@ -87,7 +89,8 @@ over for review only with a green CI run of its last commit; `main` changes only
 * Mark estimated values as estimates in the UI and in CLI output.
 * User documentation lives in `docs/`, one fact in one place; a new command, option, `PI_*` field, kisi.json key
   or gap goes into `docs/cli.md`, `docs/reference.md` or `docs/preparing-a-board.md` in the same change.
-* Model changes need a comparison against the references (`validation/`, `validation/fdtd/TESTS.md`).
+* Model changes need a comparison against the references (`validation/README.md`, `validation/vias.md`,
+  `validation/cross-sections.md`).
 
 ## Commits
 * Work on a branch and open a pull request; `main` is changed only through reviewed merges.

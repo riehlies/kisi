@@ -99,6 +99,8 @@ class Engine {
   pdn(req) { this.call(this.k.kisi_pdn, JSON.stringify(req)); return JSON.parse(this.out()); }
   pdnIc(req) { this.call(this.k.kisi_pdn_ic, JSON.stringify(req)); return JSON.parse(this.out()); }
   judge(req) { this.call(this.k.kisi_judge, JSON.stringify(req)); return JSON.parse(this.out()); }
+  // where a channel row's worst criterion applies (kisi_core::locate): a Spot or null
+  locate(req) { this.call(this.k.kisi_locate, JSON.stringify(req)); return JSON.parse(this.out()); }
   profileAuto(req) { this.call(this.k.kisi_profile_auto, JSON.stringify(req)); return this.out(); }
   piTreeFields() { this.k.kisi_pi_tree_fields(); return JSON.parse(this.out()); }
   piTree(spec) { this.call(this.k.kisi_pi_tree, JSON.stringify(spec)); return JSON.parse(this.out()); }

@@ -37,10 +37,12 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   given one, or kisi.html next to it) and, with a board loaded, in the warnings with the board kept (light run)
 * the Export menu (light, dark, phone; on every example board): enabled with a board, the table entry disabled with
   its reason in a view without a table; the CSV (BOM, file name) of the impedance view – the Nets card's rows – and
-  of the power tree's components table – the values shown, one unit per column – against the page; Data (kisi.json)
+  of the power tree's components table – the values shown, one unit per column – against the page; Results (JSON)
   with progress, parsed, the top-level keys of `kisi report`; Report (print / PDF): the page in a new window with its
-  sections and no script, and as a download when the window is blocked (light: every board; dark: the first;
-  --quick: the last board in the light run)
+  sections and no script, a viewer link per finding with a place, "show in the viewer" of the first one gives the
+  board view's marker at its place, and as a download when the window is blocked (light: every board; dark: the
+  first; --quick: the last board in the light run); each entry's description (the table's rows and columns; after
+  the report its findings)
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
@@ -1046,8 +1048,8 @@ THERM_KEY = """(() => ({ t_max: S.therm.t_max_c, parts: S.therm.parts.map((p) =>
 
 
 REPORT_KEYS = {"tool", "version", "board_file", "options", "variant", "config", "impedance", "overview", "interfaces", "channels",
-               "power", "thermal", "stackup_used", "gaps"}
-REPORT_SECTIONS = ["At a glance", "The five worst items", "Impedance per net class", "Channel: worst lane per interface",
+               "power", "thermal", "stackup_used", "gaps", "findings", "sketch_board"}
+REPORT_SECTIONS = ["Summary", "At a glance", "Findings", "Impedance per net class", "Channel: worst lane per interface",
                    "Failing lanes", "Power: largest DC drop per rail", "Assumptions and gaps", "Left out on purpose"]
 
 
@@ -1070,7 +1072,7 @@ def export_csv(pg):
 def export_menu(pg, tag, step, json_boards):
     """The Export menu: its states (enabled with a board, the table entry disabled with its reason where a view has
     no table), the CSV of the impedance view (the Nets card's rows) and of the power tree's components table (the
-    values shown, in one unit per column) against the page, the file name; Data (kisi.json): the report as JSON
+    values shown, in one unit per column) against the page, the file name; Results (JSON): the report as JSON
     with the top-level keys of `kisi report` (on the boards in json_boards)."""
     import datetime
     board = pg.evaluate("S.name")
@@ -1082,6 +1084,10 @@ def export_menu(pg, tag, step, json_boards):
     if pg.is_hidden("#xp-menu"):
         problems.append(f"{tag}: the Export menu does not open")
     step(f"export_menu_{board}")
+    # every entry says what it exports, with counts from the state shown
+    desc = pg.evaluate("['xp-html-d', 'xp-csv-d', 'xp-json-d'].map((i) => document.getElementById(i).textContent)")
+    if not all(desc) or not re.search(r"\d+ rows?, \d+ columns?", desc[1]) or "print" not in desc[0] or "kisi report" not in desc[2]:
+        problems.append(f"{tag}: Export menu descriptions {desc}")
     pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
     if not pg.is_hidden("#xp-menu"):
         problems.append(f"{tag}: Escape does not close the Export menu")
@@ -1133,11 +1139,11 @@ def export_menu(pg, tag, step, json_boards):
         try:
             rep = json.load(open(dl.value.path(), encoding="utf-8"))
         except Exception as e:
-            problems.append(f"{tag}: Data (kisi.json) of {board} does not parse: {e}")
+            problems.append(f"{tag}: Results (JSON) of {board} does not parse: {e}")
             return
         if not REPORT_KEYS <= set(rep):
-            problems.append(f"{tag}: Data (kisi.json) of {board}: keys {sorted(rep)}")
-        notes.append(f"{tag}: Data (kisi.json) of {board}: {time.time() - t0:.0f} s, {len(rep['channels'].get('rows', []))} channel rows")
+            problems.append(f"{tag}: Results (JSON) of {board}: keys {sorted(rep)}")
+        notes.append(f"{tag}: Results (JSON) of {board}: {time.time() - t0:.0f} s, {len(rep['channels'].get('rows', []))} channel rows")
         # Report (print / PDF): the same report (kept) as a page in a new window; with the window blocked, a download
         pg.click("#xp-btn")
         with pg.context.expect_page(timeout=120000) as pi:
@@ -1150,6 +1156,23 @@ def export_menu(pg, tag, step, json_boards):
             if miss or "<script" in html or rep["overview"]["board"] not in html:
                 problems.append(f"{tag}: Report of {board}: sections missing {miss} or a script in it")
             win.screenshot(path=f"{out}/{tag}_report_{board}.png", full_page=True)
+            # a finding's "show in the viewer": the board view at its place, with the marker
+            n = len(rep.get("findings") or [])
+            if n and win.locator("a.jump").count() != sum(1 for f in rep["findings"] if f.get("location")):
+                problems.append(f"{tag}: Report of {board}: {win.locator('a.jump').count()} viewer links for {n} findings")
+            if win.locator("a.jump").count():
+                f0 = next(f for f in rep["findings"] if f.get("location"))
+                win.locator("a.jump").first.click()
+                pg.wait_for_timeout(500)
+                mark = pg.evaluate("S.mark && [S.mark.x, S.mark.y]")
+                if not mark or abs(mark[0] - f0["location"]["at"][0]) > 0.01 or abs(mark[1] - f0["location"]["at"][1]) > 0.01 or "mm" not in pg.inner_text("#xp-status"):
+                    problems.append(f"{tag}: Report of {board}: the jump to finding {f0['id']} gave the mark {mark}")
+                step(f"export_jump_{board}")
+            # the menu now counts the report's findings
+            pg.click("#xp-btn"); pg.wait_for_timeout(100)
+            if n and f"{n} finding" not in pg.inner_text("#xp-html-d"):
+                problems.append(f"{tag}: Export menu after the report: {pg.inner_text('#xp-html-d')!r}")
+            pg.keyboard.press("Escape")
         except Exception as e:
             problems.append(f"{tag}: Report of {board} not shown in the new window: {e}")
         win.close()

@@ -91,6 +91,8 @@ function judge(m, p) {
   return { rows, status: ST_MAP[v.status] };
 }
 const ST_NAME = { ok: "green", high1: "yellow", high2: "red" };
+// a criterion's name in the status bar after a jump to its place
+const CRIT_NAME = { z: "impedance", eye_h: "eye height (at the receiver)", eye_w: "eye width (at the receiver)", il: "insertion loss (at the receiver)", rl: "return loss (largest deviation from the target)", skew: "skew (at the receiver)", stub: "via stub", error: "not computed" };
 
 // ---- side cards
 function renderIfcCard() {
@@ -442,14 +444,19 @@ function renderCheck() {
   rows.sort((a, b) => rank[a.st] - rank[b.st] || (a.r.eye_height ?? 0) - (b.r.eye_height ?? 0));
   const n = { high2: 0, high1: 0, ok: 0 }; rows.forEach((x) => n[x.st]++);
   const nl = rows.filter((x) => x.r.lane).length;
-  $("ck-text").textContent = `${stale ? "Outdated (settings changed): compute again. " : "Done. "}${rows.length} channels (${nl} lanes${rows.length > nl ? `, ${rows.length - nl} nets without devices` : ""}): ${n.ok} green, ${n.high1} yellow, ${n.high2} red. Click a row for the channel.`;
+  $("ck-text").textContent = `${stale ? "Outdated (settings changed): compute again. " : "Done. "}${rows.length} channels (${nl} lanes${rows.length > nl ? `, ${rows.length - nl} nets without devices` : ""}): ${n.ok} green, ${n.high1} yellow, ${n.high2} red. Click a row for the channel and, yellow or red, the place of its worst criterion.`;
   box.innerHTML = `<div class="ck-scroll"><table class="xs-table ck-table"><thead><tr><th></th><th>Net</th><th>Profile</th><th>IL dB</th><th>Eye %</th><th>Skew ps</th></tr></thead><tbody>${rows.map(({ r, p, st }) => {
     const nm = netShort(r.name) + (r.lane ? ` (${r.lane.ends.map((e) => e.refdes).join("–")})` : "");
     const sk = r.skew_ps == null ? "–" : fmt(Math.abs(r.skew_ps), 1) + (r.skew_uncertain ? "?" : "");
     return `<tr class="click" data-net="${r.net}" title="${esc(r.name)} · ${r.diff ? "pair" : "single-ended"}, ${fmt(r.length_mm, 1)} mm, ${r.vias} vias, RL ${fmt(r.rl_db, 1)} dB${r.mode_conversion_db != null ? ", mode conversion " + fmt(r.mode_conversion_db, 1) + " dB" : ""}${r.xt_peak != null ? ", crosstalk peak " + fmt(r.xt_peak * 100, 1) + " %" : ""}${r.stub_ghz != null ? ", stub resonance " + fmt(r.stub_ghz, 1) + " GHz" : ""}${r.error ? " · " + esc(r.error) : ""}"><td><span class="dot" style="background:${S.colors[st]}" aria-label="${ST_NAME[st]}"></span></td><td>${esc(nm)}</td><td>${esc(p.name.split(" (")[0])}</td><td>${fmt(r.il_nyq_db, 1)}</td><td>${r.error || r.eye === false ? "–" : fmt(r.eye_height * 100, 0)}</td><td>${sk}</td></tr>`;
   }).join("")}</tbody></table></div>
   <p class="note">Limits per profile (“Profile” card). “?” = branched path, skew uncertain.</p>`;
-  box.querySelectorAll("tr[data-net]").forEach((tr, i) => tr.onclick = () => { S.chTab = "check"; const r = rows[i].r; S.selLane = r.laneKey || null; if (S.chMode === "o") setChMode("m"); selectNet(+tr.dataset.net); });
+  // a row: its channel; a yellow or red row also the place of its worst criterion (findings.js)
+  box.querySelectorAll("tr[data-net]").forEach((tr, i) => tr.onclick = () => {
+    S.chTab = "check"; const r = rows[i].r; S.selLane = r.laneKey || null; if (S.chMode === "o") setChMode("m"); selectNet(+tr.dataset.net);
+    const sp = rows[i].st === "ok" ? null : rowSpot(r);
+    if (sp) showSpot(sp, { tab: "ch", keepNet: true, label: `${netShort(r.name)}: ${CRIT_NAME[sp.criterion] || sp.criterion}` });
+  });
 }
 
 function renderEye(body, r) {

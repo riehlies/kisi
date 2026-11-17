@@ -4,7 +4,7 @@
 // filter and sort shown there; one reader for every view (xpTables → xpCsv). Values with units become
 // plain numbers in the column's most common prefix, the unit goes into the header; the marks the views
 // set after a value (* estimate, ? uncertain, ⚠ warning) move into a column of their own.
-// "Data (kisi.json)": `kisi report` on the loaded files (kisi_core::commands, as kisi.mjs) in Web
+// "Results (JSON)": `kisi report` on the loaded files (kisi_core::commands, as kisi.mjs) in Web
 // Workers with engines of their own, with this browser's field-solver results; the check's rows in parts
 // (kisi_cli_check_part), so its progress shows. Its result is kept for the next export of the same state.
 const XP_UNIT = /^([+-]?(?:\d[\d,]*(?:\.\d+)?|\.\d+))\s?(%|dB|°C|K\/W|K|([fpnuµmkMG]?)(A\/mm²|W\/mm²|V|A|W|Hz|F|H|Ω|m|s))$/;
@@ -180,22 +180,55 @@ async function xpReport(progress) {
     progress("power: DC drop of every rail, losses, temperature", count, count);
     const res = JSON.parse(await call(ws[0], "kisi_cli_run", { opts: inputs.opts, tree: null, report_path: "analysis/kisi.json", check_rows: count >= 1 ? rows : null }));
     const text = res.files[0].content;
-    XP.done = { key, text, fieldN: Object.keys(inputs.field).length, plan: plan.length };
+    // the findings by severity and the nets they are on, for the menu's descriptions
+    let counts = null;
+    try {
+      const fs = JSON.parse(text).findings || [], n = (k) => fs.filter((f) => f.severity === k).length;
+      counts = { n: fs.length, fail: n("fail"), warn: n("warn"), gap: n("gap"), nets: new Set(fs.map((f) => f.location && f.location.net).filter(Boolean)).size };
+    } catch (e) { counts = null; }
+    XP.done = { key, text, counts, fieldN: Object.keys(inputs.field).length, plan: plan.length };
     return text;
   })();
   XP.run = { p, cancel };
   try { return await p; } finally { ws.forEach((w) => w.terminate()); XP.run = null; }
 }
 
-// ---- the menu
+// ---- the menu: each entry says in one line what it exports, in which format and how much – counted
+// from the state shown (the report's findings once it has run for this state)
+const xpPlural = (n, w) => `${n} ${w}${n === 1 ? "" : /s$/.test(w) ? "es" : "s"}`;
+// the report's latest result for the state shown, else null
+function xpLast() {
+  if (!XP.done || !S.engine) return null;
+  try {
+    const inputs = xpInputs();
+    return XP.done.key === JSON.stringify([S.engine.stateGen, S.field.size, inputs.opts, inputs.stackup]) ? XP.done : null;
+  } catch (e) { return null; }
+}
+// what the report checks, counted from the views: net classes with a target, lanes, rails
+function xpScope() {
+  const cls = S.an ? S.an.classes.filter((c) => c.target && c.nets > 0).length : 0;
+  const lanes = S.buses ? allLanes().filter(laneChecked).length : 0;
+  const rails = S.piSetups ? S.piSetups.size : 0;
+  return [cls && xpPlural(cls, "net class"), lanes && xpPlural(lanes, "lane"), rails && xpPlural(rails, "rail")].filter(Boolean).join(", ");
+}
 function xpSync() {
   const on = !!S.scene, t = on ? xpTables() : { why: "load a board first" };
   $("xp-btn").disabled = !on;
   $("xp-csv").disabled = !t.tables;
-  $("xp-csv").title = t.tables ? `the table${t.tables.length > 1 ? "s" : ""} of this view as shown (filter and sort), as ${xpFile(t.key, "csv")}` : `no table to export: ${t.why}`;
+  if (t.tables) {
+    const rows = t.tables.reduce((a, x) => a + x.rows.length, 0), cols = Math.max(...t.tables.map((x) => xpColumns(x).length));
+    $("xp-csv-d").textContent = `the ${t.key.replace(/-/g, " ")} table${t.tables.length > 1 ? `s (${t.tables.length})` : ""} as shown: ${xpPlural(rows, "row")}, ${xpPlural(cols, "column")}`;
+  } else $("xp-csv-d").textContent = `no table here: ${t.why}`;
+  $("xp-csv").title = t.tables ? `the table${t.tables.length > 1 ? "s" : ""} of this view as shown (filter and sort), units in the headers, as ${xpFile(t.key, "csv")}` : `no table to export: ${t.why}`;
   $("xp-json").disabled = $("xp-html").disabled = !on || !!XP.run;
-  $("xp-html").title = "one to two pages of results from the same report (impedance per class, the worst lane per interface, the drop per rail, temperatures, gaps) in a new window – print it there or save it as PDF";
-  $("xp-json").title = "the same content as `kisi report` (analysis/kisi.json) for the loaded files – board, project, kisi.json, the assembly variant and stackup shown – with the field-solver results of this browser; edits kept only in this browser (targets, profiles, power settings) are not in it";
+  const last = on ? xpLast() : null, c = last && last.counts;
+  const found = c ? `${xpPlural(c.n, "finding")} (${c.fail} fail, ${xpPlural(c.warn, "warning")}, ${xpPlural(c.gap, "gap")})${c.nets ? ` on ${xpPlural(c.nets, "net")}` : ""}` : "";
+  const scope = on ? xpScope() : "";
+  $("xp-html-d").textContent = !on ? "load a board first" : c ? `page to print or save as PDF: ${found}, each with its place on the board and a sketch`
+    : `page to print or save as PDF: every finding with its place on the board and a sketch – checks ${scope || "the board"} (computed first, about half a minute)`;
+  $("xp-json-d").textContent = !on ? "load a board first" : `all results of kisi report as one file (as analysis/kisi.json)${c ? `: ${found}, ${Math.round(last.text.length / 1024)} KB` : ", each finding with its location"} – for scripts, review tools and agents`;
+  $("xp-html").title = "in a new window: a summary, the findings with their place (layer, coordinates, part) and a board sketch each, the tables per area – print it there or save it as PDF; “show in the viewer” at a finding jumps to it here";
+  $("xp-json").title = `the same content as \`kisi report\` (analysis/kisi.json) for the loaded files – board, project, kisi.json, the assembly variant and stackup shown – with the field-solver results of this browser, as ${xpFile("report", "json")}. Not the board's settings: those (<board>.kisi.json) are saved on the Prepare PCB page; edits kept only in this browser (targets, profiles, power settings) are not in it`;
 }
 function xpMenu(open) {
   if (open) xpSync();
@@ -235,7 +268,7 @@ $("xp-html").onclick = () => {
   if (w) w.document.write(`<title>kisi report</title><p style="font:15px system-ui,sans-serif;margin:2em">kisi report: running – see the progress in the viewer's top bar.</p>`);
   xpRun((text) => {
     const html = S.engine.reportHtml(text, xpDate());
-    if (w && !w.closed) { w.document.open(); w.document.write(html); w.document.close(); w.focus(); return; }
+    if (w && !w.closed) { w.document.open(); w.document.write(html); w.document.close(); hookReportWindow(w); w.focus(); return; }
     saveText(xpFile("report", "html"), html, "text/html");
     xpStatus(`<span>The browser blocked the new window: the report was downloaded as ${esc(xpFile("report", "html"))} – open it and print.</span> <button class="linklike" id="xp-cancel">×</button>`);
     $("xp-cancel").onclick = () => xpStatus("");

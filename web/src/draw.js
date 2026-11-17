@@ -78,8 +78,13 @@ function drawNow() {
     }
   }
   drawXtMap(px);
-  if (S.mark && S.selNet === S.mark.net) {
-    ctx.strokeStyle = C.halo; ctx.lineWidth = 5 * px; ctx.beginPath(); ctx.arc(S.mark.x, S.mark.y, 9 * px, 0, Math.PI * 2); ctx.stroke();
+  // a marked place: of the selected net (zoomTo), or of a finding (net null, findings.js)
+  if (S.mark && (S.mark.net == null || S.selNet === S.mark.net)) {
+    // a ring; a finding's place (net null) also a cross through it
+    const m = S.mark, r = 9 * px, cross = m.net == null;
+    ctx.beginPath(); ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+    if (cross) { ctx.moveTo(m.x - 2 * r, m.y); ctx.lineTo(m.x + 2 * r, m.y); ctx.moveTo(m.x, m.y - 2 * r); ctx.lineTo(m.x, m.y + 2 * r); }
+    ctx.strokeStyle = C.halo; ctx.lineWidth = 5 * px; ctx.stroke();
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim(); ctx.lineWidth = 2 * px; ctx.stroke();
   }
   drawXtMarks(px);

@@ -844,6 +844,57 @@ pub extern "C" fn kisi_judge(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// Where a channel row's worst criterion applies (the viewer's jump from the channel check, as the
+/// report's findings): {"metrics", "profile", "limits" (as kisi_judge), "nets": [id], "target": [z,
+/// diff] | null, "rx": {"refdes", "pin"} | null, "stub_at": [x, y] | null} → Spot with "criterion" | null
+/// (a green row). `kisi_core::locate::channel_spot` on the worst criterion of `profile::judge`.
+#[no_mangle]
+pub extern "C" fn kisi_locate(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let m: kisi_core::profile::Metrics = serde_json::from_value(v["metrics"].clone()).map_err(|e| e.to_string())?;
+        let pr: kisi_core::profile::Profile =
+            serde_json::from_value(v["profile"].clone()).map_err(|e| e.to_string())?;
+        let l: kisi_core::profile::Limits = serde_json::from_value(v["limits"].clone()).unwrap_or_default();
+        let verdict = kisi_core::profile::judge(&m, &pr, &l);
+        if verdict.status == kisi_core::profile::Status::Green {
+            return Ok("null".into());
+        }
+        let Some(c) = kisi_core::locate::worst_criterion(&verdict.criteria) else { return Ok("null".into()) };
+        let nets: Vec<u32> = v["nets"]
+            .as_array()
+            .map(|a| a.iter().filter_map(|x| x.as_u64().map(|x| x as u32)).collect())
+            .unwrap_or_default();
+        let target = v["target"]
+            .as_array()
+            .and_then(|a| Some(kisi_core::extract::Target { z: a.first()?.as_f64()?, diff: a.get(1)?.as_bool()? }));
+        let rx = v["rx"]["refdes"].as_str().zip(v["rx"]["pin"].as_str());
+        let stub = v["stub_at"].as_array().and_then(|a| Some([a.first()?.as_f64()?, a.get(1)?.as_f64()?]));
+        Ok(match kisi_core::locate::channel_spot(b, an, &nets, target, c.key, rx, stub) {
+            Some(s) => {
+                let mut j = serde_json::json!(s);
+                j["criterion"] = serde_json::json!(c.key);
+                j.to_string()
+            }
+            None => "null".into(),
+        })
+    });
+    match r {
+        Ok(s) => {
+            set_out(s);
+            0
+        }
+        Err(e) => {
+            set_out(e);
+            1
+        }
+    }
+}
+
 /// Automatic profile of a net from the built-in rules: {"net", "class", "diff"} → "id"
 #[no_mangle]
 pub extern "C" fn kisi_profile_auto(p: *const u8, n: usize) -> i32 {

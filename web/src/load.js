@@ -61,7 +61,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     S.zones = S.engine.zones();
     S.name = name;
     S.overrides = {};
-    S.selNet = -1; S.hover = -1; S.piMark = null; S.check = null; S.chStatus = null; S.chCache = null; S.laneRes = null; S.selLane = null; S.chMode = "o";
+    S.selNet = -1; S.hover = -1; S.piMark = null; S.mark = null; S.check = null; S.chStatus = null; S.chCache = null; S.laneRes = null; S.selLane = null; S.chMode = "o";
     S.full = false; S.mode = "type"; // step 2 (formula impedances) not run yet; line type first
     S.xtScan = null; S.xtMs = null; S.xtHover = -1;
     S.fieldPending = new Set(); S.gen++;
@@ -93,6 +93,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     hideBusy();
     prepOnBoard(); // the gap list for the readiness dots and the Prepare PCB page (prepare.js)
     kicadCard(); // the "From KiCad" card: shown for the board the KiCad plugin handed over (main.js)
+    jumpPending(); // a link #finding=… given before the board was loaded (findings.js)
   } catch (e) {
     hideBusy();
     $("warnings").innerHTML = `<span class="err">Could not read file: ${esc(e.message)}</span>`;

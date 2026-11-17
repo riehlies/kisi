@@ -49,9 +49,9 @@
     <div class="xp-wrap" id="xp-wrap">
       <button class="btn" id="xp-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="xp-menu" disabled>Export</button>
       <div class="xp-menu" id="xp-menu" role="menu" hidden>
-        <button role="menuitem" id="xp-csv">Table (CSV)</button>
-        <button role="menuitem" id="xp-json">Data (kisi.json)</button>
-        <button role="menuitem" id="xp-html">Report (print / PDF)</button>
+        <button role="menuitem" id="xp-html" aria-describedby="xp-html-d"><b>Report</b> <span class="xp-f">HTML · print / PDF</span><span class="xp-d" id="xp-html-d"></span></button>
+        <button role="menuitem" id="xp-csv" aria-describedby="xp-csv-d"><b>Table</b> <span class="xp-f">CSV</span><span class="xp-d" id="xp-csv-d"></span></button>
+        <button role="menuitem" id="xp-json" aria-describedby="xp-json-d"><b>Results</b> <span class="xp-f">JSON</span><span class="xp-d" id="xp-json-d"></span></button>
       </div>
     </div>
     <div class="stk-act xp-status" id="xp-status" hidden role="status" aria-live="polite"></div>

@@ -29,6 +29,7 @@
   "views.js",
   "prepare.js",
   "export.js",
+  "findings.js",
   "main.js"
  ]
 }

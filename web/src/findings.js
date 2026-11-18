@@ -185,10 +185,11 @@ function hookReportWindow(w) {
 
 
 // ---- the Findings & export page: a page of its own like Prepare PCB's – it takes the place of the board
-// views; the top bar's button opens and closes it, a view button or Escape goes back to the board, opening one
-// of the two pages closes the other. Tab "Findings": the report's findings per net (part, rail, gap), from
-// kisi report (run in workers, export.js; also filled by Report and Results), filtered by severity, area and
-// text; a click closes the page and jumps. Tab "Export": the four exports as cards (export.js, xpSync).
+// views (it covers them: they stay drawn, so that Table (CSV) reads their tables as shown, and inert); the top
+// bar's button opens and closes it, a view button or Escape goes back to the board, opening one of the two
+// pages closes the other. Tab "Findings": the report's findings per net (part, rail, gap), from kisi report
+// (run in workers, export.js; also filled by Report and Results), filtered by severity, area and text; a click
+// closes the page and jumps. Tab "Export": the four exports as cards (export.js, xpSync).
 const XP_KIND = { net: "net", rail: "rail", part: "part", gap: "" };
 const XP_SEV = { fail: "high2", warn: "high1", gap: "none" };
 const XP_SEVN = { fail: "fail", warn: "warning", gap: "gap" };
@@ -204,6 +205,7 @@ function xpOpen(on) {
   XP.open = on;
   $("app").classList.toggle("xp-open", on);
   $("xp").hidden = !on;
+  for (const el of document.querySelectorAll("#app > .side, #stage")) el.inert = on;
   $("xp-btn").setAttribute("aria-pressed", String(on));
   for (const k of ["stk", "si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(!on && S.tab === k));
   if (on) { xpRender(); $("xp").scrollTop = XP.scroll[0]; window.scrollTo(0, XP.scroll[1]); }

@@ -467,7 +467,7 @@ ul.src li { margin: 2px 0; }
 .btn.prep-btn { white-space: nowrap; }
 .btn.prep-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 -2px 0 var(--accent); }
 #app.no-board #prep-btn { display: none; }
-#app:is(.prep-open, .xp-open) :is(.side, .stage), #app:is(.prep-open, .xp-open) .bar > .seg[data-view] { display: none !important; }
+#app.prep-open .side, #app.prep-open .stage, #app.prep-open .bar > .seg[data-view], #app.xp-open .bar > .seg[data-view] { display: none !important; }
 .prep-page { grid-column: 1 / -1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 330px minmax(0, 1fr) minmax(280px, 380px); gap: 10px; align-items: start; }
 .prep-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; position: sticky; top: 0; }
 .prep-card { border-left: 3px solid var(--accent); }
@@ -546,6 +546,10 @@ table.prep-ed input.ref { max-width: 90px; }
 /* ---- Findings & export: a page like Prepare PCB's (findings.js, export.js) ---- */
 .stk-act.xp-status { border-color: var(--accent); flex-wrap: nowrap; flex-shrink: 1; }
 .xp-status > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* the page covers the board views instead of hiding them (they stay drawn – Table (CSV) reads their tables as
+   shown – and inert, findings.js); on a phone the views' column folds away under it */
+.xp-page { grid-row: 2 / -1; position: relative; z-index: 20; background: var(--bg); }
+#app.xp-open > .side { grid-area: 2 / 1; } #app.xp-open > .stage { grid-area: 2 / 2; }
 @media (min-width: 1281px) { .xp-page { grid-template-columns: 330px minmax(0, 1fr); } }
 .xp-page code { font-size: 11.5px; }
 .xp-page .warn { color: var(--fg); border-left: 3px solid var(--z-high1); padding-left: 6px; }
@@ -578,7 +582,7 @@ table.prep-ed input.ref { max-width: 90px; }
 .xp-f { font: 500 12px var(--font-mono); color: var(--muted); }
 .xp-d { margin: 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 .xp-card .btn { align-self: flex-start; margin-top: auto; }
-@media (max-width: 860px) { .xp-wide { display: none; } .xp-page .prep-side { order: 0; } .xp-status > span { white-space: normal; overflow-wrap: anywhere; } }
+@media (max-width: 860px) { .xp-wide { display: none; } .xp-page .prep-side { order: 0; } #app.xp-open > .stage { grid-area: 2 / 1; } #app.xp-open > .side { grid-area: 3 / 1; max-height: 0; overflow: hidden; } .xp-status > span { white-space: normal; overflow-wrap: anywhere; } }
 .what-if { margin: 4px 0 0; }
 .fab-row .prep-chk { font-weight: 600; }
 .stk-head h2 { margin: 0; font-family: var(--font-display); font-size: 20px; }
@@ -708,7 +712,7 @@ table.prep-ed.fields td:nth-child(2) { min-width: 220px; }
 .prep-tabs button .mk { width: 18px; height: 18px; font-size: 10px; align-self: center; }
 @media (max-width: 1280px) { .prep-page { grid-template-columns: 300px minmax(0, 1fr); } .prep-preview { grid-column: 1 / -1; position: static; } }
 @media (max-width: 860px) {
-  #app.prep-open, #app.xp-open { grid-template-rows: auto auto; }
+  #app.prep-open { grid-template-rows: auto auto; }
   .prep-page { grid-template-columns: minmax(0, 1fr); overflow: visible; }
   .prep-main { order: 1; } .prep-side { order: 2; position: static; } .prep-preview { order: 3; }
   .prep-tabs button { flex: 1 1 0; justify-content: center; padding: 7px 6px 6px; } .prep-tabs button small { display: none; }

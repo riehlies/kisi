@@ -1096,10 +1096,11 @@ def export_menu(pg, tag, step, json_boards):
     # a page of its own in place of the board views, one of the two pages at a time
     pg.click("#prep-btn"); pg.wait_for_timeout(200)
     pg.click("#xp-btn"); pg.wait_for_timeout(200)
-    st = pg.evaluate("""() => ({ open: XP.open, shown: !$('xp').hidden, stage: getComputedStyle(document.querySelector('.stage')).display,
+    # the page covers the views (inert): the point at the board's centre is the page's
+    st = pg.evaluate("""() => ({ open: XP.open, shown: !$('xp').hidden, stage: (() => { const r = $('stage').getBoundingClientRect(), e = document.elementFromPoint(r.left + r.width / 2, Math.min(r.top + r.height / 2, innerHeight - 20)); return $('stage').inert && !!e && !!e.closest('#xp') ? 'covered' : 'shown'; })(),
       pressed: $('xp-btn').getAttribute('aria-pressed'), prep: S.prep.open || !$('prep').hidden, view: $('view-si').getAttribute('aria-pressed'),
       wide: document.documentElement.scrollWidth - innerWidth })""")
-    if not (st["open"] and st["shown"] and st["stage"] == "none" and st["pressed"] == "true" and not st["prep"] and st["view"] == "false"):
+    if not (st["open"] and st["shown"] and st["stage"] == "covered" and st["pressed"] == "true" and not st["prep"] and st["view"] == "false"):
         problems.append(f"{tag}: the Findings & export page does not open in place of the views (Prepare PCB closed): {st}")
     if st["wide"] > 0:
         problems.append(f"{tag}: the Findings & export page scrolls horizontally by {st['wide']} px")
@@ -1248,9 +1249,9 @@ def export_menu(pg, tag, step, json_boards):
                 pg.locator("#xp-find .xp-fd").filter(has_text=loc[-1]["what"][:40]).first.click()
                 pg.wait_for_function("!!S.mark", timeout=300000)
                 pg.wait_for_timeout(500)
-                mark = pg.evaluate("[S.mark.x, S.mark.y, S.tab, XP.open, getComputedStyle(document.querySelector('.stage')).display]")
+                mark = pg.evaluate("[S.mark.x, S.mark.y, S.tab, XP.open, $('stage').inert || !$('xp').hidden]")
                 at = loc[-1]["location"]["at"]
-                if abs(mark[0] - at[0]) > 0.01 or abs(mark[1] - at[1]) > 0.01 or mark[3] or mark[4] == "none":
+                if abs(mark[0] - at[0]) > 0.01 or abs(mark[1] - at[1]) > 0.01 or mark[3] or mark[4]:
                     problems.append(f"{tag}: findings list: the jump to {loc[-1]['id']} gave {mark}")
                 step(f"export_findings_jump_{board}")
                 # back to the page: the same tab, the finding marked

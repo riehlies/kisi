@@ -307,13 +307,13 @@ with sync_playwright() as p:
         r = pg.evaluate("({ ok: S.config.check.ok, entries: S.config.check.entries, errors: S.config.check.errors })")
         check(r["ok"] and r["entries"] > 0, f"--config: {r}")
     pg.screenshot(path=f"{out}/kicad-modified.png")
-    # the Export menu on the page from KiCad: the impedance table and the report as downloads
+    # the Findings & export page from KiCad, its Export tab: the impedance table and the report as downloads
     pg.click("#xp-btn")
+    pg.click("#xp-tab-export")
     with pg.expect_download(timeout=30000) as dl:
         pg.click("#xp-csv")
     check(dl.value.suggested_filename.startswith(stem + "_impedance_") and open(dl.value.path(), "rb").read(3) == b"\xef\xbb\xbf",
           f"export: table {dl.value.suggested_filename!r}")
-    pg.click("#xp-btn")
     with pg.expect_download(timeout=900000) as dl:
         pg.click("#xp-json")
     try:

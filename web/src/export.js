@@ -60,13 +60,6 @@ function xpRead(tb) {
 // the view's tables: [{title, head, rows}] – tables with the same header in one view merged, a column
 // naming each one's group (a bus); or {why}
 function xpTables() {
-  // the board views are not drawn while the page is open: shown for the read (no frame is painted meanwhile),
-  // so that a cell's lines read as drawn
-  const app = $("app"), page = app.classList.contains("xp-open");
-  if (page) app.classList.remove("xp-open");
-  try { return xpTablesShown(); } finally { if (page) app.classList.add("xp-open"); }
-}
-function xpTablesShown() {
   const v = xpView();
   if (!v.key) return v;
   let ts = v.model ? v.model() : [...((xpShown(v.box) && v.box.querySelectorAll("table")) || [])].filter(xpShown).map(xpRead);

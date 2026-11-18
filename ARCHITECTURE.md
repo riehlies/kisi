@@ -79,13 +79,15 @@ to one thread.
   `field-cache` · `check-pool` (the channel check's rows in Web Workers with engines of their own) · `crosstalk` (coupling scan with step 2, Couplings card, critical stretches on the map) · `stackups` (the Stackup view, a view button of its own with the option on: other stackups side by side and the tolerance band, `kisi_stackup_study`; the active stackup of all views – `active_stackup` in the analysis request, the engine applies it with `kisi_core::stackups::active_stackup` and keeps the last four analyses by key, `Engine.analyzeKeyed` – and the header indicator; after a switch the computed channel check, IR drop, PDN impedance and temperature are put back from a cache keyed by what each depends on – the last three stackups left, the engine keeping its DC results alongside (`put_stackup`, `kisi_pi_stored`) – or computed again) · `pi-map` (how the power maps are drawn from the solvers' cells: values extended beyond the copper and interpolated, cut at the real copper or the outline, narrow tracks as coloured strokes, isolines – display only) · `pi-dc` · `pi-pdn` · `pi-balance` · `pi-loss` (losses map with the via markers, power flow) · `pi-thermal` (temperature step and map) · `views` · `prepare` (the Prepare PCB page: gaps per category from
   `kisi_gaps` in a worker, the draft = the board's kisi.json, kept per board in the browser, forms by entry key,
   `kisi_config_check`, `kisi_config_subset` for saving one category, `kisi_edits_to_fields` for the views' power
-  edits, the checklist with Apply per step and markers that count a step's open items) · `export` (the Export menu
-  in the top bar: the tables of the view shown as CSV – one reader of the page's tables, units into the headers –,
+  edits, the checklist with Apply per step and markers that count a step's open items) · `export` (the Export tab
+  of the Findings & export page: the tables of the view shown as CSV – one reader of the page's tables, units into the headers –,
   and `kisi report` in Web Workers through the CLI's calls `kisi_cli_project`, `kisi_cli_check_part`, `kisi_cli_run`
-  with the browser's field results, so the result is the CLI's; the printable report from it, `kisi_report_html`; the Findings & export page of the top bar's button: each export entry describes what it
-  writes, counted from the state shown – also the board's settings, `<board>.kisi.json` through Prepare PCB's save –,
-  a table not computed yet is computed first) · `findings` (the page's findings list per net from the report, and
-  the jump to a finding: a channel in the board map with the whole lane selected, a rail or a part in the Power
+  with the browser's field results, so the result is the CLI's; the printable report from it, `kisi_report_html`; each
+  export a card that describes what it writes, counted from the state shown – also the board's settings,
+  `<board>.kisi.json` through Prepare PCB's save –, a table not computed yet is computed first) · `findings` (the
+  Findings & export page, a page of its own like Prepare PCB's – one of the two open at a time, in place of the
+  board views –: the summary, the findings list per net from the report with its filters (severity, area, text;
+  display only, the list is `kisi_core::findings`), and the jump to a finding: a channel in the board map with the whole lane selected, a rail or a part in the Power
   view's maps with the DC solution and the temperature computed first; also from a channel check row via
   `kisi_locate`, from "show in the viewer" in a report opened from the viewer and from a link `#finding=…`) · `main`
   (start-up, files, hand-over).

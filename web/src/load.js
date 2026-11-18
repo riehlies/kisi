@@ -93,6 +93,7 @@ async function loadFiles(pcbText, proText, name, piDefaults = null, cfg = null) 
     hideBusy();
     prepOnBoard(); // the gap list for the readiness dots and the Prepare PCB page (prepare.js)
     kicadCard(); // the "From KiCad" card: shown for the board the KiCad plugin handed over (main.js)
+    xpRender(); // the findings badge, and the Findings & export page if open (findings.js)
     jumpPending(); // a link #finding=… given before the board was loaded (findings.js)
   } catch (e) {
     hideBusy();

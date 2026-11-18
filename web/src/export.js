@@ -1,5 +1,7 @@
 "use strict";
-// ============================================================== export (the Export menu in the top bar)
+// ============================================================== export (the Export tab of the Findings & export page)
+// The page itself, its findings list and the jumps: findings.js. The four exports, each a card with a live line
+// of what it writes (xpSync):
 // "Table (CSV)": the tables of the view shown, read from the page as drawn – the rows in the order,
 // filter and sort shown there; one reader for every view (xpTables → xpCsv). Values with units become
 // plain numbers in the column's most common prefix, the unit goes into the header; the marks the views
@@ -58,6 +60,13 @@ function xpRead(tb) {
 // the view's tables: [{title, head, rows}] – tables with the same header in one view merged, a column
 // naming each one's group (a bus); or {why}
 function xpTables() {
+  // the board views are not drawn while the page is open: shown for the read (no frame is painted meanwhile),
+  // so that a cell's lines read as drawn
+  const app = $("app"), page = app.classList.contains("xp-open");
+  if (page) app.classList.remove("xp-open");
+  try { return xpTablesShown(); } finally { if (page) app.classList.add("xp-open"); }
+}
+function xpTablesShown() {
   const v = xpView();
   if (!v.key) return v;
   let ts = v.model ? v.model() : [...((xpShown(v.box) && v.box.querySelectorAll("table")) || [])].filter(xpShown).map(xpRead);
@@ -232,15 +241,19 @@ function xpSync() {
     $("xp-csv-d").textContent = `the ${t.key.replace(/-/g, " ")} table${t.tables.length > 1 ? `s (${t.tables.length})` : ""} as shown: ${xpPlural(rows, "row")}, ${xpPlural(cols, "column")}`;
   } else if (t.compute) $("xp-csv-d").textContent = `the ${t.key.replace(/-/g, " ")} table – computes ${t.what} first (progress in the top bar)`;
   else $("xp-csv-d").textContent = `no table here: ${t.why}`;
+  const vn = { stk: "Stackup", si: "Impedance", ch: "Channel", pi: "Power" }[S.tab];
+  $("xp-csv-v").textContent = on && vn ? `From the ${vn} view you opened this page from; for another view's table, open that view (top bar) and come back.` : "";
   $("xp-csv").title = t.tables ? `the table${t.tables.length > 1 ? "s" : ""} of this view as shown (filter and sort), units in the headers, as ${xpFile(t.key, "csv")}`
     : t.compute ? `computes ${t.what}, then saves the table as ${xpFile(t.key, "csv")}` : `no table to export: ${t.why}`;
   $("xp-json").disabled = $("xp-html").disabled = !on || !!XP.run;
+  const busy = XP.run ? " – available when the running kisi report is done" : "";
   const last = on ? xpLast() : null, c = last && last.counts;
   const found = c ? `${xpPlural(c.n, "finding")} (${c.fail} fail, ${xpPlural(c.warn, "warning")}, ${xpPlural(c.gap, "gap")})${c.groups ? ` on ${xpPlural(c.groups, "net")}, parts or gaps` : ""}` : "";
   const scope = on ? xpScope() : "";
   $("xp-html-d").textContent = !on ? "load a board first" : c ? `page to print or save as PDF: ${found}, each net with its place on the board and a sketch`
     : `page to print or save as PDF: every finding with its place on the board and a sketch – checks ${scope || "the board"} (computed first, about half a minute)`;
-  $("xp-json-d").textContent = !on ? "load a board first" : `all results of kisi report as one file (as analysis/kisi.json)${c ? `: ${found}, ${Math.round(last.text.length / 1024)} KB` : ", each finding with its location"} – for scripts, review tools and agents`;
+  $("xp-html-d").textContent += busy;
+  $("xp-json-d").textContent = !on ? "load a board first" : `all results of kisi report as one file (as analysis/kisi.json)${c ? `: ${found}, ${Math.round(last.text.length / 1024)} KB` : ", each finding with its location"} – for scripts, review tools and agents${busy}`;
   $("xp-html").title = "in a new window: a summary, the findings per net with their place (layer, coordinates, part) and a board sketch, the tables per area – print it there or save it as PDF; “show in the viewer” at a finding jumps to it here";
   $("xp-json").title = `the same content as \`kisi report\` (analysis/kisi.json) for the loaded files – board, project, kisi.json, the assembly variant and stackup shown – with the field-solver results of this browser, as ${xpFile("report", "json")}. Not the board's settings: those are the Settings entry; edits kept only in this browser (targets, profiles, power settings) are not in it`;
   // the board's settings: the file Prepare PCB saves (prepSave – one path)
@@ -248,7 +261,7 @@ function xpSync() {
   $("xp-cfg").disabled = !cfg.ok;
   $("xp-cfg-d").textContent = cfg.ok ? cfg.text : cfg.why;
   $("xp-cfg").title = `${S.name || "<board>"}.kisi.json, as Prepare PCB saves it (the same save: next to the board, the KiCad plugin's folder, or a download), then loaded again`;
-  xpFindings();
+  for (const i of ["xp-html", "xp-csv", "xp-json", "xp-cfg"]) $(i).closest(".xp-card").classList.toggle("off", $(i).disabled);
 }
 // the Settings entry: what the board's kisi.json would hold (Prepare PCB's draft – the loaded file with its
 // edits), or why there is nothing to save
@@ -263,22 +276,8 @@ function xpCfgState() {
     return { ok: true, text: `${S.name}.kisi.json – the board's settings with their sources (stackup, net classes, power tree fields, variants): ${xpPlural(n, "entry").replace("entrys", "entries")}${parts ? `, ${parts} since ${lc ? "the loaded file" : "the start"}` : lc ? ", as loaded" : ""}; the file Prepare PCB saves` };
   } catch (e) { return { ok: false, why: "the Prepare PCB draft is not ready yet" }; }
 }
-function xpMenu(open) {
-  if (open) {
-    const bar = document.querySelector(".bar"), r = bar ? bar.getBoundingClientRect() : null;
-    if (r) $("xp-menu").style.top = `${Math.max(8, Math.round(r.bottom + 6))}px`;
-    xpSync();
-  }
-  $("xp-menu").hidden = !open;
-  $("xp-btn").setAttribute("aria-expanded", String(open));
-}
-function xpStatus(html) { const s = $("xp-status"); s.hidden = !html; s.innerHTML = html || ""; }
-$("xp-btn").onclick = (e) => { e.stopPropagation(); xpMenu($("xp-menu").hidden); };
-$("xp-close").onclick = () => { xpMenu(false); $("xp-btn").focus(); };
-document.addEventListener("click", (e) => { if (!e.target.closest("#xp-wrap")) xpMenu(false); });
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("xp-menu").hidden) { xpMenu(false); $("xp-btn").focus(); } });
+function xpStatus(html) { const s = $("xp-status"); s.hidden = !html; s.innerHTML = html || ""; s.title = s.textContent.replace(/\s*[×]$|\s*Cancel$/, ""); }
 $("xp-csv").onclick = async () => {
-  xpMenu(false);
   let t = xpTables();
   if (!t.tables && t.compute) {
     xpStatus(`<span>Computing ${esc(t.what)} for the table …</span>`);
@@ -288,30 +287,35 @@ $("xp-csv").onclick = async () => {
   }
   if (t.tables) saveText(xpFile(t.key, "csv"), xpCsv(t.tables), "text/csv;charset=utf-8");
   else xpStatus(`<span>No table to export: ${esc(t.why)}</span> <button class="linklike" id="xp-cancel">×</button>`), $("xp-cancel").onclick = () => xpStatus("");
+  xpRender();
 };
 // the board's settings: Prepare PCB's save of the whole draft
 $("xp-cfg").onclick = async () => {
-  xpMenu(false);
   const keep = S.prep.scope;
   S.prep.scope = "all";
   try { await prepSave(); } finally { if (S.prep.scope === "all") S.prep.scope = keep; }
   if (S.prep.saved) xpStatus(`<span>${esc(S.prep.saved)}</span> <button class="linklike" id="xp-cancel">×</button>`), $("xp-cancel").onclick = () => xpStatus("");
+  xpRender();
 };
-// run the report with its progress in the bar; then hand the text on
-async function xpRun(then, failed, keepOpen) {
-  if (!keepOpen) xpMenu(false);
+// run the report with its progress in the top bar and on the page; then hand the text on
+async function xpRun(then, failed) {
   const t0 = performance.now();
-  const show = (what, d, n) => xpStatus(`<span>kisi report: ${esc(what)}${n ? ` · ${Math.round(100 * d / n)} %` : ""} · ${Math.round((performance.now() - t0) / 1000)} s</span> <button class="linklike" id="xp-cancel">Cancel</button>`);
+  const show = (what, d, n) => {
+    XP.prog = { what, d, n, s: Math.round((performance.now() - t0) / 1000) };
+    xpStatus(`<span>kisi report: ${esc(what)}${n ? ` · ${Math.round(100 * d / n)} %` : ""} · ${XP.prog.s} s</span> <button class="linklike" id="xp-cancel">Cancel</button>`);
+    xpProg();
+  };
   try {
-    if (keepOpen) xpFindings();
-    const text = await xpReport((w, d, n) => { show(w, d, n); $("xp-cancel").onclick = () => { if (XP.run) XP.run.cancel.on = true; }; });
+    const p = xpReport((w, d, n) => { show(w, d, n); $("xp-cancel").onclick = () => { if (XP.run) XP.run.cancel.on = true; }; });
+    xpRender();
+    const text = await p;
     xpStatus("");
     then(text);
   } catch (e) {
     if (failed) failed();
     xpStatus(e.message === "cancelled" ? "" : `<span class="err">kisi report: ${esc(e.message)}</span> <button class="linklike" id="xp-cancel">×</button>`);
     if ($("xp-cancel")) $("xp-cancel").onclick = () => xpStatus("");
-  }
+  } finally { XP.prog = null; xpRender(); }
 }
 $("xp-json").onclick = () => xpRun((text) => saveText(xpFile("report", "json"), text, "application/json"));
 // the window opens with the click (popup blockers allow that) and gets the page when the report is there;

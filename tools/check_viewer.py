@@ -35,7 +35,9 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   transform (drawBoardLabels), none in board units
 * a KiCad 5 board file is refused with kisi's message: on the start screen of a build without example boards (the
   given one, or kisi.html next to it) and, with a board loaded, in the warnings with the board kept (light run)
-* the Export menu (light, dark, phone; on every example board): enabled with a board, the table entry disabled with
+* the Findings & export page (light, dark, phone; on every example board): the top bar's button opens it in place
+  of the board views (pressed; Prepare PCB closes, and the other way round), Escape and a view button go back, no
+  horizontal scroll; the Export tab's entries: enabled with a board, the table entry disabled with
   its reason in a view without a table; the CSV (BOM, file name) of the impedance view – the Nets card's rows – and
   of the power tree's components table – the values shown, one unit per column – against the page; Results (JSON)
   with progress, parsed, the top-level keys of `kisi report`; Report (print / PDF): the page in a new window with its
@@ -43,8 +45,9 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   board view's marker at its place, and as a download when the window is blocked (light: every board; dark: the
   first; --quick: the last board in the light run); each entry's description (the table's rows and columns, the
   channel map's table computing the check first, the settings file; after the report its findings); the findings
-  list per net after the report and its jump to the last finding with a place (the DC solution computed first for a
-  power finding)
+  list per net after the report, its filters (a severity, an area, the search: the counts against the report's
+  findings, "Show all") and its jump to the last finding with a place (the page closed, the DC solution computed
+  first for a power finding), back to the page with that finding marked
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
@@ -1055,10 +1058,17 @@ REPORT_SECTIONS = ["Summary", "At a glance", "Findings", "Impedance per net clas
                    "Failing lanes", "Power: largest DC drop per rail", "Assumptions and gaps", "Left out on purpose"]
 
 
+def xp_page(pg, tab="export"):
+    """The Findings & export page open on its tab "find" or "export"."""
+    if not pg.evaluate("XP.open"):
+        pg.click("#xp-btn"); pg.wait_for_timeout(150)
+    pg.click(f"#xp-tab-{tab}"); pg.wait_for_timeout(50)
+
+
 def export_csv(pg):
     """Export → Table (CSV) as the browser downloads it: (file name, [section: (title, header, rows)])."""
     import csv, io
-    pg.click("#xp-btn")
+    xp_page(pg)
     with pg.expect_download(timeout=30000) as dl:
         pg.click("#xp-csv")
     raw = open(dl.value.path(), "rb").read()
@@ -1072,30 +1082,47 @@ def export_csv(pg):
 
 
 def export_menu(pg, tag, step, json_boards):
-    """The Export menu: its states (enabled with a board, the table entry disabled with its reason where a view has
-    no table), the CSV of the impedance view (the Nets card's rows) and of the power tree's components table (the
-    values shown, in one unit per column) against the page, the file name; Results (JSON): the report as JSON
-    with the top-level keys of `kisi report` (on the boards in json_boards)."""
+    """The Findings & export page: open and closed like Prepare PCB's page; its Export tab's states (enabled with a
+    board, the table entry disabled with its reason where a view has no table), the CSV of the impedance view (the
+    Nets card's rows) and of the power tree's components table (the values shown, in one unit per column) against
+    the page, the file name; Results (JSON): the report as JSON with the top-level keys of `kisi report` (on the
+    boards in json_boards); then its findings list, the filters and the jump."""
     import datetime
     board = pg.evaluate("S.name")
     if pg.is_disabled("#xp-btn"):
         problems.append(f"{tag}: Export disabled with a board loaded")
         return
     pg.click("#view-si"); pg.wait_for_timeout(200)
+    # a page of its own in place of the board views, one of the two pages at a time
+    pg.click("#prep-btn"); pg.wait_for_timeout(200)
     pg.click("#xp-btn"); pg.wait_for_timeout(200)
-    if pg.is_hidden("#xp-menu"):
-        problems.append(f"{tag}: the Export menu does not open")
+    st = pg.evaluate("""() => ({ open: XP.open, shown: !$('xp').hidden, stage: getComputedStyle(document.querySelector('.stage')).display,
+      pressed: $('xp-btn').getAttribute('aria-pressed'), prep: S.prep.open || !$('prep').hidden, view: $('view-si').getAttribute('aria-pressed'),
+      wide: document.documentElement.scrollWidth - innerWidth })""")
+    if not (st["open"] and st["shown"] and st["stage"] == "none" and st["pressed"] == "true" and not st["prep"] and st["view"] == "false"):
+        problems.append(f"{tag}: the Findings & export page does not open in place of the views (Prepare PCB closed): {st}")
+    if st["wide"] > 0:
+        problems.append(f"{tag}: the Findings & export page scrolls horizontally by {st['wide']} px")
+    step(f"export_page_{board}")
+    xp_page(pg, "export")
+    if pg.is_hidden("#xp-csv") or not pg.is_hidden("#xp-find"):
+        problems.append(f"{tag}: the Export tab does not show the exports")
     step(f"export_menu_{board}")
     # every entry says what it exports, with counts from the state shown
     desc = pg.evaluate("['xp-html-d', 'xp-csv-d', 'xp-json-d', 'xp-cfg-d'].map((i) => document.getElementById(i).textContent)")
     if not all(desc) or not re.search(r"\d+ rows?, \d+ columns?", desc[1]) or "print" not in desc[0] or "kisi report" not in desc[2] \
             or ".kisi.json" not in desc[3] and "nothing to save" not in desc[3]:
         problems.append(f"{tag}: Export menu descriptions {desc}")
-    if "Find the problems" not in pg.inner_text("#xp-find") and "Find again" not in pg.inner_text("#xp-find"):
-        problems.append(f"{tag}: the findings list offers no run: {pg.inner_text('#xp-find')[:120]!r}")
+    if pg.inner_text("#xp-find-run") not in ("Find the problems", "Find again"):
+        problems.append(f"{tag}: the findings page offers no run: {pg.inner_text('#xp-find-run')!r}")
     pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
-    if not pg.is_hidden("#xp-menu"):
-        problems.append(f"{tag}: Escape does not close the Export menu")
+    if not pg.is_hidden("#xp") or pg.evaluate("XP.open || $('xp-btn').getAttribute('aria-pressed') !== 'false' || $('view-si').getAttribute('aria-pressed') !== 'true'"):
+        problems.append(f"{tag}: Escape does not close the Findings & export page")
+    pg.click("#xp-btn"); pg.wait_for_timeout(100)
+    pg.click("#prep-btn"); pg.wait_for_timeout(200)
+    if pg.evaluate("XP.open || !S.prep.open"):
+        problems.append(f"{tag}: Prepare PCB does not take the place of the Findings & export page")
+    pg.click("#view-si"); pg.wait_for_timeout(200)
     if tag == "phone":
         pass
     elif pg.evaluate("S.an.nets.some((n) => n.target)"):
@@ -1126,19 +1153,21 @@ def export_menu(pg, tag, step, json_boards):
     # a view without a table: the entry is disabled and says why
     pg.click("#view-ch"); pg.wait_for_timeout(300)
     pg.click("#chm-m"); pg.wait_for_timeout(300)
-    pg.click("#xp-btn"); pg.wait_for_timeout(100)
+    xp_page(pg)
     if not pg.evaluate("!!S.check") and (pg.is_disabled("#xp-csv") or "computes the channel check first" not in pg.inner_text("#xp-csv-d")):
         problems.append(f"{tag}: Table (CSV) in the channel map before the check does not offer to compute it: {pg.inner_text('#xp-csv-d')!r}")
     pg.keyboard.press("Escape")
+    if pg.evaluate("XP.open"):
+        problems.append(f"{tag}: Escape does not close the Findings & export page")
     pg.click("#chm-o"); pg.wait_for_timeout(200)
     pg.click("#view-si"); pg.wait_for_timeout(200)
     if board in json_boards:
         t0 = time.time()
-        pg.click("#xp-btn")
+        xp_page(pg)
         with pg.expect_download(timeout=900000) as dl:
             pg.click("#xp-json")
             pg.wait_for_timeout(1000)
-            if "kisi report" not in pg.inner_text("#xp-status"):
+            if "kisi report" not in pg.inner_text("#xp-status") or "kisi report" not in pg.inner_text("#xp-prog") or not pg.is_disabled("#xp-find-run"):
                 problems.append(f"{tag}: no progress shown while the report runs")
             step(f"export_progress_{board}")
         try:
@@ -1150,7 +1179,7 @@ def export_menu(pg, tag, step, json_boards):
             problems.append(f"{tag}: Results (JSON) of {board}: keys {sorted(rep)}")
         notes.append(f"{tag}: Results (JSON) of {board}: {time.time() - t0:.0f} s, {len(rep['channels'].get('rows', []))} channel rows")
         # Report (print / PDF): the same report (kept) as a page in a new window; with the window blocked, a download
-        pg.click("#xp-btn")
+        xp_page(pg)
         with pg.context.expect_page(timeout=120000) as pi:
             pg.click("#xp-html")
         win = pi.value
@@ -1169,36 +1198,73 @@ def export_menu(pg, tag, step, json_boards):
                 f0 = next(f for f in rep["findings"] if f.get("location"))
                 win.locator("a.jump").first.click()
                 pg.wait_for_timeout(500)
-                mark = pg.evaluate("S.mark && [S.mark.x, S.mark.y]")
+                mark = pg.evaluate("!XP.open && S.mark && [S.mark.x, S.mark.y]")
                 if not mark or abs(mark[0] - f0["location"]["at"][0]) > 0.01 or abs(mark[1] - f0["location"]["at"][1]) > 0.01 or "mm" not in pg.inner_text("#xp-status"):
                     problems.append(f"{tag}: Report of {board}: the jump to finding {f0['id']} gave the mark {mark}")
                 step(f"export_jump_{board}")
-            # the page now counts the report's findings and lists them per net; a click jumps
-            pg.click("#xp-btn"); pg.wait_for_timeout(100)
+            # the page now counts the report's findings and lists them per net; the filters; a click jumps
+            xp_page(pg)
             if n and f"{n} finding" not in pg.inner_text("#xp-html-d"):
-                problems.append(f"{tag}: Export menu after the report: {pg.inner_text('#xp-html-d')!r}")
+                problems.append(f"{tag}: Export tab after the report: {pg.inner_text('#xp-html-d')!r}")
+            xp_page(pg, "find")
+            if n and (pg.inner_text("#xp-count") != str(n) or not pg.inner_text("#xp-state").startswith("Current")):
+                problems.append(f"{tag}: findings page after the report: badge {pg.inner_text('#xp-count')!r}, {pg.inner_text('#xp-state')!r}")
             items = pg.locator("#xp-find .xp-fd")
             groups = pg.locator("#xp-find .xp-grp")
             if items.count() != n or groups.count() != len(rep.get("finding_groups") or []):
                 problems.append(f"{tag}: findings list: {items.count()} findings in {groups.count()} groups for {n} in {len(rep.get('finding_groups') or [])}")
             step(f"export_findings_{board}")
+            # filters: a severity, an area (with the severity), the search; each against the report
+            fs = rep.get("findings") or []
+            area = {"vias": "power", "temperature": "thermal"}
+            sev = next((k for k in ("fail", "warn", "gap") if any(f["severity"] == k for f in fs)), None)
+            if sev:
+                pg.click(f'#xp-sev [data-xp-sev="{sev}"]'); pg.wait_for_timeout(50)
+                want = [f for f in fs if f["severity"] == sev]
+                if items.count() != len(want) or pg.inner_text("#xp-shown") != (f"{len(want)} of {n} shown" if len(want) < n else f"{n} finding{'s' if n != 1 else ''}"):
+                    problems.append(f"{tag}: severity filter {sev}: {items.count()} shown for {len(want)} ({pg.inner_text('#xp-shown')!r})")
+                a0 = area.get(want[0]["area"], want[0]["area"])
+                pg.click(f'#xp-area [data-xp-area="{a0}"]'); pg.wait_for_timeout(50)
+                want2 = [f for f in want if area.get(f["area"], f["area"]) == a0]
+                if items.count() != len(want2):
+                    problems.append(f"{tag}: area filter {a0}: {items.count()} shown for {len(want2)}")
+                step(f"export_findings_filtered_{board}")
+                pg.click(f'#xp-sev [data-xp-sev="{sev}"]'); pg.click(f'#xp-area [data-xp-area="{a0}"]'); pg.wait_for_timeout(50)
+            if fs:
+                pg.fill("#xp-q", "no such finding ~~"); pg.wait_for_timeout(50)
+                if items.count() or not pg.locator("#xp-clear").count():
+                    problems.append(f"{tag}: search with no match shows {items.count()} findings")
+                else:
+                    pg.click("#xp-clear"); pg.wait_for_timeout(50)
+                q = fs[-1]["item"][-12:]
+                pg.fill("#xp-q", q); pg.wait_for_timeout(50)
+                if not 1 <= items.count() <= n or not items.filter(has_text=q).count():
+                    problems.append(f"{tag}: search {q!r}: {items.count()} shown")
+                pg.fill("#xp-q", ""); pg.wait_for_timeout(50)
+                if items.count() != n:
+                    problems.append(f"{tag}: the list after clearing the filters: {items.count()} of {n}")
             loc = [f for f in rep["findings"] if f.get("location")]
             if loc and items.count():
                 pg.locator("#xp-find .xp-fd").filter(has_text=loc[-1]["what"][:40]).first.click()
                 pg.wait_for_function("!!S.mark", timeout=300000)
                 pg.wait_for_timeout(500)
-                mark = pg.evaluate("[S.mark.x, S.mark.y, S.tab]")
+                mark = pg.evaluate("[S.mark.x, S.mark.y, S.tab, XP.open, getComputedStyle(document.querySelector('.stage')).display]")
                 at = loc[-1]["location"]["at"]
-                if abs(mark[0] - at[0]) > 0.01 or abs(mark[1] - at[1]) > 0.01:
+                if abs(mark[0] - at[0]) > 0.01 or abs(mark[1] - at[1]) > 0.01 or mark[3] or mark[4] == "none":
                     problems.append(f"{tag}: findings list: the jump to {loc[-1]['id']} gave {mark}")
                 step(f"export_findings_jump_{board}")
+                # back to the page: the same tab, the finding marked
+                pg.click("#xp-btn"); pg.wait_for_timeout(200)
+                if not pg.evaluate("(id) => XP.open && XP.tab === 'find' && !!document.querySelector(`#xp-find .xp-fd[aria-current=true][data-fid=\"${CSS.escape(id)}\"]`)", loc[-1]["id"]):
+                    problems.append(f"{tag}: back on the findings page, {loc[-1]['id']} is not marked")
+                pg.click("#view-si"); pg.wait_for_timeout(200)
             pg.keyboard.press("Escape")
             pg.evaluate("xpStatus(''); S.mark = null")
         except Exception as e:
             problems.append(f"{tag}: Report of {board} not shown in the new window: {e}")
         win.close()
         pg.evaluate("window.__open = window.open; window.open = () => null")
-        pg.click("#xp-btn")
+        xp_page(pg)
         with pg.expect_download(timeout=120000) as dl:
             pg.click("#xp-html")
         pg.evaluate("window.open = window.__open")

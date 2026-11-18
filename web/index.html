@@ -46,19 +46,7 @@
     </div>
     <button class="btn prep-btn" id="prep-btn" aria-pressed="false" title="What the board file lacks, per category – enter the values and save the board's kisi.json">Prepare PCB <span class="count" id="prep-count" hidden></span></button>
     <button class="btn" id="reload" hidden title="Read the same files again (after saving in KiCad)">Reload</button>
-    <div class="xp-wrap" id="xp-wrap">
-      <button class="btn" id="xp-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="xp-menu" disabled title="The board's findings with their place, and every export"><span class="xp-wide">Findings &amp; </span>Export <span class="count" id="xp-count" hidden></span></button>
-      <div class="xp-menu" id="xp-menu" role="dialog" aria-label="Findings and export" hidden>
-        <header class="xp-head"><h2>Findings &amp; export</h2><button class="x" id="xp-close" aria-label="Close">×</button></header>
-        <h3 class="xp-h">Export</h3>
-        <button id="xp-html" aria-describedby="xp-html-d"><b>Report</b> <span class="xp-f">HTML · print / PDF</span><span class="xp-d" id="xp-html-d"></span></button>
-        <button id="xp-csv" aria-describedby="xp-csv-d"><b>Table</b> <span class="xp-f">CSV</span><span class="xp-d" id="xp-csv-d"></span></button>
-        <button id="xp-json" aria-describedby="xp-json-d"><b>Results</b> <span class="xp-f">JSON</span><span class="xp-d" id="xp-json-d"></span></button>
-        <button id="xp-cfg" aria-describedby="xp-cfg-d"><b>Settings</b> <span class="xp-f">&lt;board&gt;.kisi.json</span><span class="xp-d" id="xp-cfg-d"></span></button>
-        <h3 class="xp-h">Findings <span class="muted" id="xp-find-n"></span></h3>
-        <div class="xp-find" id="xp-find"></div>
-      </div>
-    </div>
+    <button class="btn prep-btn" id="xp-btn" aria-pressed="false" disabled title="The board's findings with their place, and every export – a page of its own"><span class="xp-wide">Findings &amp; </span>Export <span class="count" id="xp-count" hidden></span></button>
     <div class="stk-act xp-status" id="xp-status" hidden role="status" aria-live="polite"></div>
     <label class="btn primary" for="file" id="load-files">Load files</label>
     <input type="file" id="file" accept=".kicad_pcb,.kicad_pro,.json,.csv,.s2p,.s4p" multiple hidden>
@@ -345,6 +333,42 @@
       <pre class="prep-json" id="prep-json"></pre>
       <p class="note">Precedence: board file &lt; kisi.json &lt; edits in the viewer.</p>
     </section>
+  </main>
+  <main class="prep-page xp-page" id="xp" hidden aria-label="Findings and export">
+    <aside class="prep-side">
+      <section class="card prep-card" aria-labelledby="h-xp">
+        <h2 id="h-xp">Findings &amp; export <em id="xp-board"></em></h2>
+        <div class="prep-ready" id="xp-ready" role="group" aria-label="Parts of the page"></div>
+        <div class="kpis" id="xp-sum"></div>
+        <p class="note" id="xp-scope"></p>
+        <p class="note" id="xp-state" role="status"></p>
+        <div class="prep-row"><button class="btn small primary" id="xp-find-run">Find the problems</button><button class="btn small" id="xp-find-stop" hidden>Cancel</button></div>
+        <div class="fs-bar" id="xp-barbox" hidden aria-hidden="true"><i id="xp-bar"></i></div>
+        <span class="note" id="xp-prog" aria-live="polite"></span>
+        <p class="note">Every result over or near a limit and every open gap, each with its place on the board: “Find the problems” runs <code>kisi report</code> in the background (the channel check, the DC drop, the temperature; about half a minute). A click on a finding shows it on the board; this button in the top bar brings you back.</p>
+      </section>
+    </aside>
+    <div class="prep-main">
+      <div class="prep-tabs" role="tablist" aria-label="Findings or export">
+        <button role="tab" id="xp-tab-find" aria-controls="xp-pane-find" data-xp-tab="find">Findings<small id="xp-tab-find-n"></small></button>
+        <button role="tab" id="xp-tab-export" aria-controls="xp-pane-export" data-xp-tab="export">Export<small>report, table, results, settings</small></button>
+      </div>
+      <section class="xp-pane" id="xp-pane-find" role="tabpanel" aria-labelledby="xp-tab-find">
+        <div class="xp-filter" id="xp-filter" hidden>
+          <div class="xp-chips" id="xp-sev" role="group" aria-label="Severity"></div>
+          <div class="xp-chips" id="xp-area" role="group" aria-label="Area"></div>
+          <input class="search" id="xp-q" type="search" placeholder="Search net, part, layer or text" aria-label="Search the findings">
+          <span class="note" id="xp-shown"></span>
+        </div>
+        <div class="xp-find" id="xp-find"></div>
+      </section>
+      <section class="xp-pane xp-cards" id="xp-pane-export" role="tabpanel" aria-labelledby="xp-tab-export" hidden>
+        <article class="xp-card"><h3>Report <span class="xp-f">HTML · print / PDF</span></h3><p class="xp-d" id="xp-html-d"></p><button class="btn small primary" id="xp-html" aria-describedby="xp-html-d">Open the report</button></article>
+        <article class="xp-card"><h3>Table <span class="xp-f">CSV</span></h3><p class="xp-d" id="xp-csv-d"></p><p class="xp-d" id="xp-csv-v"></p><button class="btn small primary" id="xp-csv" aria-describedby="xp-csv-d">Save the table</button></article>
+        <article class="xp-card"><h3>Results <span class="xp-f">JSON</span></h3><p class="xp-d" id="xp-json-d"></p><button class="btn small primary" id="xp-json" aria-describedby="xp-json-d">Save the results</button></article>
+        <article class="xp-card"><h3>Settings <span class="xp-f">&lt;board&gt;.kisi.json</span></h3><p class="xp-d" id="xp-cfg-d"></p><button class="btn small primary" id="xp-cfg" aria-describedby="xp-cfg-d">Save kisi.json</button></article>
+      </section>
+    </div>
   </main>
 </div>
 

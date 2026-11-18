@@ -10,7 +10,7 @@
 //   the place's layer; a part's temperature: the temperature map – the DC solution (and the temperature)
 //   computed first where missing, with the progress of their steps;
 // * a gap's parts: the board view with the marker.
-// Sources: the findings list of the Findings & export page (xpFindings), a channel check row
+// Sources: the findings list of the Findings & export page (xpFindings, below), a channel check row
 // (channel.js, kisi_locate), "show in the viewer" in a report opened from the viewer, a link
 // #finding=<id>&at=x,y&layer=…&layers=…&net=…&item=…&box=…&board=… (also before a board is loaded).
 
@@ -104,6 +104,9 @@ async function piEnsure(thermal) {
 
 // open the view that shows a finding (see above)
 async function jumpFinding(f) {
+  // from either page: back to the board
+  if (XP.open) xpOpen(false);
+  if (S.prep.open) prepOpen(false);
   const sp = f && f.location;
   const label = `${f.severity === "fail" ? "fail" : f.severity === "warn" ? "warning" : f.severity === "gap" ? "gap" : "finding"} ${f.id}`;
   if (!sp || !S.scene) { xpStatus(`<span>${esc(f ? f.id : "")}: no single place on the board.</span> <button class="linklike" id="xp-cancel">×</button>`); $("xp-cancel").onclick = () => xpStatus(""); return false; }
@@ -180,36 +183,128 @@ function hookReportWindow(w) {
   } catch (e) { console.warn(e); }
 }
 
-// ---- the findings list of the Findings & export page: per net (part, rail, gap) its findings, from the
-// report (kisi report in workers, as Results and Report); a click jumps to the finding
+
+// ---- the Findings & export page: a page of its own like Prepare PCB's – it takes the place of the board
+// views; the top bar's button opens and closes it, a view button or Escape goes back to the board, opening one
+// of the two pages closes the other. Tab "Findings": the report's findings per net (part, rail, gap), from
+// kisi report (run in workers, export.js; also filled by Report and Results), filtered by severity, area and
+// text; a click closes the page and jumps. Tab "Export": the four exports as cards (export.js, xpSync).
 const XP_KIND = { net: "net", rail: "rail", part: "part", gap: "" };
 const XP_SEV = { fail: "high2", warn: "high1", gap: "none" };
-function xpFindings() {
-  const box = $("xp-find");
-  if (!box) return;
-  const last = S.scene ? xpLast() : null, old = !last && XP.done && XP.done.board === S.name ? XP.done : null, use = last || old;
-  const c = use && use.counts;
-  // the badge on the top bar's button: the findings of the state shown
-  const nc = last && last.counts;
-  $("xp-count").hidden = !nc || !nc.n;
-  if (nc) { $("xp-count").textContent = String(nc.n); $("xp-count").className = "count" + (nc.fail ? "" : nc.warn ? " m" : " z"); }
-  $("xp-find-n").textContent = c ? `${c.n} · ${c.fail} fail, ${xpPlural(c.warn, "warning")}, ${xpPlural(c.gap, "gap")}` : "";
-  const run = `<button class="btn small xp-run" id="xp-find-run" ${XP.run || !S.scene ? "disabled" : ""}>${c ? "Find again" : "Find the problems"}</button>`;
+const XP_SEVN = { fail: "fail", warn: "warning", gap: "gap" };
+// the filter's areas and the findings' areas in each
+const XP_AREA = { channel: ["channel", ["channel"]], impedance: ["impedance", ["impedance"]], power: ["power", ["vias", "power"]], thermal: ["thermal", ["temperature"]], gap: ["gaps", ["gap"]] };
+const xpAreaOf = (f) => Object.keys(XP_AREA).find((k) => XP_AREA[k][1].includes(f.area)) || "gap";
+Object.assign(XP, { open: false, tab: "find", f: { sev: new Set(), area: new Set(), q: "" }, byId: new Map(), scroll: [0, 0] });
+
+function xpOpen(on) {
+  if (on && !S.scene) return;
+  if (on && S.prep.open) prepOpen(false);
+  if (!on && XP.open) XP.scroll = [$("xp").scrollTop, window.scrollY];
+  XP.open = on;
+  $("app").classList.toggle("xp-open", on);
+  $("xp").hidden = !on;
+  $("xp-btn").setAttribute("aria-pressed", String(on));
+  for (const k of ["stk", "si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(!on && S.tab === k));
+  if (on) { xpRender(); $("xp").scrollTop = XP.scroll[0]; window.scrollTo(0, XP.scroll[1]); }
+}
+// the report's findings for the state shown (last), else the board's older ones (old, greyed)
+function xpState() {
+  const last = S.scene ? xpLast() : null, old = !last && XP.done && XP.done.board === S.name ? XP.done : null;
+  return { last, old, c: (last || old || {}).counts || null };
+}
+// the badge on the top bar's button: the findings of the state shown
+function xpBadge() {
+  const l = S.scene ? xpLast() : null, c = l && l.counts, b = $("xp-count");
+  b.hidden = !c || !c.n;
+  if (c) { b.textContent = String(c.n); b.className = "count" + (c.fail ? "" : c.warn ? " m" : " z"); }
+}
+function xpRender() {
+  xpBadge();
+  if (!XP.open || !S.scene) return;
+  const st = xpState(), c = st.c, find = XP.tab === "find";
+  $("xp-board").textContent = S.name || "";
+  xpSync(); // the export cards (export.js)
+  const sev = c ? `${c.fail} fail, ${xpPlural(c.warn, "warning")}, ${xpPlural(c.gap, "gap")}` : "not computed yet";
+  const mk = c ? (c.fail ? ["open h", c.n] : c.warn ? ["open m", c.n] : c.n ? ["open s", c.n] : ["done", "✓"]) : ["open s", "–"];
+  const ex = ["xp-html", "xp-csv", "xp-json", "xp-cfg"].filter((i) => !$(i).disabled).length;
+  $("xp-ready").innerHTML = [["find", "Findings", mk, (c ? `${c.n} · ` : "") + sev + (st.old ? " (before the last change)" : "")], ["export", "Export", ["open s", ex], `${ex} of 4 ready`]]
+    .map(([t, n, m, s]) => `<button data-xp-tab="${t}" aria-current="${XP.tab === t}"><span class="mk ${m[0]}">${m[1]}</span><b>${n}</b><span>${esc(s)}</span></button>`).join("");
+  $("xp-tab-find").setAttribute("aria-selected", String(find)); $("xp-tab-export").setAttribute("aria-selected", String(!find));
+  $("xp-tab-find-n").textContent = c ? `${c.n}${st.old ? " · old" : ""}` : "";
+  $("xp-pane-find").hidden = !find; $("xp-pane-export").hidden = find;
+  // the summary: findings by severity, what they are on, whether they hold for what is shown
+  const kpi = (v, l, col) => `<div class="kpi"><span class="v"${v && col ? ` style="color:${S.colors[col]}"` : ""}>${v}</span><span class="l">${l}</span></div>`;
+  $("xp-sum").innerHTML = c ? kpi(c.fail, "fail", "high2") + kpi(c.warn, c.warn === 1 ? "warning" : "warnings", "high1") + kpi(c.gap, c.gap === 1 ? "open gap" : "open gaps") : kpi("–", "fail") + kpi("–", "warnings") + kpi("–", "open gaps");
+  const kinds = c ? ["net", "rail", "part"].map((k) => [k, c.groups_list.filter((g) => g.kind === k).length]).filter((x) => x[1]).map(([k, n]) => xpPlural(n, k)) : [];
+  $("xp-scope").textContent = c ? (c.n ? `${xpPlural(c.n, "finding")}${kinds.length ? ` on ${kinds.join(", ")}` : ""}${c.gap ? `${kinds.length ? " and" : ""} ${xpPlural(c.gap, "gap")}` : ""}.` : "No finding: every check within its limits, no open gap.") : `Checks ${xpScope() || "the board"}.`;
+  $("xp-state").className = "note" + (st.old ? " warn" : "");
+  $("xp-state").textContent = XP.run ? "" : st.last ? "Current: computed for the settings, variant and stackup shown." : st.old ? "Computed before the last change (other settings, a field-solver result, another variant): the places still hold, the values may differ – “Find again”." : "Not computed yet for this board.";
+  $("xp-find-run").textContent = c ? "Find again" : "Find the problems";
+  xpFindings(st);
+  xpProg();
+}
+// the run's progress on the page (the top bar shows it too)
+function xpProg() {
+  if (!XP.open) return;
+  const p = XP.prog, run = !!XP.run;
+  $("xp-barbox").hidden = !run;
+  $("xp-bar").style.width = p && p.n ? `${Math.round(100 * p.d / p.n)}%` : "3%";
+  $("xp-prog").textContent = run && p ? `kisi report: ${p.what}${p.n ? ` · ${Math.round(100 * p.d / p.n)} %` : ""} · ${p.s} s` : "";
+  $("xp-find-run").disabled = run || !S.scene; $("xp-find-stop").hidden = !run;
+}
+// the list: per net (part, rail, gap) its findings that pass the filter
+function xpFindings(st) {
+  const box = $("xp-find"), c = st.c, F = XP.f;
+  $("xp-filter").hidden = !c || !c.n;
   if (!c) {
-    box.innerHTML = `<p class="note">Every result over or near a limit and every open gap, per net, each with its place on the board – click one to show it there. Runs kisi report in the background first (the channel check, the DC drop, the temperature; about half a minute${S.name ? ` on ${esc(S.name)}` : ""}).</p>${run}`;
-  } else {
-    const byId = new Map(c.findings.map((f) => [f.id, f]));
-    const groups = c.groups_list.length ? c.groups_list : c.findings.map((f) => ({ id: f.id, title: f.item, kind: "", severity: f.severity, findings: [f.id] }));
-    box.innerHTML = (old ? `<p class="note warn">Computed before the last change (other settings, a field-solver result, another variant): the places still hold for the board, the values may differ – “Find again”.</p>` : "")
-      + groups.map((g) => `<div class="xp-grp${old ? " xp-old" : ""}"><div class="xp-gh"><span class="dot" style="background:${S.colors[XP_SEV[g.severity]] || "var(--muted)"}"></span><span>${esc(g.title)}</span><span class="muted">${esc(XP_KIND[g.kind] || "")}${g.findings.length > 1 ? ` · ${g.findings.length}` : ""}</span></div>`
-        + g.findings.map((id) => byId.get(id)).filter(Boolean).map((f) => `<button class="xp-fd" data-fid="${esc(f.id)}" ${f.location ? "" : "disabled"}><span class="dot" style="background:${S.colors[XP_SEV[f.severity]] || "var(--muted)"}" aria-label="${f.severity === "warn" ? "warning" : f.severity}"></span><span>${esc(f.what)}<span class="w">${esc(f.location ? xpWhere(f.location) : "board-wide")}</span></span></button>`).join("") + "</div>").join("")
-      + `<p class="note">Coordinates in mm as KiCad shows them (x →, y ↓).</p>${run}`;
-    box.querySelectorAll("[data-fid]").forEach((b) => b.onclick = () => { const f = byId.get(b.dataset.fid); xpMenu(false); jumpFinding(f); });
+    box.innerHTML = `<p class="prep-empty">No findings yet. “Find the problems” runs kisi report on ${esc(S.name)} and lists every result over or near a limit and every open gap, per net, each with its place on the board.</p>`;
+    return;
   }
-  const r = $("xp-find-run");
-  if (r) r.onclick = () => xpRun(() => { xpMenu(true); }, null, true);
+  if (!c.n) { box.innerHTML = `<p class="prep-empty">kisi report finds nothing over or near a limit and no open gap.</p>`; return; }
+  const byId = XP.byId = new Map(c.findings.map((f) => [f.id, f]));
+  const groups = c.groups_list.length ? c.groups_list : c.findings.map((f) => ({ id: f.id, title: f.item, kind: "", severity: f.severity, findings: [f.id] }));
+  const q = F.q.trim().toLowerCase(), dot = (s) => `<span class="dot" style="background:${S.colors[XP_SEV[s]] || "var(--muted)"}"></span>`;
+  const pass = (f, g, skip) => (skip === "sev" || !F.sev.size || F.sev.has(f.severity)) && (skip === "area" || !F.area.size || F.area.has(xpAreaOf(f)))
+    && (!q || [f.id, f.what, f.detail, g.title, ...(g.nets || []), f.location ? xpWhere(f.location) + " " + f.location.net : ""].join(" ").toLowerCase().includes(q));
+  const gOf = new Map(groups.flatMap((g) => g.findings.map((id) => [id, g])));
+  // each chip counts what it would show with the other filters kept
+  const chip = (attr, k, label, on, n) => `<button data-${attr}="${k}" aria-pressed="${on}" ${n || on ? "" : "disabled"}>${attr === "xp-sev" ? dot(k) : ""}${label} <b>${n}</b></button>`;
+  $("xp-sev").innerHTML = Object.entries(XP_SEVN).map(([k, l]) => chip("xp-sev", k, l, F.sev.has(k), c.findings.filter((f) => f.severity === k && pass(f, gOf.get(f.id) || {}, "sev")).length)).join("");
+  $("xp-area").innerHTML = Object.entries(XP_AREA).map(([k, [l]]) => chip("xp-area", k, l, F.area.has(k), c.findings.filter((f) => xpAreaOf(f) === k && pass(f, gOf.get(f.id) || {}, "area")).length)).join("");
+  let shown = 0;
+  const html = groups.map((g) => {
+    const fs = g.findings.map((id) => byId.get(id)).filter((f) => f && pass(f, g));
+    if (!fs.length) return "";
+    shown += fs.length;
+    return `<div class="xp-grp${st.old ? " xp-old" : ""}"><div class="xp-gh">${dot(g.severity)}<span>${esc(g.title)}</span><span class="muted">${esc(XP_KIND[g.kind] || "")}${g.findings.length > 1 ? ` · ${g.findings.length}` : ""}</span></div>`
+      + fs.map((f) => `<button class="xp-fd" data-fid="${esc(f.id)}" aria-current="${f.id === XP.lastJump}" ${f.location ? "" : "disabled"}>${dot(f.severity).replace("></span>", ` aria-label="${XP_SEVN[f.severity] || f.severity}"></span>`)}<span>${esc(f.what)}${f.estimate ? ` <em class="est">estimate</em>` : ""}<span class="w">${esc(f.location ? xpWhere(f.location) : "board-wide: no single place")}</span>${f.detail ? `<span class="d">${esc(f.detail)}</span>` : ""}</span></button>`).join("") + "</div>";
+  }).join("");
+  $("xp-shown").textContent = shown === c.n ? xpPlural(c.n, "finding") : `${shown} of ${c.n} shown`;
+  box.innerHTML = (st.old ? `<p class="note warn">Computed before the last change – the values may differ; “Find again” for the state shown.</p>` : "")
+    + (html || `<p class="prep-empty">No finding matches the filter. <button class="linklike" id="xp-clear">Show all</button></p>`)
+    + `<p class="note">Coordinates in mm as KiCad shows them (x →, y ↓). A click shows the finding on the board.</p>`;
 }
 // a place in one line, as the report's "Where"
 function xpWhere(l) {
   return [l.layer || (l.layers || []).join("/"), Array.isArray(l.at) ? `(${l.at[0].toFixed(2)}, ${l.at[1].toFixed(2)}) mm` : "", (l.refs || []).join(", ")].filter(Boolean).join(" · ");
 }
+$("xp-btn").onclick = () => xpOpen(!XP.open);
+for (const k of ["stk", "si", "ch", "pi"]) $("view-" + k).addEventListener("click", () => { if (XP.open) xpOpen(false); });
+// Escape outside a form field: from either page back to the board
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || /^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || "")) return;
+  if (XP.open) { xpOpen(false); $("xp-btn").focus(); } else if (S.prep.open) { prepOpen(false); $("prep-btn").focus(); }
+});
+$("xp-q").oninput = () => { XP.f.q = $("xp-q").value; xpFindings(xpState()); };
+$("xp").addEventListener("click", (ev) => {
+  const t = ev.target.closest("button");
+  if (!t) return;
+  const d = t.dataset;
+  if (d.xpTab) { XP.tab = d.xpTab; xpRender(); return; }
+  if (d.xpSev || d.xpArea) { const s = d.xpSev ? XP.f.sev : XP.f.area, k = d.xpSev || d.xpArea; if (!s.delete(k)) s.add(k); xpFindings(xpState()); return; }
+  if (t.id === "xp-clear") { XP.f.sev.clear(); XP.f.area.clear(); XP.f.q = $("xp-q").value = ""; xpFindings(xpState()); return; }
+  if (d.fid) { const f = XP.byId.get(d.fid); if (f) { XP.lastJump = f.id; jumpFinding(f); } return; }
+  if (t.id === "xp-find-run") xpRun(() => xpRender());
+  else if (t.id === "xp-find-stop" && XP.run) XP.run.cancel.on = true;
+});

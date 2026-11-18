@@ -134,16 +134,24 @@ model accuracy ([Models and limits](models.md)).
 
 ### Findings and export
 "Findings & Export" in the top bar (on a phone "Export"), next to "Load files", opens a page of its own once a board
-is loaded: every export, and the board's findings. The button's badge counts the findings once they are computed for
-what is shown.
+is loaded, like Prepare PCB: it takes the place of the board views, with two tabs – **Findings** and **Export** –
+and on the left the board's summary: the findings by severity (fail, warning, open gap), what they are on (nets,
+rails, parts, gaps), whether they hold for what is shown, and "Find the problems". The button again, a view button
+or Escape (outside a form field) goes back to the board; opening Prepare PCB closes this page and the other way
+round. On a phone the summary comes first, then the tabs and the list, one column. The button's badge counts the
+findings once they are computed for what is shown.
 
 **Findings.** "Find the problems" runs [`kisi report`](cli.md#report) in the background – the channel check, the
-DC drop, the temperature; ThunderScope about half a minute, with its progress and "Cancel" in the top bar – and
+DC drop, the temperature; ThunderScope about half a minute, with its progress and "Cancel" on the page and in the
+top bar – and
 lists every result over or near a limit and every open gap, one group per net (a channel's nets with both lines of
 a pair, a net class's worst net), rail, part or gap, worst first, each with where it is (layer, coordinates in mm as
 KiCad shows them, parts and pads). The Report and Results entries fill the list as well. After a change (other
-settings, a field-solver result, another variant) the list stays, greyed, until "Find again". A click on a finding
-shows its place:
+settings, a field-solver result, another variant) the list stays, greyed, until "Find again". Above the list, chips
+filter it by severity and by area – channel, impedance, power (a rail's vias and warnings), thermal, gaps; each
+chip counts what it would show – and the search box by text (net, part, layer, coordinates, message); "Show all"
+clears them. Each finding shows its message, where it is, what the place is (e.g. the worst net's track) and
+*estimate* where its value is one. A click on a finding closes the page and shows its place:
 - a channel (eye, loss, return loss, skew, impedance, via stub of a lane or of a net without devices): the
   channel view's board map with the **whole channel** selected – every net of the lane from transmitter to
   receiver, both lines of a pair –, every layer on, the view on the channel and a marker at the worst spot: the
@@ -156,11 +164,12 @@ shows its place:
   temperature are computed first where they are missing (their progress in the Power view's steps);
 - a gap's parts: the board view at the first one.
 
-The top bar names the place; × there removes the marker. A click on a yellow or red row of the channel check
+The top bar names the place; × there removes the marker. "Findings & Export" brings the page back as it was – tab,
+filters, scroll position – with the finding shown last marked. A click on a yellow or red row of the channel check
 (board map) does the same for that channel.
 
-**Export** – each entry says in a line below its name what it writes, in which format and how much, counted from
-what is shown:
+**Export** – one card per export; each says below its name what it writes, in which format and how much, counted
+from what is shown, and a greyed card says why it cannot export now:
 - **Report** (HTML, print / PDF) – the printable report of [`kisi report --html`](cli.md#report) in a new window:
   a summary (what was checked, the findings by severity), the index of findings per net, the tables per area, then
   per net its findings with where each is on the board – layer, coordinates in mm, net, part, pad, via or track –
@@ -168,16 +177,17 @@ what is shown:
   place). Print it there, or choose "Save as PDF" in the print dialog. **Show in the viewer** at a finding jumps to
   its place here, as in the list. A report computed for the list or the Results entry is used again while nothing
   changed. When the browser blocks the new window, the page is downloaded as `<board>_report_<date>.html` instead.
-- **Table** (CSV) – the table of the view shown, filtered and sorted as there: the Nets card (impedance view), the
+- **Table** (CSV) – the table of the view the page was opened from (the card names it), filtered and sorted as
+  there: the Nets card (impedance view), the
   interfaces (a row per lane, with its bus) or the channel check (board map), the power tree's components, the
   selected rail's loads (voltage drop, current density), the losses, the temperature tables, the stackup
   comparison. Where the view has not computed its table yet – the channel check in the board map, the DC drop, the
-  losses, the temperature – the entry says so and computes it first (progress in the top bar). Each table starts
+  losses, the temperature – the card says so and computes it first (progress in the top bar). Each table starts
   with its title line; units are in the column headers, numbers are plain (dot decimal, no thousands separator, one
   prefix per column); a mark of the view after a value (`*` estimate, `?` uncertain skew, `⚠`) gets a column of its
   own, e.g. "Tj °C estimate". UTF-8 with BOM, so that Excel reads it; a text that starts with `+`, `-`, `=` or `@` (a
   rail such as +5V) gets a leading apostrophe, so that Excel does not take it for a formula. The file is
-  `<board>_<view>_<date>.csv`; in a view without a table the entry is greyed out and says why.
+  `<board>_<view>_<date>.csv`; for a view without a table the card is greyed out and says why.
 - **Results** (JSON) – the content of [`kisi report`](cli.md#report) (`analysis/kisi.json`, with every finding and
   its location) for the loaded files (board, project, kisi.json with its BOMs and Touchstone files), the assembly
   variant and the stackup the views use (Stackup card changes, the active fab template, the tolerances), with the

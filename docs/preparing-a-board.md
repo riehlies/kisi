@@ -100,7 +100,8 @@ The syntax of every field and kisi.json key: [Field and kisi.json reference](ref
 
 "Prepare PCB" in the top bar (between the example boards and "Load files") opens what the board file lacks – with
 its kisi.json, if one is loaded – as a **checklist** in three tabs: Impedance, Channel and Power (with the
-temperature). The badge on the button counts the open points.
+temperature). The badge on the button counts the open points. The page takes the place of the board views; the
+button again, a view button or Escape (outside a form field) goes back to the board.
 
 Each gap is a step, ordered by priority, with a marker: while it is open, the number of its items that are still
 open (seven ICs without a current: 7), red or amber by priority (low-priority steps are optional refinements); a

@@ -1393,11 +1393,12 @@ function prepDownload(name, text) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 function prepOpen(on) {
+  if (on && XP.open) xpOpen(false); // one page at a time (findings.js)
   S.prep.open = on;
   $("app").classList.toggle("prep-open", on);
   $("prep").hidden = !on;
   $("prep-btn").setAttribute("aria-pressed", String(on));
-  for (const k of ["si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(!on && S.tab === k));
+  for (const k of ["stk", "si", "ch", "pi"]) $("view-" + k).setAttribute("aria-pressed", String(!on && S.tab === k));
   if (on) { if (PREP_OF_TAB[S.tab] && !S.prep.touched) S.prep.tab = PREP_OF_TAB[S.tab]; S.prep.saved = ""; prepCheck(); prepRender(true); window.scrollTo(0, 0); }
 }
 
@@ -1525,7 +1526,7 @@ function prepOnInput(t, full) {
   prepEdited(!!full);
 }
 $("prep-btn").onclick = () => { if (S.scene) prepOpen(!S.prep.open); };
-for (const k of ["si", "ch", "pi"]) $("view-" + k).addEventListener("click", () => { if (S.prep.open) prepOpen(false); });
+for (const k of ["stk", "si", "ch", "pi"]) $("view-" + k).addEventListener("click", () => { if (S.prep.open) prepOpen(false); });
 $("prep").addEventListener("input", (ev) => { const t = ev.target; if (t.matches("select, input[type=checkbox], input[type=radio]")) return; prepOnInput(t, false); });
 $("prep").addEventListener("change", (ev) => prepOnInput(ev.target, true));
 $("prep").addEventListener("toggle", (ev) => { const d = ev.target; if (d.classList && d.classList.contains("prep-more")) { const c = d.closest("[data-gap]"); if (c) S.prep.moreOpen[S.name + c.dataset.gap] = d.open; return; } if (d.classList && d.classList.contains("prep-hand")) { S.prep.handOpen[S.name + d.dataset.hand] = d.open; return; } if (d.classList && d.classList.contains("prep-srcmore")) { const e = d.querySelector("[data-e]"); if (e) S.prep.openSrc = d.open ? e.dataset.e : (S.prep.openSrc === e.dataset.e ? null : S.prep.openSrc); } }, true);

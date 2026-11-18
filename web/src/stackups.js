@@ -50,7 +50,7 @@ function stkPresets() {
 }
 // Esc in the Stackup view: back to the view before it
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && S.tab === "stk" && !/^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || "")) setTab(S.prevTab && S.prevTab !== "stk" ? S.prevTab : "si");
+  if (e.key === "Escape" && S.tab === "stk" && !S.prep.open && !XP.open && !/^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || "")) setTab(S.prevTab && S.prevTab !== "stk" ? S.prevTab : "si");
 });
 // called after every analysis (runAnalysis): new field results, edits of the board's stackup
 function stkRefresh() {

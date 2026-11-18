@@ -33,7 +33,7 @@ extract.rs: Params.field <── results ◄── {z0, eeff, zodd, zeven, …} 
 
 Upstream's second backend, `src/tri_solver/` (triangular P2 FEM: static solve, Lee–Jin P2 Nédélec eigenmode above
 100 MHz with a Robin ABC on radiating walls, MQS conductor loss, Djordjevic–Sarkar dielectrics), is run unmodified on
-the CST cross-section cases (`validation/cst_xs/run_fullwave.py`, README there). It is not in kisi's bundles or CLI.
+the CST cross-section cases (`validation/cst_xs/run_fullwave.py`, `validation/cross-sections.md`). It is not in kisi's bundles or CLI.
 
 * **Adapter** `web/solver/backend_forsten_fw.js`: the same contract as `backend_forsten.js`
   (`solveGeometry(text, {tol, maxNodes, …})`, same geometry text), plus `solveSweep(text, freqs, opts)` (mesh at the

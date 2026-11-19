@@ -30,6 +30,8 @@ Research and concepts (`research/`):
 - [kicad-simulation.md](research/kicad-simulation.md) – what KiCad's simulator (ngspice, KIBIS) can take from kisi.
 - [channel-simulation-ibis.md](research/channel-simulation-ibis.md) – channel simulation with IBIS models: the
   staged concept behind assembly variants and the N-port channel (IBIS itself is out of scope since 0.3.0).
+- [board-via-3d.md](research/board-via-3d.md) – board vias in 3D: what the exporter (`kisi-validate via-case`)
+  approximates, what a 3D run of a board via costs, and what a 3D check in the viewer needs.
 - [kicad-plugin.md](research/kicad-plugin.md) – the KiCad plugin: how KiCad installs and runs IPC plugins (with
   sources in KiCad's code), the package layout, what the plugin does, what only a test in KiCad can show.
 

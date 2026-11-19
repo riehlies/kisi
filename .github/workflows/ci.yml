@@ -7,6 +7,11 @@
 #                       the CLI commands and options named in README, docs/ and the skills exist
 #   viewer              unit formatter (test_units.mjs) · viewer in headless Chromium (check_viewer.py: all views,
 #                       light/dark/phone, no console errors)
+#   advanced            the field page kisi-advanced.html as the quasi-static build (the fork fetched and patched,
+#                       reproducible, its size) and "Fields…" with it: 2D segments (the page's Z0 against kisi's with
+#                       kisi's adaptive mesh), a board via in 3D, the built-in examples, light/dark/phone
+#                       (check_advanced.py); the 3D view's physics against native kisi-fdtd runs (check_fields.mjs);
+#                       the full-wave page is built by the release and the fullwave-xs workflow only
 #   cli                 Node CLI against the native CLI on the example boards (compare_cli.py)
 #   solver              2D field solver against HFSS / baseline (validate_field.sh)
 #   models              stored results of the example boards and kisi's models on the 3D via references
@@ -19,8 +24,9 @@
 #   docs                the documentation PDF builds (tools/docs_pdf.py; also the link and heading check of docs/)
 #   upstream            Forstén's solver in third_party/ is upstream's tree, unchanged
 #   kicad               the KiCad plugin's unit tests (also with kicad-python), its package against KiCad's schemas
-#                       (kicad-plugin/tests); with the bundles: the package with this kisi.html, installed as KiCad's
-#                       PCM does and its page in headless Chromium (tools/check_kicad_plugin.py, viewer step)
+#                       (kicad-plugin/tests); with the bundles: the package with this kisi.html (and the field page
+#                       when it is built), installed as KiCad's PCM does and its page in headless Chromium, from disk and
+#                       from the loopback host (tools/check_kicad_plugin.py, viewer step)
 #   viewer or cli       reproducible bundles · bundle sizes (tools/size_budget.json)
 #   full runs only      kisi.mjs on Windows
 #   weekly / manual     the viewer in Firefox and WebKit · dependency audit (cargo-audit) and licences (cargo-deny, deny.toml) · newer upstream
@@ -59,6 +65,7 @@ jobs:
     outputs:
       rust: ${{ steps.c.outputs.rust }}
       viewer: ${{ steps.c.outputs.viewer }}
+      advanced: ${{ steps.c.outputs.advanced }}
       cli: ${{ steps.c.outputs.cli }}
       solver: ${{ steps.c.outputs.solver }}
       models: ${{ steps.c.outputs.models }}
@@ -92,14 +99,15 @@ jobs:
     env:
       RUST: ${{ needs.changes.outputs.rust }}
       VIEWER: ${{ needs.changes.outputs.viewer }}
+      ADVANCED: ${{ needs.changes.outputs.advanced }}
       CLI: ${{ needs.changes.outputs.cli }}
       SOLVER: ${{ needs.changes.outputs.solver }}
       MODELS: ${{ needs.changes.outputs.models }}
       EXPORT: ${{ needs.changes.outputs.export }}
       FULL: ${{ needs.changes.outputs.full }}
-      BUILD: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' || needs.changes.outputs.export == 'true' }}
-      BUNDLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' }}
-      EXAMPLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' || needs.changes.outputs.export == 'true' }}
+      BUILD: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.viewer == 'true' || needs.changes.outputs.advanced == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' || needs.changes.outputs.export == 'true' }}
+      BUNDLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.advanced == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' }}
+      EXAMPLES: ${{ needs.changes.outputs.viewer == 'true' || needs.changes.outputs.advanced == 'true' || needs.changes.outputs.cli == 'true' || needs.changes.outputs.solver == 'true' || needs.changes.outputs.models == 'true' || needs.changes.outputs.export == 'true' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -143,6 +151,9 @@ jobs:
         run: |
           cargo clippy --release --workspace --all-targets -- -D warnings
           cargo clippy --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown -- -D warnings
+          # kisi-fdtd as the 3D field view builds it (its own target dir: other RUSTFLAGS)
+          RUSTFLAGS="-C target-feature=+simd128" CARGO_TARGET_DIR=target/fdtd-simd cargo clippy --release -p kisi-fdtd --lib \
+            --target wasm32-unknown-unknown --features field-view -- -D warnings
       - name: Tests
         if: env.RUST == 'true'
         run: cargo test --release
@@ -242,7 +253,7 @@ jobs:
         if: env.CLI == 'true'
         run: python3 tools/compare_cli.py target/release/kisi dist/kisi.mjs examples
       - name: Install Playwright and Chromium
-        if: env.VIEWER == 'true' || needs.changes.outputs.docs == 'true'
+        if: env.VIEWER == 'true' || env.ADVANCED == 'true' || needs.changes.outputs.docs == 'true'
         timeout-minutes: 30
         run: |
           python3 -m pip install --quiet playwright==1.64.1 numpy markdown==3.10.3 pypdf==5.9.0 jsonschema==4.26.0
@@ -254,8 +265,32 @@ jobs:
           node tools/test_units.mjs
           node tools/test_local_save.mjs
           python3 tools/check_viewer.py dist/kisi-examples.html --out viewer-screenshots
-          # the KiCad plugin package with this viewer: installed as KiCad's PCM does, its page from disk
-          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs --out dist
+      - name: Field page (quasi-static build) with the 3D view, "Fields…" (2D and 3D), the 3D view's physics
+        if: env.ADVANCED == 'true'
+        timeout-minutes: 40
+        run: |
+          # after the viewer check: with no field page next to it, that one checks the not-found line
+          W=target/wasm32-unknown-unknown/release
+          RUSTFLAGS="-C target-feature=+simd128" CARGO_TARGET_DIR=target/fdtd-simd cargo build --release -p kisi-fdtd --lib \
+            --target wasm32-unknown-unknown --features field-view
+          F=target/fdtd-simd/wasm32-unknown-unknown/release/kisi_fdtd.wasm
+          sh tools/fetch_fork.sh target/js2d-fork
+          python3 tools/advanced_bundle.py target/js2d-fork $W/kisi_sparse.wasm $F dist/kisi-advanced.html
+          python3 tools/advanced_bundle.py target/js2d-fork $W/kisi_sparse.wasm $F $RUNNER_TEMP/kisi-advanced.html
+          python3 tools/ci_checks.py same dist/kisi-advanced.html $RUNNER_TEMP/kisi-advanced.html
+          python3 tools/ci_checks.py sizes dist
+          node validation/fdtd/check_fields.mjs target/release/kisi-fdtd $RUNNER_TEMP/fields --json viewer-screenshots/check_fields.json
+          python3 tools/check_advanced.py dist/kisi-examples.html dist/kisi-advanced.html --out viewer-screenshots/advanced \
+            --md advanced.md --json viewer-screenshots/check_advanced.json
+          cat advanced.md >> "$GITHUB_STEP_SUMMARY"
+      - name: KiCad plugin package with this viewer (and the field page when built)
+        if: env.VIEWER == 'true'
+        timeout-minutes: 30
+        run: |
+          # installed as KiCad's PCM does, its page from disk and, with the field page, "Fields…" from disk and from the
+          # loopback host
+          ADV=""; [ -f dist/kisi-advanced.html ] && ADV="--advanced dist/kisi-advanced.html"
+          python3 tools/build_kicad_pcm.py dist/kisi.html dist/kisi.mjs $ADV --out dist
           python3 tools/check_kicad_plugin.py dist/kisi-kicad-*.zip examples/Thunderscope_Rev5.3.kicad_pcb \
             --config web/samples/ts.kisi.json --out viewer-screenshots/kicad
       - name: Documentation PDF (and the link and heading check of docs/)
@@ -268,7 +303,7 @@ jobs:
           python3 validation/fdtd/make_viewer.py validation/via_ref dist/kisi-references-3d.html
           python3 validation/cst_xs/make_viewer.py validation/cst_xs dist/kisi-references-2d.html
       - name: Screenshots of the viewer check
-        if: failure()
+        if: failure() || env.ADVANCED == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: viewer-screenshots

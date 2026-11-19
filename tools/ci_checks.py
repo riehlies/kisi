@@ -34,6 +34,13 @@ GROUPS = {
                                # the plugin's page in the browser (tools/check_kicad_plugin.py)
                                "kicad-plugin/kisi_kicad.py", "kicad-plugin/kisi_action.py", "kicad-plugin/kisi_server.py",
                                "tools/check_kicad_plugin.py", "tools/check_kicad_local.py", "tools/test_local_save.mjs"],
+    # the field page kisi-advanced.html (its quasi-static build; the full-wave one: release and fullwave-xs workflows):
+    # the fork fetched and patched, reproducible, the 2D and 3D hand-overs and the 3D view in the browser
+    # (tools/check_advanced.py), the 3D view's physics against native kisi-fdtd runs (validation/fdtd/check_fields.mjs)
+    "advanced": ["web/advanced/*", "web/src/field-views.js", "web/src/engine.js", "tools/advanced_bundle.py", "tools/fetch_fork.sh",
+                 "tools/check_advanced.py", "third_party/js_2d_fields_fork.json", "data/field_views.json", "data/thermal.json",
+                 "crates/kisi-fdtd/*", "crates/kisi-core/src/viacase.rs", "crates/kisi-wasm/*", "crates/kisi-cli/src/viacase.rs",
+                 "validation/fdtd/check_fields.mjs", "validation/fdtd/board_cases/*", "tools/build_kicad_pcm.py"],
     # Node CLI against the native CLI
     "cli": CODE + BOARDS + ["web/cli/*", "web/solver/*", "third_party/*", "tools/bundle_cli.py",
                             "tools/solver_bundle.py", "tools/compare_cli.py"],

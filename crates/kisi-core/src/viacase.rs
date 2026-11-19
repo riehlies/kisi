@@ -19,8 +19,10 @@
 //!   fixture is a clean line;
 //! * every other via in the window: return vias (plane nets) and other nets' vias as barrels;
 //!   plated holes of pads as barrels.
-//! * a trace leaves the keep box where it crosses its edge (a pair by the same edge); a corner, an edge it runs along
-//!   or two edges retry with keep boxes of ±1.0 / ±1.5 mm and the rotations 0° / 45° before the corner is taken;
+//! * a trace leaves the keep box where it crosses its edge (a pair by the same edge), with copper of its reference
+//!   plane under the port; a corner, an edge it runs along, two edges or a floating port retry with keep boxes of
+//!   ±1.0 / ±1.5 mm and the rotations 0° / 45° before the first cut is taken as it is;
+//! * tracks whose ends do not meet but whose copper overlaps (away from a pad) are followed as one trace;
 //! * a trace that ends inside the keep box at an SMD pad of its net is a pad port side: the routed trace and the pad,
 //!   a lumped 50 Ω port from the pad to the nearest plane under or over it, the board's copper on that layer in the
 //!   whole window, no extension and no 2×thru.
@@ -39,7 +41,12 @@ thread_local! {
     static NOTES: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
 }
 fn note(s: String) {
-    NOTES.with(|n| n.borrow_mut().push(s));
+    NOTES.with(|n| {
+        let mut n = n.borrow_mut();
+        if !n.contains(&s) {
+            n.push(s);
+        }
+    });
 }
 
 /// Why a via cannot be cut out: a stable code (the sweep's counts, `kisi-validate via-case --sweep`), the reason in
@@ -396,10 +403,47 @@ fn chain(b: &Board, net: u32, at: P, r: f64, layer: u16) -> Option<Chain> {
             if nx.len() > 1 {
                 forks.push(end);
             }
-            let Some(&i) = nx.first() else { break };
+            // none ends exactly here: one whose end is within half the narrower width (the copper overlaps, so KiCad
+            // connects them – a 16 µm step between two segments ended the trace of USRIO_4_N inside the keep box)
+            let w0 = segs.last().unwrap().2;
+            let gap = |t: &crate::board::Track| geom::len(geom::sub(t.a, end)).min(geom::len(geom::sub(t.b, end)));
+            // (not at a pad of the net: there the pad joins them, and the trace ends at it as routed)
+            let on_pad = || {
+                b.pads.iter().any(|pd| {
+                    pd.net == net
+                        && pd.layers.contains(&layer)
+                        && (inside_ring(&pad_polygon(pd), end) || geom::len(geom::sub(pd.at, end)) < 0.02)
+                })
+            };
+            let i = match nx.first() {
+                Some(&i) => i,
+                None if on_pad() => break,
+                None => {
+                    let mut c: Vec<usize> = (0..b.tracks.len())
+                        .filter(|&i| {
+                            let t = &b.tracks[i];
+                            !used[i] && t.net == net && t.layer == layer && !t.pad && gap(t) < 0.5 * w0.min(t.width)
+                        })
+                        .collect();
+                    sort_by_f64(&mut c, |&i| gap(&b.tracks[i]));
+                    let Some(&i) = c.first() else { break };
+                    note(format!(
+                        "two tracks of {} on layer {layer} meet {:.3} mm apart at ({:.4}, {:.4}); joined (their copper overlaps)",
+                        b.net_name(net),
+                        gap(&b.tracks[i]),
+                        end[0],
+                        end[1]
+                    ));
+                    i
+                }
+            };
             used[i] = true;
             let t = &b.tracks[i];
-            segs.push(if near(t.a, end, 1e-3) { (t.a, t.b, t.width) } else { (t.b, t.a, t.width) });
+            segs.push(if geom::len(geom::sub(t.a, end)) <= geom::len(geom::sub(t.b, end)) {
+                (t.a, t.b, t.width)
+            } else {
+                (t.b, t.a, t.width)
+            });
             total += geom::len(geom::sub(t.b, t.a));
         }
         (segs, forks)
@@ -776,6 +820,27 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, CutError> {
                         "",
                     )
                 })?;
+                // the reference plane must be there under the port (the straight extension leaves the routing: under
+                // USRIO_4 it ran beyond the end of In4's fill and the port floated); else another keep box or rotation
+                let back = |q: P| -> P {
+                    let a = [q[0] * cr + q[1] * sr, -q[0] * sr + q[1] * cr];
+                    [c0[0] + a[0], c0[1] - a[1]]
+                };
+                let under = |u: f64| {
+                    let q = back(if axis == 0 { [sign * o.feed, u] } else { [u, sign * o.feed] });
+                    b.zones.iter().any(|zf| zf.layer == ref_layer && !own(zf.net) && inside_ring(&zf.pts, q))
+                };
+                if strict && !exits.iter().all(|e| under(e.2 .3)) {
+                    return Err(cut(
+                        "no_ref",
+                        format!(
+                            "the reference plane {} of the trace on {} does not reach the port",
+                            lname(ref_layer),
+                            lname(l)
+                        ),
+                        "--keep, --rotate",
+                    ));
+                }
                 let kept = exits.into_iter().map(|(_, segs, d)| (segs, d.2, d.3)).collect();
                 sides.push(Side { layer: l, axis, sign, kept, ref_layer, pads: vec![] });
             } else {

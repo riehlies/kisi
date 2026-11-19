@@ -363,9 +363,13 @@ own it starts with the 2D page and offers the built-in 3D examples.
 by kisi's exporter – the one of the 3D references, `kisi-validate via-case` ([validation/vias.md](../validation/vias.md)):
 the real zone fills, pads, tracks and vias around it, kisi's layer heights, a pair's partner via; a keep box of
 ±1.2 mm in which the feeds are taken as routed, then straight 2.5 mm feeds to lumped 50 Ω ports, a 1.5 mm margin.
-- A trace leaves the keep box where it crosses its edge; a pair's two traces by the same edge. When a trace leaves at
-  a corner or along an edge, or the two by different edges, the exporter tries a keep box of ±1.0 and ±1.5 mm and
-  the rotations 0° and 45°, then takes the corner as it is; the page's notes say what it used.
+- A trace leaves the keep box where it crosses its edge; a pair's two traces by the same edge, and the trace's
+  reference plane must have copper under the port at the end of the straight extension. When a trace leaves at a
+  corner or along an edge, the two by different edges, or the port would float, the exporter tries a keep box of ±1.0
+  and ±1.5 mm and the rotations 0° and 45°, then takes the first cut as it is (a floating port is then a warning in
+  the notes); the page's notes say what it used.
+- Tracks of the net whose ends do not meet but whose copper overlaps (closer than half the narrower width, away from
+  a pad – KiCad connects them) are followed as one trace; the notes name the gap.
 - **Pad ports**: a trace that ends inside the keep box at a pad of its net (a BGA fan-out, a via next to a capacitor)
   ends there in the case – the routed trace and the pad as on the board, and on that side a lumped 50 Ω port from the
   pad to the nearest plane under or over it (the trace's reference plane first). That port is the device side: no
@@ -375,7 +379,7 @@ the real zone fills, pads, tracks and vias around it, kisi's layer heights, a pa
   through-hole pad or at another via of the net, branches there, has no plane where it leaves the box (or under the
   pad), or the via joins tracks on more than two layers and is on no channel that tells which two.
 
-`tools/golden.py viacase` counts what it can cut out on the example boards (`validation/golden/viacase.json`): 266 of
+`tools/golden.py viacase` counts what it can cut out on the example boards (`validation/golden/viacase.json`): 269 of
 272 signal vias on ThunderScope, 381 of 397 on LibreVNA (before the pad ports and the edge rules 83 and 162). The
 page lists what the cut-out approximates (zero-thickness copper, no solder mask, the window's edge, …). The frequency
 is chosen as for a segment and offered beside the page's presets (5, 10, 20, 30 GHz; any other can be typed in; several

@@ -3,18 +3,18 @@
  "boards": {
   "ts": {
    "exportable": [
-    266,
+    269,
     272
    ],
    "on_channel": [
-    231,
+    234,
     236
    ],
-   "with_pad_ports": 175,
+   "with_pad_ports": 177,
+   "port_without_reference": 2,
    "reasons": {
-    "branch": 3,
-    "layers": 1,
-    "short_trace": 2
+    "branch": 2,
+    "layers": 1
    },
    "classes": {
     "50Z": [
@@ -22,7 +22,7 @@
      1
     ],
     "Default": [
-     156,
+     157,
      160
     ],
     "LVDS_ADC": [
@@ -34,7 +34,7 @@
      8
     ],
     "LVDS_USRIO": [
-     22,
+     24,
      24
     ],
     "PCIe": [
@@ -52,10 +52,7 @@
    },
    "not_exportable": [
     "Net-(U18D-INIT_B_0) at 176.5991,116.1656: branch",
-    "/DC_CPL_2 at 173.3348,112.1844: branch",
     "/DC_CPL_4 at 125.5761,134.7036: branch",
-    "/FPGA/USRIO_4_N at 168.5511,113.7636: short_trace",
-    "/FPGA/USRIO_4_P at 169.3511,113.7636: short_trace",
     "/FPGA/FPGA Voltage Regs/PG_1V8 at 151.0087,114.3036: layers"
    ]
   },
@@ -68,7 +65,8 @@
     290,
     296
    ],
-   "with_pad_ports": 169,
+   "with_pad_ports": 170,
+   "port_without_reference": 4,
    "reasons": {
     "branch": 5,
     "layers": 9,

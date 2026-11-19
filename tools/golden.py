@@ -199,6 +199,8 @@ def viacase(exe, ex, update):
                 reasons[v["code"]] = reasons.get(v["code"], 0) + 1
         new["boards"][key] = {"exportable": share(vias), "on_channel": share([v for v in vias if v["model"]]),
                               "with_pad_ports": sum(1 for v in vias if v["ok"] and v.get("pad_ports")),
+                              # exported with a feed whose reference plane has no copper under its port (the port floats)
+                              "port_without_reference": sum(1 for v in vias if v["ok"] and any("no copper at the port" in n for n in v["notes"])),
                               "reasons": dict(sorted(reasons.items())), "classes": dict(sorted(classes.items())),
                               "not_exportable": [f"{v['net']} at {v['at'][0]:.4f},{v['at'][1]:.4f}: {v['code']}" for v in vias if not v["ok"]]}
     stored = load(VIACASE)

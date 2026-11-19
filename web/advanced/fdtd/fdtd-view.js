@@ -93,7 +93,7 @@
     cv.height = Math.round(L.H * dpr);
     const g = cv.getContext("2d");
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const css = getComputedStyle(document.documentElement);
+    const css = getComputedStyle(cv); // the view's colour variables (#kisi3d, light or dark)
     const fg = css.getPropertyValue("--fg").trim() || "#222", muted = css.getPropertyValue("--muted").trim() || "#666";
     const bg = css.getPropertyValue("--panel").trim() || "#fff";
     g.fillStyle = bg;
@@ -365,7 +365,7 @@
     cv.width = W * dpr; cv.height = H * dpr;
     const g = cv.getContext("2d");
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const css = getComputedStyle(document.documentElement);
+    const css = getComputedStyle(cv); // the view's colour variables (#kisi3d, light or dark)
     g.fillStyle = css.getPropertyValue("--panel").trim() || "#fff";
     g.fillRect(0, 0, W, H);
     const kase = ds.case;

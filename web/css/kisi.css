@@ -445,6 +445,14 @@ ul.src li { margin: 2px 0; }
 .pathline b { font-family: var(--font-mono); font-weight: 500; }
 .pathline .pend { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); color: var(--panel); font: 600 9px var(--font-mono); }
 .pathline .btn { margin-left: auto; padding: 2px 8px; }
+/* the option "Advanced solvers": a cross-section to the field page (field-views.js) */
+.fv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 12px; margin: 0 0 8px; }
+.fv-row .fv-l { color: var(--muted); }
+.fv-row select { flex: 1 1 14em; min-width: 0; max-width: 100%; }
+.fv-row select#fv-view { flex: 0 1 9em; }
+.fv-row .btn { flex: none; padding: 2px 8px; }
+.fv-msg { margin: -4px 0 8px; font-size: 12px; }
+.fv-msg.err { color: var(--z-high2); }
 /* couplings (step 4) and the Crosstalk tab */
 .xs-table .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .xs-table th.num, .xs-table td.num { text-align: right; }

@@ -28,6 +28,7 @@
   "pi-thermal.js",
   "views.js",
   "prepare.js",
+  "field-views.js",
   "main.js"
  ]
 }

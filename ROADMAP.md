@@ -122,8 +122,8 @@ validation, and every result says which level it used and how uncertain it is.
     (|S11| ≠ |S22| by 0.045);
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
-    ladder at the via centre; about 8 days, a minimal version 4; design note: `git show 3e4d835:validation/fdtd/BOARD_VIAS.md`,
-    sections 3, 4 and 5.6);
+    ladder at the via centre; about 8 days, a minimal version 4; design note
+    [`docs/research/board-via-3d.md`](docs/research/board-via-3d.md));
   - the ladder in WebAssembly is about 2 × slower than native.
 - **3D references cross-checked** (done, released in 0.3.2): every one of the 106 reference cases also in openEMS
   and in CST Studio Suite (`validation/vias.md`); the cross-check found the

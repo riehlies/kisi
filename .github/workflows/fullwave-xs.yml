@@ -215,7 +215,7 @@ jobs:
       - name: Against the committed results (what this run moved)
         run: |
           python3 validation/cst_xs/fullwave_diff.py validation/cst_xs/fullwave fullwave_new --md diff.md --max-pct 0.001 \
-            || touch moved.flag
+            --rev "$(cat third_party/UPSTREAM_REV)" || touch moved.flag
           cat diff.md >> "$GITHUB_STEP_SUMMARY"
           cp fullwave_new/*.json validation/cst_xs/fullwave/
           cp diff.md validation/cst_xs/fullwave/committed_diff.md
@@ -231,5 +231,5 @@ jobs:
           name: fullwave-results
           path: validation/cst_xs/fullwave
           retention-days: 30
-      - name: "Check: impedances and εeff as committed (within 0.001 %; red = this run moved them, see the summary)"
+      - name: "Check: impedances and εeff as committed (within 0.001 %) and no result missing (red: see the summary)"
         run: test ! -f moved.flag

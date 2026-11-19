@@ -9,9 +9,21 @@
 #
 # Long: manual only (Actions → fullwave-xs → Run workflow, or `gh workflow run fullwave-xs --ref <branch>` once the
 # workflow is on the default branch), never on main.
+#
+# Job `advanced` (the field page, docs/reference.md "Field views"): kisi-advanced.html with the full-wave modules of
+# `build` (tools/advanced_bundle.py --fw) and the 3D view, built twice (reproducible), its size, and "Fields…" with it in
+# headless Chromium (tools/check_advanced.py: 2D a segment and a pair, every view; 3D a board via; light, dark, phone;
+# times and the page's Z0 in the log and the run's summary); the page and screenshots as the artifact
+# `advanced-solvers`. Input only_advanced: the build and this job only (what a branch that changes the field page runs
+# before the release does the same).
 name: fullwave-xs
 on:
   workflow_dispatch:
+    inputs:
+      only_advanced:
+        description: "Only the WASM build and the kisi-advanced.html measurement (no cross-section runs)"
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -34,6 +46,7 @@ jobs:
       - id: p
         name: "Shards of the plan (summary_of_run in the plan: no shards, only the summary of that run's results)"
         run: |
+          if [ "${{ inputs.only_advanced }}" = "true" ]; then echo "shards=[]" >> "$GITHUB_OUTPUT"; echo "results_run=" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "shards=$(python3 -c 'import json; p=json.load(open("validation/cst_xs/fullwave_plan.json")); print(json.dumps([] if p.get("summary_of_run") else list(range(p["shards"]))))')" >> "$GITHUB_OUTPUT"
           echo "results_run=$(python3 -c 'import json; print(json.load(open("validation/cst_xs/fullwave_plan.json")).get("summary_of_run") or "")')" >> "$GITHUB_OUTPUT"
       - id: k
@@ -92,6 +105,60 @@ jobs:
         with:
           name: forsten-fw-wasm
           path: ${{ env.FW }}/dist
+          retention-days: 14
+
+  advanced:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v7
+        with:
+          name: forsten-fw-wasm
+          path: ${{ env.FW }}/dist
+      - name: Rust toolchain
+        run: TC=$(sed -n 's/^channel = "\(.*\)"/\1/p' rust-toolchain.toml) && rustup toolchain install "$TC" --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown  # rust-toolchain.toml
+      - name: Playwright
+        run: |
+          python3 -m pip install --quiet playwright==1.64.1
+          sh tools/ci_install.sh playwright chromium
+      - name: The viewer and the field page (twice, reproducible), its size
+        run: |
+          lscpu | grep -E "Model name|^CPU\(s\)"; free -g | head -2
+          sh tools/fetch_examples.sh examples
+          sh tools/fetch_fork.sh target/js2d-fork
+          cargo build --release -p kisi-wasm -p kisi-sparse --target wasm32-unknown-unknown
+          RUSTFLAGS="-C target-feature=+simd128" CARGO_TARGET_DIR=target/fdtd-simd cargo build --release -p kisi-fdtd --lib \
+            --target wasm32-unknown-unknown --features field-view
+          W=target/wasm32-unknown-unknown/release F=target/fdtd-simd/wasm32-unknown-unknown/release/kisi_fdtd.wasm
+          mkdir -p adv again
+          python3 tools/bundle.py web/index.html $W/kisi_wasm.wasm $W/kisi_sparse.wasm adv/kisi-examples.html \
+            ts ThunderScope examples/Thunderscope_Rev5.3.kicad_pcb examples/Thunderscope_Rev5.3.kicad_pro
+          for o in adv again; do
+            python3 tools/advanced_bundle.py target/js2d-fork $W/kisi_sparse.wasm $F $o/kisi-advanced.html --fw "$FW/dist"
+          done
+          python3 tools/ci_checks.py same adv/kisi-advanced.html again/kisi-advanced.html
+          python3 tools/ci_checks.py sizes adv
+          python3 tools/release_notes.py build-info "$FW/dist/BUILD_INFO.json" $F adv/kisi-advanced.html \
+            > adv/kisi-advanced.build-info.json
+          cat adv/kisi-advanced.build-info.json
+      - name: '"Fields…" with the page (headless Chromium)'
+        run: |
+          python3 tools/check_advanced.py adv/kisi-examples.html adv/kisi-advanced.html \
+            --out adv/shots --md adv/check.md --json adv/check.json | tee adv/check.log
+          { echo "## Field page"; echo; cat adv/check.md; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: advanced-solvers
+          path: adv
           retention-days: 14
 
   shard:

@@ -16,7 +16,7 @@
   const st = {
     ds: null, exc: 0, fi: 0, view: "E", comp: "mag", axis: 1, ia: [0, 0, 0], arrows: true, outline: true, log: true,
     rangeDb: 40, lock: null, tmode: "avg", phase: 0, playing: false, speed: 0.5, kind: "single", running: null,
-    board: null, mode: "2d",
+    board: null, mode: "2d", sub: "fields",
   };
   window.KVF_STATE = st; // for the headless checks (tools/check_advanced.py)
 
@@ -27,10 +27,28 @@
     document.documentElement.classList.toggle("kisi3d-on", on);
     $("kisi3d").hidden = !on;
     for (const b of document.querySelectorAll("#kisi3d .k3-mode button")) b.classList.toggle("on", b.dataset.mode === st.mode);
-    if (on) { $("kisi3d").scrollTop = 0; requestAnimationFrame(() => { if (st.ds) draw(); else V.clear && V.clear($("k3-cv")); }); }
+    if (on) { $("kisi3d").scrollTop = 0; requestAnimationFrame(() => { if (st.sub !== "fields") renderSub(); else if (st.ds) draw(); else V.clear && V.clear($("k3-cv")); }); }
     else { play(false); window.dispatchEvent(new Event("resize")); } // the fork's plot takes its room again
   }
   window.kisiAdvMode = setMode;
+  // ---- the sub-views: fields, S-parameters, TDR (fdtd-sparams.js) -----------------------------------------------
+  function subCtx() {
+    const b = st.board;
+    return { ds: st.ds, fieldHz: st.ds ? st.ds.freqs[st.fi] : null,
+      board: b ? { caseName: b.case.name, model: b.model, rise: b.rise, target: b.target, marks: b.marks } : null };
+  }
+  function renderSub() {
+    if (st.sub === "s") KVF.sview.renderS($("k3-spane"), subCtx());
+    else if (st.sub === "tdr") KVF.sview.renderT($("k3-tpane"), subCtx());
+  }
+  function setSub(v) {
+    st.sub = v;
+    $("k3-fieldpane").hidden = v !== "fields";
+    $("k3-spane").hidden = v !== "s";
+    $("k3-tpane").hidden = v !== "tdr";
+    setSeg("k3-sub", v);
+    if (v === "fields") { if (st.ds) draw(); } else { play(false); renderSub(); }
+  }
   for (const b of document.querySelectorAll("#kisi3d .k3-mode button")) b.onclick = () => setMode(b.dataset.mode);
   // a 2D hand-over (the fork's #params= link) shows the 2D page; #3d opens this view
   window.addEventListener("hashchange", () => { if (/[#&]params=/.test(location.hash)) setMode("2d"); else if (/^#3d\b/.test(location.hash)) setMode("3d"); });
@@ -280,7 +298,7 @@
     st.ia = [V.nearest(ds.x, sig ? sig.x : 0), V.nearest(ds.y, sig ? sig.y : 0), V.nearest(ds.z, (ds.z[0] + ds.z[ds.nz - 1]) / 2)];
     $("k3-save").disabled = false;
     updatePlaneUI();
-    if (st.mode === "3d") draw();
+    if (st.mode === "3d") { if (st.sub === "fields") draw(); else renderSub(); }
   }
   async function loadFiles(files) {
     const blobs = [];
@@ -322,7 +340,9 @@
   // ---- the hand-over --------------------------------------------------------------------------------------------
   function receive(m, fromOpener) {
     const c = KVF.prepareCase(JSON.parse(JSON.stringify(m.case)));
-    st.board = { case: c, seq: fromOpener ? m.seq : null, title: m.title || c.meta.title };
+    // kisi's model of the via (rf::via_s), the viewer's TDR rise time, the net's target and loss marks (GHz)
+    st.board = { case: c, seq: fromOpener ? m.seq : null, title: m.title || c.meta.title, model: m.model || null, rise: m.rise || null,
+      target: m.target || null, marks: m.marks || null };
     $("k3-board-title").textContent = st.board.title;
     $("k3-board-from").textContent = m.from || "";
     $("k3-board-approx").innerHTML = (c.meta.approximations || []).map((a) => `<li>${esc(a)}</li>`).join("");
@@ -436,7 +456,7 @@
   let lastL = null, lastPV = null;
   function draw() {
     const ds = st.ds;
-    if (!ds || st.mode !== "3d") return;
+    if (!ds || st.mode !== "3d" || st.sub !== "fields") return;
     const { pl, F } = getPlane();
     const phase = st.tmode === "inst" ? st.phase : null;
     const comp = st.comp === "mag" ? "mag" : +st.comp;
@@ -557,6 +577,9 @@
   $("k3-save-case").onclick = saveCase;
   $("k3-exc").onchange = (e) => { st.exc = +e.target.value; draw(); };
   $("k3-freq").onchange = (e) => { st.fi = +e.target.value; draw(); };
+  segs("k3-sub", setSub);
+  // the theme: the charts take their colours when drawn
+  new MutationObserver(() => { if (st.mode === "3d" && st.sub !== "fields") renderSub(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   segs("k3-view", (v) => { st.view = v; draw(); });
   segs("k3-comp", (v) => { st.comp = v; draw(); });
   segs("k3-axis", (v) => { st.axis = +v; updatePlaneUI(); draw(); });
@@ -574,7 +597,7 @@
   $("k3-cv").addEventListener("pointermove", hover);
   $("k3-cv").addEventListener("pointerdown", hover);
   let rz = null;
-  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(draw, 120); });
+  window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => (st.sub === "fields" ? draw() : renderSub()), 120); });
   window.KVF_APP = { draw, run, cancel, setDataset, setMode, receive, play, st, estimateNow: doEstimate };
   $("k3-build").textContent = D.build || "";
   renderChips(null);

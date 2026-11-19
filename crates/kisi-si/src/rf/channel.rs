@@ -1739,6 +1739,36 @@ pub fn tdr_map(
     (ts, zs, xs)
 }
 
+/// kisi's model of one via of a channel for the comparison with its 3D cut-out (the field page's S-parameters and
+/// TDR): the via section nearest to `at` (within 0.05 mm) between lines of the channel's own models next to it, `len`
+/// mm long on each side (the cut-out's feeds; 0: the via alone), as the channel cascades them (for a pair: one line
+/// of the odd mode). S11, S21, S22 at 50 Ω per line at each of `freq` (Hz); None when the via is not on the channel.
+pub fn via_s(ch: &Channel, at: P, len: [f64; 2], rp: &RfParams, freq: &[f64]) -> Option<Vec<[Cx; 3]>> {
+    let k = ch.via_info.iter().position(|v| geom::len(geom::sub(v.at, at)) < 0.05)?;
+    let sec = ch.sections.as_ref()?;
+    let i = sec.segs.iter().enumerate().filter(|s| s.1.kind == "via").nth(k)?.0;
+    let vm = sec.via_models[i].as_ref()?;
+    // the nearest line section with a model before and after the via
+    let ok = |j: &usize| sec.segs[*j].kind == "line" && sec.models[*j].is_some();
+    let (a, b) = ((0..i).rev().find(ok), (i + 1..sec.segs.len()).find(ok));
+    Some(
+        freq.iter()
+            .map(|&f| {
+                let w = 2.0 * PI * f;
+                let ln = |j: Option<usize>, l: f64| match j {
+                    Some(j) if l > 0.0 => {
+                        let p = sec.models[j].as_ref().unwrap().rlgc(f, rp);
+                        Abcd::line(p.r, p.l, p.g, p.c, w, l * 1e-3)
+                    }
+                    _ => Abcd::identity(),
+                };
+                let (s11, s21, s22) = ln(a, len[0]).mul(&vm.abcd(f, rp.sigma)).mul(&ln(b, len[1])).s_params(50.0);
+                [s11, s21, s22]
+            })
+            .collect(),
+    )
+}
+
 /// Touchstone (.s2p, RI) of a channel.
 pub fn touchstone(ch: &Channel) -> String {
     let mut s = String::new();

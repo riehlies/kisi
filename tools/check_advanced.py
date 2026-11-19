@@ -410,6 +410,7 @@ def run_3d(ctx, pg, popup, theme, errs, first):
     popup.click("#kisi3d-switch")
     popup.wait_for_timeout(500)
     check(popup.evaluate("!document.getElementById('kisi3d').hidden"), f"3D {theme}: the switch to 3D failed")
+    subviews(popup, theme, f"board {theme}", kisi=True)
     results["3d"].append({"theme": theme, "wall_s": wall, "run": lr, "title": d["title"], "estimate": d["est"], "closure_pct": clos, "sparams": d["sp"], "from": d["from"]})
     rows3.append({"run": f"{theme} board via", "cells": lr["runs"][0]["cells"], "steps": lr["runs"][0]["steps"], "seconds": round(lr["wall_s"], 1),
                   "wall_s": wall, "closure_pct": clos})
@@ -418,12 +419,55 @@ def run_3d(ctx, pg, popup, theme, errs, first):
     return popup
 
 
+CHART_DRAWN = """(id) => { const c = document.getElementById(id); if (!c || !c.width) return false;
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 64) if (d[i]) n++; return n > 200; }"""
+
+
+def subviews(p, theme, tag, kisi, file=False):
+    """the 3D view's S-parameters and TDR (fdtd-sparams.js): the curves, kisi's model, the Touchstone file"""
+    got = {}
+    for v, cid, key in (("s", "k3-schart", "s"), ("tdr", "k3-tchart", "t")):
+        k3_seg(p, "k3-sub", v)
+        p.wait_for_timeout(500)
+        info = p.evaluate(f"KVF.SVIEW.{key}")
+        got[v] = info
+        check(p.evaluate(CHART_DRAWN, cid), f"{tag}: the {v} chart is empty")
+        check(info and len(info["series"]) >= (2 if v == "s" else 1), f"{tag}: the {v} chart has no curves: {info}")
+        check(bool(info and info["kisi"]) == kisi, f"{tag}: kisi's via model {'missing in' if kisi else 'in'} the {v} chart: {info}")
+        p.locator("#k3-sub").scroll_into_view_if_needed()
+        p.screenshot(path=os.path.join(out, f"{theme}_3d_{tag.split()[0]}_{v}.png"))
+        if v == "s" and info and info["mode"] in ("d", "c"):
+            p.click("#k3-spane [data-pm='c']")
+            p.wait_for_timeout(400)
+            got["s_common"] = p.evaluate("KVF.SVIEW.s")
+            check(got["s_common"]["mode"] == "c" and not got["s_common"]["kisi"], f"{tag}: the common mode: {got['s_common']}")
+            p.click("#k3-spane [data-pm='d']")
+        if v == "s" and file:
+            check(info["full"], f"{tag}: every port was excited, yet the S matrix is not full")
+            p.click("#k3-ts > summary")
+            with p.expect_download() as dl:
+                p.click("#k3-spane [data-k3dl]")
+            path = os.path.join(out, "check.sNp")
+            dl.value.save_as(path)
+            txt = open(path).read()
+            os.unlink(path)
+            lines = [ln for ln in txt.splitlines() if ln and not ln.startswith("!")]
+            n = info["points"]
+            check(lines[0] == "# Hz S RI R 50" and len(lines) == 1 + n and all(len(ln.split()) == 9 for ln in lines[1:]),
+                  f"{tag}: the .s2p: {lines[:2]} … {len(lines)} lines for {n} frequencies")
+            got["file"] = {"name": dl.value.suggested_filename, "lines": len(lines), "head": txt.splitlines()[:4]}
+    k3_seg(p, "k3-sub", "fields")
+    results.setdefault("subviews", []).append({"run": tag, **got})
+
+
 def examples(p, theme):
     """the built-in examples, cancel, the large-run warning, .kvf save and load (first theme)"""
     ex = results["examples"]
     for kind in ("single", "pair"):
         k3_seg(p, "k3-kind", kind)
         k3_set(p, "k3-mesh", "coarse")
+        if kind == "single":  # both ports: the full S matrix and its .s2p
+            p.evaluate("document.querySelectorAll('#k3-excite input').forEach((x) => { x.checked = true; x.dispatchEvent(new Event('change', { bubbles: true })); })")
         p.wait_for_function("!/Estimating/.test(document.getElementById('k3-estimate').textContent)", timeout=60000)
         p.evaluate("window.KVF_LAST_RUN = null")
         t = time.time()
@@ -434,6 +478,7 @@ def examples(p, theme):
         clos, _ = balance(p)
         check(clos is not None and abs(clos) <= 1.5, f"example {kind}: the power balance closes within {clos} %")
         ex[kind] = {"wall_s": round(time.time() - t, 1), "run": lr, "closure_pct": clos}
+        subviews(p, theme, f"example_{kind} {theme}", kisi=False, file=kind == "single")
         rows3.append({"run": f"{theme} example {kind}", "cells": lr.get("runs", [{}])[0].get("cells"), "steps": lr.get("runs", [{}])[0].get("steps"),
                       "seconds": round(lr.get("wall_s", 0), 1), "wall_s": ex[kind]["wall_s"], "closure_pct": clos})
         if kind == "pair":
@@ -497,6 +542,14 @@ def phone(pw, d):
         p.screenshot(path=os.path.join(out, f"phone_{theme}_3d.png"), full_page=False)
         p.evaluate("document.getElementById('k3-cvwrap').scrollIntoView()")
         p.screenshot(path=os.path.join(out, f"phone_{theme}_3d_plane.png"), full_page=False)
+        for v, cid in (("s", "k3-schart"), ("tdr", "k3-tchart")):
+            k3_seg(p, "k3-sub", v)
+            p.wait_for_timeout(500)
+            ws = p.evaluate("[document.getElementById('kisi3d').scrollWidth, document.getElementById('kisi3d').clientWidth]")
+            check(p.evaluate(CHART_DRAWN, cid) and ws[0] <= ws[1] + 1, f"phone {theme}: the {v} view is empty or scrolls sideways ({ws})")
+            p.evaluate("document.getElementById('k3-sub').scrollIntoView()")
+            p.screenshot(path=os.path.join(out, f"phone_{theme}_3d_{v}.png"), full_page=False)
+        k3_seg(p, "k3-sub", "fields")
         check(w2[0] <= w2[1] + 1, f"phone {theme}: the 2D page scrolls sideways ({w2[0]} > {w2[1]} px)")
         check(w3[0] <= w3[1] + 1, f"phone {theme}: the 3D view scrolls sideways ({w3[0]} > {w3[1]} px)")
         check("phone or tablet" in warn or "Large run" in warn, f"phone {theme}: no phone warning ({warn!r})")

@@ -145,10 +145,17 @@ async function fv3Open(net0, info) {
   const title = `${c.meta.title}${act ? ` · stackup ${act} (what-if)` : ""} · kisi, ${S.name}`;
   const from = `Cut out of ${S.name} by kisi's exporter (kisi-validate via-case): ${c.sheets.length} copper pieces, ${c.vias.length} vias, ports ${c.ports.length}; ` +
     `${fvHz(ghz)}: ${why}.${r.notes.filter((n) => !/^board_|sheets \(/.test(n)).map((n) => " " + n).join("")}`;
+  // kisi's model of the via between its lines of the case's feed lengths (rf::via_s), the TDR's rise time, the
+  // target and the loss marks: the page's S-parameter and TDR comparison
+  const t = classTarget(net), q = pathReq(net);
+  let mo = null;
+  try { mo = S.engine.rf({ net, rf: rfParams(), target: t ? [t.z, t.diff] : null, flip: q.flip, hint: q.hint, via_at: info.at, via_feeds: r.feeds_mm }); } catch (e) { mo = null; }
+  const model = mo && mo.via_model ? Object.assign(mo.via_model, { kind: info.model }) : null;
   const w = await fvWindow(fvStatus);
   if (!w) return;
   FV.seq3 = ++FV.n;
-  w.postMessage({ type: "kisi-3d-case", seq: FV.seq3, case: c, title, from, freqs: [{ ghz, label: why }], run: true, theme: fvTheme() }, "*");
+  w.postMessage({ type: "kisi-3d-case", seq: FV.seq3, case: c, title, from, freqs: [{ ghz, label: why }], run: true, theme: fvTheme(),
+    model, rise: rfParams().rise, target: t, marks: mo && mo.channel ? mo.channel.il_marks.map((x) => x[0]) : null }, "*");
   fvStatus(`Handed over at ${fvHz(ghz)} (${esc(why)}); the field window computes it…`);
   w.focus();
 }

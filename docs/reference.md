@@ -386,6 +386,27 @@ via reflected everything); *fine* (0.035 mm) is the 3D references' mesh – and 
 the time it expects before a run. A run can be cancelled. Phones and tablets are warned (they may stop a page that
 needs much memory); no limit is enforced.
 
+**S-parameters and TDR of a 3D run.** Next to *Fields* the 3D view has two sub-views, drawn with kisi.html's own
+chart (the Loss and TDR tabs' style; the pair's *Differential* / *Common mode* switch as there):
+- *S-parameters*: from the time-domain runs, so broadband from DC to the run's pulse top (10 GHz or a little above the
+  highest field frequency) – |S21| = |S12| insertion loss, |S11| return loss at port 1, |S22| dashed when the far
+  port was excited too (the columns of the other ports come from reciprocity, Sij = Sji); a pair in mixed mode, ports
+  1, 2 at the in side: Sdd21, Sdd11, Sdd22 and Scd21 (mode conversion) or Scc21, Scc11, Scc22 at 100 / 25 Ω. The
+  marks row gives |S21| at the net's loss marks and the field frequency (also a line on the chart). *Export
+  S-parameters (Touchstone)* writes the .s2p / .s4p of the cut-out (50 Ω at every port) once every port was excited.
+- *TDR*: Z (Zdiff, Zcommon) from the step response of S11 (Sdd11, Scc11) seen from port 1, with the rise time of
+  kisi's TDR setting (35 ps by default; the built-in examples 35 ps) – the formula of kisi's TDR; the net's target
+  ±5 % as a band; Z min / max of the via region (round trip τ/2 … 1.5τ, τ the one-way delay from S21's phase). The
+  x axis is the round-trip time (ps), not a position.
+- **kisi's via model** for the same via, dotted: kisi.html hands it over with the case – the via as kisi's channel
+  models it (ladder or coax sections, `rf::via_s`) between kisi's line models of the cut-out's feed lengths (the
+  routed trace in the keep box plus the extension; a pad-port side up to the pad), 50 Ω per line, for a pair the
+  differential (odd) mode only. The built-in examples have no kisi model (the page says so).
+- The 3D curves are those of the cut-out with its lumped 50 Ω ports (pad ports where they apply) and its feed lines,
+  **not de-embedded**. The dielectric loss is right at f_loss only: the solver holds the conductivity of tanδ there,
+  so below f_loss the loss comes out too high, above it too low – an **estimate** away from f_loss (choose the field
+  frequencies around the band of interest).
+
 **How the 3D fields are scaled and what is an estimate:**
 - the fields are peak phasors for a **1 V peak incident wave** at each driven port into its 50 Ω (10 mW per port); a
   pair's odd and even mode are (F₁ ∓ F₂)/√2 of the two single-port runs, the same 10 mW;

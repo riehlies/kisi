@@ -98,7 +98,9 @@ to one thread.
     (feature `field-view`: `fd_run_volume` with a progress import, `fd_mesh`) in Web Workers from a `blob:` URL, one
     per excited port; `fdtd-case.js` the built-in examples and the run's settings (mesh, pulse, f_loss),
     `fdtd-fields.js` the volume fields and everything derived from them (cut planes, ∫S·dA, the power balance, the
-    conductor-loss estimate, `.kvf` files), `fdtd-view.js` the canvas drawing, `fdtd-app.js` the panel and the
+    conductor-loss estimate, `.kvf` files), `fdtd-view.js` the canvas drawing, `fdtd-sparams.js` the S-parameter and
+    TDR sub-views (kisi.html's `charts.js` drawLines, bundled into the page with its rules of `kisi.css`; kisi's via
+    model `rf::via_s` comes with the hand-over), `fdtd-app.js` the panel and the
     hand-over (a message kept by the page's first script until the panel takes it). Checked by
     `validation/fdtd/check_fields.mjs` (physics) and `tools/check_advanced.py` (the page).
 * `tools/bundle.py` turns this into one standalone file `dist/kisi.html`: WASM modules and the field solver

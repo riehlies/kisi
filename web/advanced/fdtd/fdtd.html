@@ -49,6 +49,8 @@
 <section class="k3-panel k3-viewer" aria-label="Field view">
   <div class="k3-dstitle" id="k3-dstitle">No fields yet – run the case.</div>
   <div class="k3-dssub" id="k3-dssub"></div>
+  <div class="k3-row"><div class="seg" id="k3-sub" role="tablist" aria-label="What to show"><button data-v="fields" class="on">Fields</button><button data-v="s">S-parameters</button><button data-v="tdr">TDR</button></div></div>
+  <div id="k3-fieldpane">
   <div class="controls">
     <div class="grp"><span>Excitation</span><select id="k3-exc" aria-label="Excitation"></select></div>
     <div class="grp"><span>Frequency</span><select id="k3-freq" aria-label="Frequency"></select></div>
@@ -74,6 +76,9 @@
   <div class="k3-canvas" id="k3-cvwrap"><canvas id="k3-cv"></canvas></div>
   <div class="k3-hover" id="k3-hover">Move the pointer over the plane for values.</div>
   <div class="k3-info" id="k3-planeinfo"></div>
+  </div>
+  <div id="k3-spane" class="k3-spane" hidden></div>
+  <div id="k3-tpane" class="k3-spane" hidden></div>
 </section>
 
 <aside class="k3-panel k3-side" aria-label="Plane, power balance and S-parameters">

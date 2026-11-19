@@ -1259,7 +1259,7 @@ pub extern "C" fn kisi_net_path(p: *const u8, n: usize) -> i32 {
 /// field view of kisi-advanced.html: the board as analysed (variant, configuration, active stackup).
 /// Input: {"net": name, "at": [x, y] (board mm, the via nearest to it), "layers": [in, out] | null, "board_file",
 /// "with_config", "keep", "feed", "margin" (mm; each optional, the exporter's defaults otherwise)}.
-/// Output: {"name", "case", "notes"} (no 2×thru fixtures; the page sets the mesh and the frequencies).
+/// Output: {"name", "case", "notes", "feeds_mm"} (no 2×thru fixtures; the page sets the mesh and the frequencies).
 #[no_mangle]
 pub extern "C" fn kisi_via_case(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -1287,7 +1287,7 @@ pub extern "C" fn kisi_via_case(p: *const u8, n: usize) -> i32 {
         };
         // the reason in plain words (the CLI's option hints are not for the viewer)
         let r = kisi_core::viacase::export(b, an, &o).map_err(|e| e.msg)?;
-        Ok(serde_json::json!({ "name": r.name, "case": r.case, "notes": r.notes }).to_string())
+        Ok(serde_json::json!({ "name": r.name, "case": r.case, "notes": r.notes, "feeds_mm": r.feeds_mm }).to_string())
     });
     reply(r)
 }
@@ -1319,7 +1319,9 @@ pub extern "C" fn kisi_xt_scan(p: *const u8, n: usize) -> i32 {
 /// {"net": id, "rf": RfParams, "target": [z, diff] | null, "bitrate": f | null, "prbs": 7,
 ///  "flip": bool, "hint": [x, y] | null, "mixed": bool (pairs: also the 4-port model)}
 /// Output: {"channel", "error", "crosstalk", "touchstone", "eye": Eye | null, "skew": {...} | null,
-///          "mixed": MixedMode | null (pairs: 4-port model), "touchstone4": ".s4p text" | ""}
+///          "mixed": MixedMode | null (pairs: 4-port model), "touchstone4": ".s4p text" | "",
+///          "via_model": with "via_at" [x, y] and "via_feeds" [mm, mm] in the input: {"df", "s": [[S11, S21, S22 re/im]],
+///          "feeds_mm", "diff"} of kisi's model of that via (`rf::via_s`) | null}
 #[no_mangle]
 pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
     let txt = input(p, n);
@@ -1339,8 +1341,20 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
         let mut skew = serde_json::Value::Null;
         let mut mixed = serde_json::Value::Null;
         let mut ts4 = String::new();
+        let mut via_model = serde_json::Value::Null;
         let (chv, err, ts) = match ch {
             Ok(c) => {
+                // "via_at": [x, y], "via_feeds": [mm, mm]: kisi's model of that via between the channel's lines of
+                // those lengths (the field page's comparison), 50 MHz … 40 GHz in 50 MHz steps
+                if let Some(at) = v["via_at"].as_array().filter(|a| a.len() == 2) {
+                    let l = |i: usize| v["via_feeds"][i].as_f64().unwrap_or(0.0);
+                    let fr: Vec<f64> = (1..=800).map(|k| k as f64 * 5e7).collect();
+                    let r6 = |x: f64| (x * 1e6).round() / 1e6;
+                    if let Some(m) = kisi_core::rf::via_s(&c, [at[0].as_f64().unwrap_or(0.0), at[1].as_f64().unwrap_or(0.0)], [l(0), l(1)], &rp, &fr) {
+                        let rows: Vec<[f64; 6]> = m.iter().map(|x| [r6(x[0].re), r6(x[0].im), r6(x[1].re), r6(x[1].im), r6(x[2].re), r6(x[2].im)]).collect();
+                        via_model = serde_json::json!({"df": 5e7, "s": rows, "feeds_mm": [l(0), l(1)], "diff": c.diff});
+                    }
+                }
                 let mut ts = kisi_core::rf::touchstone(&c);
                 if let Some(br) = v["bitrate"].as_f64() {
                     let end = |k: &str| v[k].as_object().and_then(|_| serde_json::from_value::<kisi_core::eye::EndModel>(v[k].clone()).ok());
@@ -1403,7 +1417,7 @@ pub extern "C" fn kisi_rf(p: *const u8, n: usize) -> i32 {
             f.content
         };
         let (ts, ts4) = (stamp("net.s2p", ts), stamp("net.s4p", ts4));
-        Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts, "eye": eye, "skew": skew, "mixed": mixed, "touchstone4": ts4}).to_string())
+        Ok(serde_json::json!({"channel": chv, "error": err, "crosstalk": xt, "touchstone": ts, "eye": eye, "skew": skew, "mixed": mixed, "touchstone4": ts4, "via_model": via_model}).to_string())
     });
     match r {
         Ok(s) => {

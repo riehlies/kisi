@@ -115,7 +115,26 @@ def notices_of_build(fw_info):
     return "\n".join(lines) + "\n"
 
 
-FDTD_SCRIPTS = ["fdtd-case.js", "fdtd-fields.js", "fdtd-view.js", "fdtd-app.js"]
+FDTD_SCRIPTS = ["fdtd-case.js", "fdtd-fields.js", "fdtd-view.js", "fdtd-sparams.js", "fdtd-app.js"]
+# kisi.html's chart (web/src/charts.js drawLines) for the 3D view's S-parameters and TDR, with the three helpers it
+# calls (as web/src/state.js and units.js define them) and its stylesheet rules from web/css/kisi.css
+CHART_SHIM = (
+    'const fmt = (v, d = 1) => (v == null || !isFinite(v)) ? "\u2013" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });\n'
+    'const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", \'"\': "&quot;" }[c]));\n'
+    'const fmtSI = (v, u) => `${v} ${u}`;\nconst S = { colors: {} };\n')
+CHART_CSS = (".ctip", ".chart", ".clegend", ".marks", ".ts-export")
+
+
+def chart_part():
+    """charts.js as window.KisiCharts and its rules of kisi.css, scoped to the 3D view"""
+    js = open(os.path.join(ROOT, "web", "src", "charts.js"), encoding="utf-8").read()
+    css = open(os.path.join(ROOT, "web", "css", "kisi.css"), encoding="utf-8").read()
+    rules = [ln for ln in css.splitlines() if ln.startswith(CHART_CSS)]
+    if not any(ln.startswith(".clegend") for ln in rules) or "function drawLines" not in js:
+        raise SystemExit("advanced_bundle: web/src/charts.js or the chart rules of web/css/kisi.css changed shape")
+    scoped = "\n".join(", ".join("#kisi3d " + x.strip() for x in ln.split("{", 1)[0].split(",")) + " {" + ln.split("{", 1)[1] for ln in rules)
+    return (f"<style>\n{scoped}\n</style>\n<script>\n(function () {{\n{CHART_SHIM}{js}\n"
+            "window.KisiCharts = { drawLines, colors: S.colors };\n})();\n</script>\n")
 
 
 def fdtd_part(fdtd_wasm, build_kind, pin):
@@ -138,6 +157,7 @@ def fdtd_part(fdtd_wasm, build_kind, pin):
     }
     tail = "<style>\n" + rd("fdtd.css") + "\n</style>\n" + rd("fdtd.html")
     tail += "<script>window.KVF_DATA = " + json.dumps(data).replace("</", "<\\/") + ";</script>\n"
+    tail += chart_part()
     for f in FDTD_SCRIPTS:
         js = rd(f)
         if "</script" in js.lower():

@@ -4,15 +4,20 @@
 #kisi3d {
   --bg: #f4f5f7; --panel: #ffffff; --fg: #1d2330; --muted: #5d6676; --line: #d9dde4; --accent: #1f6fd1;
   --accent-fg: #ffffff; --warn-bg: #fff4d6; --warn-fg: #6b4a00; --chip: #eef1f5; --est: #8a4b00;
+  /* kisi.html's chart tokens (web/css/kisi.css) for the S-parameter and TDR charts */
+  --pw-use: #2f86c8; --pw-loss: #d07b2f; --pw-conv: #8a5cc2; --z-ok: #23a05a; --radius: 6px;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 :root[data-theme="dark"] #kisi3d {
   --bg: #12151b; --panel: #1a1f27; --fg: #e5e8ee; --muted: #9aa3b2; --line: #2d3441; --accent: #5b9dff;
   --accent-fg: #0b1220; --warn-bg: #3a2e10; --warn-fg: #ffd98a; --chip: #232a35; --est: #ffb866;
+  --pw-use: #3f8fd2; --pw-loss: #c9732a; --pw-conv: #a585dc; --z-ok: #3cc477;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) #kisi3d {
     --bg: #12151b; --panel: #1a1f27; --fg: #e5e8ee; --muted: #9aa3b2; --line: #2d3441; --accent: #5b9dff;
     --accent-fg: #0b1220; --warn-bg: #3a2e10; --warn-fg: #ffd98a; --chip: #232a35; --est: #ffb866;
+  --pw-use: #3f8fd2; --pw-loss: #c9732a; --pw-conv: #a585dc; --z-ok: #3cc477;
   }
 }
 html.kisi3d-on body > :not(#kisi3d):not(script):not(style) { display: none !important; }
@@ -95,3 +100,13 @@ html.kisi3d-on body > :not(#kisi3d):not(script):not(style) { display: none !impo
 }
 /* the switch to the 3D view in the fork's tab bar (kisi_page.js) */
 .tab-bar .kisi3d-switch { width: auto; flex: none; white-space: nowrap; margin-left: 8px; padding: 6px 12px; font-size: 13px; align-self: center; }
+
+/* the S-parameter and TDR sub-views */
+#kisi3d .k3-spane .chart canvas { height: 300px; }
+#kisi3d .k3-spane .k3-shead { display: flex; justify-content: flex-end; margin: 0 0 6px; min-height: 4px; }
+#kisi3d .clegend i.dot { height: 0; border-top: 2px dotted; border-radius: 0; background: none; }
+#kisi3d .marks { margin: 6px 0; }
+#kisi3d .marks .muted { color: var(--muted); }
+#kisi3d .k3-tbl { border-collapse: collapse; font-size: 12px; margin: 4px 0; }
+#kisi3d .k3-tbl td, #kisi3d .k3-tbl th { padding: 2px 8px 2px 0; text-align: left; border-bottom: 1px solid var(--line); }
+@media (max-width: 600px) { #kisi3d .k3-spane .chart canvas { height: 220px; } }

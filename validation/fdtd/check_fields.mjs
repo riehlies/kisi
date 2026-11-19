@@ -14,7 +14,7 @@ import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 const dir = path.dirname(new URL(import.meta.url).pathname);
 const ROOT = path.join(dir, "..", "..");
-for (const f of ["fdtd-case.js", "fdtd-fields.js"]) vm.runInThisContext(fs.readFileSync(path.join(ROOT, "web", "advanced", "fdtd", f), "utf8"), { filename: f });
+for (const f of ["fdtd-case.js", "fdtd-fields.js", "fdtd-sparams.js"]) vm.runInThisContext(fs.readFileSync(path.join(ROOT, "web", "advanced", "fdtd", f), "utf8"), { filename: f });
 const KVF = globalThis.KVF;
 const args = process.argv.slice(2);
 const [exe, work] = args;
@@ -185,6 +185,20 @@ for (const k of ["diel", "out", "p1", "p2", "cond"]) check(`pair: ${k}(odd) + ${
 
 // ---------------------------------------------------------------------------------------------------------------
 // KVF storage: f16 with 10 and 7 mantissa bits against f32
+// the S-parameter and TDR views (fdtd-sparams.js): reciprocity of the broadband S of the two single-port runs, a
+// lossless via passes nearly all power at low frequency, the TDR of a matched port stays at its reference
+console.log("S-parameters and TDR");
+{
+  const m = KVF.sMatrix(sv), k = m.f.findIndex((f) => f >= 5e9), d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  check("single: S21 = S12 of the two runs (reciprocity, 5 GHz)", d(m.S(1, 0)[k], m.S(0, 1)[k]), 0, 0.01, "", "time-domain runs of each port; the difference is the runs' truncation");
+  // passive at every frequency (the loss off f_loss is not tanδ's: a fixed conductivity, see fdtd-sparams.js)
+  const p = (x) => x[0] ** 2 + x[1] ** 2;
+  check("single: max over f of |S11|² + |S21|² (passive)", Math.max(1, ...m.f.map((_, k) => p(m.S(0, 0)[k]) + p(m.S(1, 0)[k]))), 1, 1e-3, "");
+  const z = KVF.tdr(m.f, m.f.map(() => [0, 0]), 50, 35e-12, 200e-12).z;
+  check("TDR of S11 = 0 stays at the reference", Math.max(...z.map((x) => Math.abs(x - 50))), 0, 1e-9, "Ω");
+  const ts = KVF.touchstone(m, ["check"]).trim().split("\n");
+  check("the .s2p has one line per frequency", ts.length - 2, m.f.length, 0, "", "nine numbers each");
+}
 console.log("KVF round trip");
 for (const mb of [10, 7]) {
   const back = KVF.decode(KVF.encode(sv, { mantissaBits: mb }));

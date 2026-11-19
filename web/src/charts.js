@@ -51,7 +51,8 @@ function drawLines(c, o) {
   const d = window.devicePixelRatio || 1, r = c.getBoundingClientRect();
   c.width = r.width * d; c.height = r.height * d;
   const g = c.getContext("2d");
-  const cs = getComputedStyle(document.documentElement);
+  // the canvas's own style: the colour tokens where it is (kisi.html's root, the field page's 3D view)
+  const cs = getComputedStyle(c);
   const col = (v) => v.startsWith("--") ? cs.getPropertyValue(v).trim() : v;
   const muted = cs.getPropertyValue("--muted").trim(), line = cs.getPropertyValue("--line").trim();
   const xs = o.x, n = xs.length;
@@ -100,7 +101,7 @@ function drawLines(c, o) {
       g.fillText(o.shadeFrom.label, (x0 + padL + W) / 2, padT + H - 4);
     }
     g.restore();
-    pathDecor(g, o, { X, padL, padT, W, H, muted, xMin, xMax });
+    pathDecor(g, o, { X, padL, padT, W, H, muted, xMin, xMax, cs });
     if (hi_i != null) {
       g.strokeStyle = muted; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(X(xs[hi_i]), padT); g.lineTo(X(xs[hi_i]), padT + H); g.stroke(); g.setLineDash([]);
       for (const s of o.series) { g.fillStyle = col(s.color); g.strokeStyle = cs.getPropertyValue("--panel").trim(); g.lineWidth = 2; g.beginPath(); g.arc(X(xs[hi_i]), Y(s.y[hi_i]), 4, 0, Math.PI * 2); g.fill(); g.stroke(); }
@@ -128,7 +129,7 @@ function drawLines(c, o) {
 // start / end of a path under the x axis, branch marks and the end of the line (impedance
 // profile and TDR): o.ends = {a, b, at}, o.marks = [{x, label}], o.vline = {x, label}
 function pathDecor(g, o, k) {
-  const cs = getComputedStyle(document.documentElement);
+  const cs = k.cs || getComputedStyle(document.documentElement);
   const acc = cs.getPropertyValue("--accent").trim(), fg = cs.getPropertyValue("--fg").trim();
   g.save();
   g.font = "10.5px " + cs.getPropertyValue("--font-mono");

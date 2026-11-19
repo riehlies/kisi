@@ -124,6 +124,9 @@ pub struct Output {
     pub name: String,
     pub case: Value,
     pub notes: Vec<String>,
+    /// the length of each side's signal trace from the via to its port (routed in the keep box plus the extension;
+    /// a pad port: up to the pad), mm – kisi's via model between lines of these lengths compares with the case
+    pub feeds_mm: [f64; 2],
     fix: Fixtures,
 }
 
@@ -1416,6 +1419,11 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, CutError> {
     if pair {
         case["meta"]["excite"] = json!([0, 1, 2, 3]);
     }
+    let feeds_mm = [0, 1].map(|si| {
+        let s = &sides[si];
+        let routed: f64 = s.kept[0].0.iter().map(|q| geom::len(geom::sub(q.1, q.0))).sum();
+        r6(routed + if s.pads.is_empty() { o.feed - o.keep } else { 0.0 })
+    });
     let fix = Fixtures { names: thru_names, sides, planes_at_port, cpws, z };
     note(format!(
         "{name}: {} sheets ({} fill vertices), {} vias ({} return vias), ports {}, window {:.2} × {:.2} mm",
@@ -1427,7 +1435,7 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, CutError> {
         win[2] - win[0],
         win[3] - win[1]
     ));
-    Ok(Output { name, case, notes: NOTES.with(|n| std::mem::take(&mut *n.borrow_mut())), fix })
+    Ok(Output { name, case, notes: NOTES.with(|n| std::mem::take(&mut *n.borrow_mut())), feeds_mm, fix })
 }
 
 /// Reference layers (kisi's extraction) of the track piece of `net` on `layer` nearest to `q` (the distance to the

@@ -32,6 +32,10 @@ Research and concepts (`research/`):
   staged concept behind assembly variants and the N-port channel (IBIS itself is out of scope since 0.3.0).
 - [kicad-plugin.md](research/kicad-plugin.md) – the KiCad plugin: how KiCad installs and runs IPC plugins (with
   sources in KiCad's code), the package layout, what the plugin does, what only a test in KiCad can show.
+- [advanced-solvers.md](research/advanced-solvers.md) – the field page's 2D views (the js_2d_fields fork): the
+  delivery variants measured, the decisions, kisi's adaptive mesh in the hand-over.
+- [fdtd-field-view.md](research/fdtd-field-view.md) – the field page's 3D view of a via (kisi-fdtd in the browser):
+  field output, browser limits, cut planes against WebGL, the decisions and what was built.
 
 Validation (`../validation/`):
 - [README.md](../validation/README.md) – what kisi is checked against, the current accuracy, the known limits and

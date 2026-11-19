@@ -190,24 +190,28 @@ validation, and every result says which level it used and how uncertain it is.
   Web Worker per port (`kisi_fdtd.wasm` ≈ 370 KB, 130 KB gzipped, already has `fd_run`); a cell limit with a
   run-time estimate up front and progress; small via cut-outs (< ~1 M cells) in the browser, board-sized ones in
   the CLI (the viewer's 3D check under "Vias and planes in 3D" above is its first step). js_2d_fields' full-wave
-  backend stays a validation tool (gmsh + OCCT in WebAssembly ≈ 12.5 MB, little gain for users over the FDM path).
+  backend stays out of kisi's own impedance path (gmsh + OCCT in WebAssembly ≈ 12.5 MB, little gain over the FDM
+  path): a validation tool, and the solver of the field page kisi-advanced.html.
 - **Field views of a selected segment or via.** Click a line segment or a via on the board and look at its fields
   in detail – why a segment comes out at its impedance, where its current and losses sit, what a via's antipad and
   return path do. Wanted for teaching (Advanced PCB Design) and for design reviews.
-  - **2D, a line segment:** the segment's cross-section (kisi already writes it as js_2d_fields geometry text)
-    opened in the field views of the fork [riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields)
-    (`FORK.md`): potential, |E|, |H| with field lines, current density J, power flow S with the 50 / 90 / 99 % lines
-    and the ∫S dA check, losses split into signal conductor, ground and dielectric; E / H / S arrows, field lines by
-    equal flux, equipotentials; odd / even mode for pairs; one excitation (V, I or P) for all views.
-  - **3D, a via:** the via cut out of the board as for the board-via references, run in kisi-fdtd with field
-    output at one frequency: |E|, |H|, Poynting vector and loss density on a **cut plane that can be moved**
-    (x, y, z) through the structure, optionally field lines; S-parameters and TDR beside it as in the 3D check above.
-  - Decide first (2D): link out to the hosted fork with the geometry handed over, or bundle its field views. The
-    H, J, S and loss views use the fork's adapter to the triangular MQS / full-wave backend (gmsh + OCCT ≈ 12.5 MB,
-    above), the rectilinear FDM in kisi's bundle gives potential and E only. Upstream's solver in
-    `third_party/js_2d_fields` stays unmodified either way; the fork's views are its own layer (GPL-3.0).
-  - Decide first (3D): field output in kisi-fdtd (a DFT of E and H on the grid at one frequency, memory for
-    ~1 M cells), the 3D viewer (canvas slices first, WebGL later), CLI first or viewer first.
+  **Done** (option "Advanced solvers: field views", `docs/reference.md` "Field views"; design notes
+  `docs/research/advanced-solvers.md`, `docs/research/fdtd-field-view.md`), one file `kisi-advanced.html` with two
+  views one click apart, on the release, GitHub Pages and in the KiCad plugin:
+  - **2D, a line segment:** the segment's cross-section in the field views of the fork
+    [riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) – potential, |E|, |H| with field lines, current
+    density J, power flow S with the 50 / 90 / 99 % lines and the ∫S dA check, losses split into signal conductor,
+    ground and dielectric (full-wave) – with kisi's adaptive mesh, so the quasi-static solve gives kisi's impedance;
+    kisi's changes to the fork as patches (`web/advanced/fork-patches/`).
+  - **3D, a via:** the via cut out of the board by kisi's exporter (`kisi_core::viacase`, as for the board-via
+    references) and run by kisi-fdtd in Web Workers with volume field output at chosen frequencies: |E|, |H|, the
+    Poynting vector and the loss density (conductor loss as an estimate) on a cut plane moved through x, y, z, the
+    phase animated, the power balance, the ports' waves and mixed-mode S; the parametric single via and pair as
+    built-in examples.
+  - Open: the fork taking the patches over by hand; a 3D view in WebGL (conductors, the cut plane in 3D, streamlines
+    of S; three.js ≈ 141 KB gzip, `docs/research/fdtd-field-view.md` option b-lean) if courses ask for it; the 3D check
+    against kisi's ladder (de-embedded S-parameters and TDR, the matched de-embedding in Rust) – the item above, which
+    the exporter in WebAssembly and the solver in workers now serve; how the page is split later (2D and 3D, sizes).
 - **Own 2D FEM + MQS solver in Rust** (an alternative to the full-wave backend): static P2 FEM for C and L plus an
   MQS solution for the conductor loss; from validation/cst_xs: pairs 0.4 → 0.04 % (the FDM's bias at narrow gaps),
   and a loss reference of its own (full-wave and the MQS check agree within 1 %, CST's lossy metal 4–23 % low).

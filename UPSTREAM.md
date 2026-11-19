@@ -75,6 +75,23 @@ The geometry text and the result contract need no change; sweeps (RLGC(f), α) w
 frequency models of the line where the backend is chosen, which is a model change with its own validation
 (`validation/cst_xs/compare.py`, loss sweep, with the independent MQS check `mqs_check.py`, is the start of it).
 
+## The fork's field views (kisi-advanced.html)
+
+The 2D view of the field page `kisi-advanced.html` is the page of the fork
+[riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) – the original plus its field views in `src/fork/` –
+as one file (`tools/advanced_bundle.py`, with kisi's 3D via view beside it; what the viewer hands over:
+`docs/reference.md`, "Field views"). The fork is not vendored: `tools/fetch_fork.sh` fetches the commit pinned in
+`third_party/js_2d_fields_fork.json` (its upstream base is the vendored revision, b5ea9eb) and applies kisi's patches
+`web/advanced/fork-patches/*.patch` – changes proposed for the fork (plot API, link hand-over, light theme, the adaptive
+settings kisi hands over), kept in kisi until the fork takes them over by hand; a patch that does not apply fails the
+build (`README.md` there says which pin drops which patch). The adapters are `web/advanced/` (the single-file runtime,
+the page's licence line and the switch to the 3D view, kisi-sparse stand-ins for the original's `solver.wasm` and the
+two linear solves of `eigen_solver.wasm`); with `--fw` the full-wave modules of `tools/build_forsten_fullwave.sh` go
+in – built from `third_party/UPSTREAM_REV`. Since the fork's base and `UPSTREAM_REV` are one revision and the hand-over
+carries kisi's adaptive mesh (patch 0004), the page's quasi-static solve of a cross-section gives kisi's impedance at
+the same frequency. A fork update: change the pin, drop or refresh the patches, rebuild; `advanced_bundle.py` stops on
+any change of the page it cannot place.
+
 ## Vendored revision
 
 `b5ea9eb` (2026-10-18, "Test against PyChOpMarg"), since 2026-11-17; before it `3d5009c` (2026-10-15). It is the

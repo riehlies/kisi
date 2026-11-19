@@ -311,3 +311,78 @@ dismissed.
   value).
 - The viewer exports Touchstone files per net and writes `<board>.kisi.json` from its Prepare PCB page
   ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)); its other edits stay in the browser.
+
+## Field views
+The viewer's option *Advanced solvers: field views* (field solver → Solver options; off by default, kept in the
+browser) adds two entry points, both called "Fields…":
+- **a segment (2D):** a row *Fields* in a net's detail – the net's cross-sections, the clicked segment's first, the
+  first view to show;
+- **a via (3D):** a column in the net's *Vias* tab and in a lane's path table (channel view) – one button per via.
+
+Both open the field page **`kisi-advanced.html`** in a second window (reused: the next segment or via goes to the same
+window without a reload). The page holds two views, one click apart (*2D cross-section* / *3D via*):
+
+| View | Solver | What it shows |
+|---|---|---|
+| 2D cross-section | the field views of the fork [riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) of Henrik Forstén's js_2d_fields, full-wave (FEM, gmsh) | potential, \|E\|, \|H\| with field lines, current density J, power flow S with the 50 / 90 / 99 % lines and the ∫S dA check, losses split into signal conductor, ground and dielectric |
+| 3D via | kisi's 3D FDTD solver kisi-fdtd, in Web Workers of the page | a cut plane x / y / z moved through the via: \|E\|, \|H\| (magnitude or a component, arrows, log or linear), the power flow S = ½Re(E×H\*), the loss density; the phase animated (the instantaneous fields over one period); a small 3D sketch of where the plane is; ∫S dA through the plane; the power balance (incident, reflected, transmitted, dielectric loss per layer, radiated into the boundary, the conductor-loss estimate); the outgoing waves of every port and, for a pair, Sdd11, Sdd21, Scd21, Scc21 |
+
+**Where the page comes from.** The release carries `kisi-advanced.html` (about 9.5 MB; GitHub Pages serves it next to
+the viewers, the KiCad plugin carries it, [Getting started](getting-started.md#the-files-of-a-release)). Put it next to
+`kisi.html`. "Fields…" looks for it there: from disk the page that answers decides (one that does not answer within a
+few seconds counts as missing); over http(s) the viewer asks the server first. When it is not there, the viewer says so
+in one line. The browser must allow the viewer's pop-up window. The page loads nothing from the web; opened on its
+own it starts with the 2D page and offers the built-in 3D examples.
+
+**What goes along with a segment** (in the URL fragment, which never reaches a server; values with their sources in
+`data/field_views.json`):
+- the cross-section's geometry as kisi's field solver solves it (layer, widths, gaps, planes and their cut-outs,
+  solder mask) – with the active stackup, also a what-if one of the option "Fab stackups & tolerances", which the
+  title names;
+- kisi's adaptive mesh: kisi's tolerance (1 %) as the page's energy and parameter tolerance, kisi's initial grid
+  (10 cells), node cap (60 k) and one converged pass – the page's Solver Settings show them. The same cross-section
+  at the same frequency then gives kisi's impedance (the quasi-static solve within the page's 0.01 Ω rounding;
+  with the page's own settings it was 0.16–0.3 % off). kisi's impedances are at 1 GHz; the page solves at the
+  frequency below, so its value moves with the dielectric's dispersion (a 500 MHz Nyquist frequency: about −0.2 %),
+  and the full-wave solve differs from the quasi-static one by its physics (a few tenths of a percent);
+- the frequency: the Nyquist frequency of the net's interface profile (the one the channel check uses; the generic
+  profiles: 1 Gbit/s → 500 MHz), 1 GHz when the net has none – the title says which;
+- the excitation (peak values): a single trace 1 V; a pair 1 V between the conductors (odd mode, ±0.5 V) with the
+  pair's mode switch on *Differential*, 1 V common mode (even mode, +1 V on both) on *Common mode*;
+- the copper: 5.8·10⁷ S/m and the roughness preset of the channel settings as the page's RMS roughness (smooth 0,
+  HVLP 0.27 µm, standard ED 0.66 µm: fitted to kisi's Huray presets, **estimates**, marked so in the title);
+- kisi's light or dark theme; the page follows it (opened alone it follows the browser's preference).
+
+**What goes along with a via**: the via cut out of the board as analysed (assembly variant, kisi.json, active stackup)
+by kisi's exporter – the one of the 3D references, `kisi-validate via-case` ([validation/vias.md](../validation/vias.md)):
+the real zone fills, pads, tracks and vias around it, kisi's layer heights, a pair's partner via; a keep box of
+±1.2 mm in which the feeds are taken as routed, then straight 2.5 mm feeds to lumped 50 Ω ports, a 1.5 mm margin. The
+page lists what the cut-out approximates (zero-thickness copper, no solder mask, the window's edge, …). The frequency
+is chosen as for a segment and offered beside the page's presets (5, 10, 20, 30 GHz; any other can be typed in; several
+per run). The page runs it at once with the mesh chosen for it – *coarse* (0.07 mm at metal) for a single via,
+*standard* (0.05 mm) for a pair; *fine* (0.035 mm) is the 3D references' mesh – and shows the cells, the memory and
+the time it expects before a run. A run can be cancelled. Phones and tablets are warned (they may stop a page that
+needs much memory); no limit is enforced.
+
+**How the 3D fields are scaled and what is an estimate:**
+- the fields are peak phasors for a **1 V peak incident wave** at each driven port into its 50 Ω (10 mW per port); a
+  pair's odd and even mode are (F₁ ∓ F₂)/√2 of the two single-port runs, the same 10 mW;
+- metal is a perfect conductor in the solver: the **conductor loss is an estimate** from the tangential H at the
+  metal surfaces (½Rs\|Ht\|², smooth copper, σ from `data/thermal.json`), not in the S-parameters; current crowding
+  at trace edges is not resolved;
+- the dielectric loss is exact at f_loss, the geometric mean of the run's frequencies (one frequency: exact); at
+  another frequency of the same run its value scaled with f/f_loss is an **estimate**;
+- the time, steps and memory before a run are **estimates** (the time from this device's last run);
+- the S-parameters are those of the cut-out with its feeds and lumped ports, not de-embedded (the 3D references
+  de-embed theirs, [validation/vias.md](../validation/vias.md));
+- fields within a cell of a metal edge are not resolved (edge singularities).
+
+The physics of the 3D view is checked against native kisi-fdtd runs (port voltages against S, the power through cut
+planes against the S-parameters, the power balance, odd + even = port 1 + port 2, the animation's period mean,
+the stored `.kvf` files; `validation/fdtd/check_fields.mjs`), the page in the browser by `tools/check_advanced.py`.
+A run's fields can be saved as `.kvf` (f16, gzip) and loaded again; the case as kisi-fdtd JSON
+(`kisi-fdtd case.json --volume out.bin` runs it natively, the page loads the blobs).
+
+The page is GPL-3.0 with its third-party notices (Plotly, gmsh, OpenCASCADE, Eigen, Spectra, Emscripten; kisi-sparse
+and kisi-fdtd are kisi's) and the build's versions in its About tab and in `kisi-advanced.build-info.json`; the release
+notes name its corresponding source.

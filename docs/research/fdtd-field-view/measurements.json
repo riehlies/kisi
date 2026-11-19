@@ -1,0 +1,125 @@
+{
+ "machine": "2 vCPU Xeon VM (2.1 GHz nominal), 8 GB, shared with two other agents; load average in each line",
+ "case_small": {
+  "name": "A_s4_d200_ap600 (validation/fdtd/via_cases)",
+  "cells": 457125,
+  "domain_nodes": 216123,
+  "steps": 4001,
+  "excitation": "port 0 only"
+ },
+ "case_board": {
+  "name": "BV_vna_rf_hblb1 (validation/fdtd/board_cases), max_steps 600 (memory and setup only)",
+  "cells": 1529280,
+  "domain_nodes": 919632
+ },
+ "logs": {
+  "native": [
+   "kisi-fdtd base.json: rc 0, wall 26.7 s, peak RSS 34 MB, load 2.34",
+   "kisi-fdtd v1_every1.json --volume v1_every1.bin: rc 0, wall 49.9 s, peak RSS 51 MB, load 3.03",
+   "kisi-fdtd v1_auto.json --volume v1_auto.bin: rc 0, wall 28.1 s, peak RSS 51 MB, load 3.31",
+   "kisi-fdtd v3_auto.json --volume v3_auto.bin: rc 0, wall 29.8 s, peak RSS 102 MB, load 2.93",
+   "kisi-fdtd v1_s2.json --volume v1_s2.bin: rc 0, wall 30.4 s, peak RSS 36 MB, load 2.96",
+   "kisi-fdtd base.json: rc 0, wall 19.7 s, peak RSS 34 MB, load 1.03",
+   "kisi-fdtd v3_auto.json --volume v3b.bin: rc 0, wall 20.9 s, peak RSS 102 MB, load 1.02"
+  ],
+  "wasm_node": [
+   "base.json fd_run: 25.2 s, 4001 steps, 72.5 Mcells/s, wasm memory 32 MB, output 0.0 MB, load 1.34",
+   "v1_auto.json fd_run_volume: 25.8 s, 4001 steps, 70.8 Mcells/s, wasm memory 48 MB, output 15.5 MB, load 1.21",
+   "v3_auto.json fd_run_volume: 25.6 s, 4001 steps, 71.5 Mcells/s, wasm memory 103 MB, output 35.3 MB, load 1.14"
+  ],
+  "board_case": [
+   "kisi-fdtd big_base.json: rc 0, wall 33.0 s, peak RSS 117 MB, load 1.08",
+   "kisi-fdtd big_v1.json --volume big_v1.bin: rc 0, wall 33.7 s, peak RSS 187 MB, load 1.05",
+   "kisi-fdtd big_v3.json --volume big_v3.bin: rc 0, wall 35.7 s, peak RSS 420 MB, load 1.02",
+   "big_base.json fd_run: 47.5 s, 600 steps, 19.3 Mcells/s, wasm memory 110 MB, output 0.0 MB, load 1.01",
+   "big_v3.json fd_run_volume: 48.1 s, 600 steps, 19.1 Mcells/s, wasm memory 413 MB, output 150.0 MB, load 1.40"
+  ],
+  "setup_only": [
+   "kisi-fdtd base_setup.json: rc 0, wall 0.4 s, peak RSS 34 MB, load 0.76",
+   "kisi-fdtd big_base_setup.json: rc 0, wall 9.9 s, peak RSS 117 MB, load 0.79",
+   "base_setup.json fd_run: 0.7 s, 1 steps, 0.7 Mcells/s, wasm memory 32 MB, output 0.0 MB, load 0.79",
+   "big_base_setup.json fd_run: 21.8 s, 1 steps, 0.1 Mcells/s, wasm memory 110 MB, output 0.0 MB, load 1.14"
+  ],
+  "chromium": [
+   "env {\"ua\": \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36\", \"cores\": 2, \"coi\": false, \"sab\": \"undefined\", \"deviceMemory\": 8}",
+   "1 worker fd_run port 0: {\"code\": 0, \"secs\": 24.306, \"copy_ms\": 0.09999999962747097, \"transfer_ms\": 0.599853515625, \"mem_mb\": 32, \"out_mb\": 0.041502952575683594}",
+   "1 worker fd_run_volume 3 freqs: {\"code\": 0, \"secs\": 24.3475, \"copy_ms\": 23.100000000093132, \"transfer_ms\": 1.099853515625, \"mem_mb\": 103.625, \"out_mb\": 35.29058837890625}",
+   "2 workers fd_run port 0 and port 1 concurrently: wall 24.8 s [{\"code\": 0, \"secs\": 24.734899999999907, \"copy_ms\": 0, \"transfer_ms\": 0.300048828125, \"mem_mb\": 32, \"out_mb\": 0.041502952575683594}, {\"code\": 0, \"secs\": 24.77119999999972, \"copy_ms\": 0, \"transfer_ms\": 0.39990234375, \"mem_mb\": 32, \"out_mb\": 0.041525840759277344}]",
+   "memory probe (one worker, WebAssembly.Memory grown to the limit): {\"type\": \"mem\", \"mb\": 4096, \"err\": \"\"}"
+  ]
+ },
+ "power_balance_small_case": [
+  {
+   "f": 10000000000.0,
+   "f_s": 10000000000.0,
+   "s11": 0.05772703476618828,
+   "s21": 0.9247910110184226,
+   "p_in_from_S": 0.9966675894571033,
+   "flux_port1_side": 0.9628744066743885,
+   "p21_from_S": 0.8552384140604763,
+   "flux_port2_side": 0.8787774137730846,
+   "diel_loss": 0.13683014115195985,
+   "box_outflow": 0.005350966389042957,
+   "balance": 0.14142917539662703
+  },
+  {
+   "f": 20000000000.0,
+   "f_s": 20000000000.0,
+   "s11": 0.18125504385118224,
+   "s21": 0.8937089409408411,
+   "p_in_from_S": 0.967146609078506,
+   "flux_port1_side": 0.9281657874925084,
+   "p21_from_S": 0.7987156711175998,
+   "flux_port2_side": 0.8231366455698791,
+   "diel_loss": 0.13872685812666533,
+   "box_outflow": 0.0293042744884437,
+   "balance": 0.16843093796090625
+  },
+  {
+   "f": 30000000000.0,
+   "f_s": 30000000000.0,
+   "s11": 0.39686635552771926,
+   "s21": 0.7983818524004515,
+   "p_in_from_S": 0.8424970958501459,
+   "flux_port1_side": 0.8029299237205797,
+   "p21_from_S": 0.6374135822423762,
+   "flux_port2_side": 0.6646545389296341,
+   "diel_loss": 0.1397696136328347,
+   "box_outflow": 0.0626699208862966,
+   "balance": 0.20508351360776966
+  }
+ ],
+ "sampled_vs_every_step_20GHz": {
+  "E_rms_rel": 2.27e-05,
+  "H_rms_rel": 2.63e-05,
+  "every": [
+   1,
+   72
+  ]
+ },
+ "wasm_vs_native_blob": "bit-identical (3 frequencies, all arrays)",
+ "simulate_refactor": "S of simulate() on the branch equals main bit for bit (A_s4_d200_ap600, port 0)",
+ "bundle_sizes_bytes": {
+  "kisi_fdtd.wasm (+simd128)": [
+   410619,
+   145548,
+   194064
+  ],
+  "three r187 subset (WebGLRenderer, scene, meshes, lines, InstancedMesh, Data3DTexture, ShaderMaterial, OrbitControls), esbuild --minify": [
+   570200,
+   141238,
+   188320
+  ],
+  "three r187 full, esbuild --minify": [
+   749519,
+   190473,
+   253964
+  ],
+  "regl 2.1.1": [
+   123143,
+   41310,
+   55080
+  ],
+  "columns": "raw, gzip -9, gzip+base64 (as tools/bundle.py stores wasm)"
+ }
+}

@@ -199,6 +199,20 @@ thread). Those studies (scripts, tables, plots) are in the git history (below). 
 a GND/supply plane pair no return via bridges (`via::open_pairs`) is in the default path: RG_s4_pwr_n4 and its
 capacitor variant are warned, the bridged and GND/GND cases not.
 
+## 3D field view
+
+The 3D view of `kisi-advanced.html` ([docs/reference.md, "Field views"](../docs/reference.md#field-views)) runs the
+same solver with volume field output (`kisi_fdtd::simulate_volume`: a DFT of E and H at chosen frequencies on the
+domain's nodes) on a board via cut out by the same exporter (`kisi_core::viacase`, shorter feeds) or on a built-in
+example. What the page derives from the fields is checked against native runs by `fdtd/check_fields.mjs` (73 checks;
+the page's case builder and field code, `web/advanced/fdtd/`): the port voltages from Ez against 1 + S11 and S21
+(within 0.2 %, also for ports along y), ∫S·dA through planes between the ports against the S-parameter powers (3 %,
+the lumped port's near field at 30 GHz 5 %), the closed balance incident − reflected − transmitted = dielectric loss +
+radiation into the PML (0.8 % of the incident power on the examples, 1.5 % on the even mode of a pair and on the board
+via `board_cases/BV_ts_refinout2.json` at the page's coarse mesh), half boxes with conformal cuts, the animation's
+period mean against ½Re(E×H\*), odd + even = port 1 + port 2 for every quadratic total, the conductor-loss estimate
+against closed-form image-current and barrel formulas (30 / 50 %, an estimate), the `.kvf` storage (0.07 % at 7 bits).
+
 ## Reproduce and extend
 
 Python 3 with numpy (matplotlib for the plots of `board_vias.py`). From the repository root:
@@ -240,6 +254,8 @@ geom.json [--s2p f.s2p]` evaluates one via geometry as `KISI_DEBUG_VIA=1` prints
 | `fdtd/via_ladder.py` | the ladder alone (`ladder.s2p`), the cavity model (`model.s2p`), `results/via_ladder.json` |
 | `fdtd/board_vias.py`, `board_cases/` | board vias (`ladder_geom.json`, `ladder*.s2p`, `deembedded.s2p`), `results/board_vias*.json` |
 | `fdtd/make_viewer.py`, `viewer_template.html` | the page |
+| `fdtd/volume_fields.py`, `volume_wasm.mjs` | the volume field output of `kisi-fdtd case.json --volume out.bin`: power balance, cut planes, VTK for ParaView; a case in the WebAssembly build |
+| `fdtd/check_fields.mjs` | the 3D field view's physics against native runs (section "3D field view") |
 
 ## History
 

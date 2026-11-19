@@ -2,12 +2,15 @@
 """Two sets of full-wave results against each other (validation/cst_xs/fullwave/<id>.json, run_fullwave.py): what an
 upstream update, a new WASM build or other settings moved.
 
-    python3 validation/cst_xs/fullwave_diff.py <old dir> <new dir> [--md out.md] [--max-pct 0.05]
+    python3 validation/cst_xs/fullwave_diff.py <old dir> <new dir> [--md out.md] [--max-pct 0.05] [--rev REV]
 
 Per kind (E, M, sweep) and quantity: cases compared, how many changed at all, max |relative change| in % and its case.
 The point results (E, M) compare every number of the result except timings; the sweep compares every frequency of
 every mode quantity and of Zdiff/Zcomm. Only cases with a valid result for the same geometry (text hash) on both sides
-count. Exit code 1 when an impedance or εeff (z*, eeff*) moved by more than --max-pct (default: report only).
+count. Exit code 1 when an impedance or εeff (z*, eeff*) moved by more than --max-pct (default: report only), or – with
+--max-pct – when a result is missing: a kind (E, M, sweep) with a valid result on the old side that the new side lacks
+or has failed, or, with --rev (the upstream revision of the run, third_party/UPSTREAM_REV), a case of the old side
+computed at another revision that the new side did not run again (a shard that hit its deadline, a case left out).
 """
 import argparse, glob, json, math, os, sys
 
@@ -57,9 +60,16 @@ def main():
     ap.add_argument("new")
     ap.add_argument("--md")
     ap.add_argument("--max-pct", type=float)
+    ap.add_argument("--rev", help="the run's upstream revision: old cases at another revision must have a new result")
     a = ap.parse_args()
     stats = {}  # (kind, quantity) -> [n, changed, max, case]
-    revs, n_cases, missing = set(), 0, []
+    revs, n_cases, missing, lost = set(), 0, [], []  # lost: (case, kind or why) results the new side lacks
+    new_ids = {os.path.basename(p) for p in glob.glob(os.path.join(a.new, "*.json"))}
+    if a.rev:
+        for po in sorted(glob.glob(os.path.join(a.old, "*.json"))):
+            old = load(po)
+            if old and "results" in old and os.path.basename(po) not in new_ids and old.get("upstream_rev") != a.rev:
+                lost.append((old.get("id", os.path.basename(po)), f"not run again at {a.rev[:7]}"))
     for pn in sorted(glob.glob(os.path.join(a.new, "*.json"))):
         new, old = load(pn), load(os.path.join(a.old, os.path.basename(pn)))
         if not new or "results" not in new:
@@ -69,6 +79,10 @@ def main():
             continue
         n_cases += 1
         revs.add((old.get("upstream_rev", "?")[:7], new.get("upstream_rev", "?")[:7]))
+        for kind, ro in old["results"].items():
+            rn = new["results"].get(kind)
+            if ro.get("ok") and not (rn and rn.get("ok")):
+                lost.append((new.get("id", os.path.basename(pn)), f"{kind}: " + ("no result" if not rn else "failed")))
         for kind, rn in new["results"].items():
             ro = old["results"].get(kind)
             if not (ro and ro.get("ok") and rn.get("ok")):
@@ -94,12 +108,16 @@ def main():
         if q.startswith(("z", "eeff")):
             worst = max(worst, mx)
     lines += ["", f"largest change of an impedance or εeff: {worst * 100:.3g} %"]
+    if lost:
+        lines += ["", f"{len(lost)} result{'s' if len(lost) != 1 else ''} missing on the new side:", ""] + [f"- {c}: {why}" for c, why in lost[:50]]
+        lines += [f"- … and {len(lost) - 50} more"] if len(lost) > 50 else []
     text = "\n".join(lines)
     print(text)
     if a.md:
         open(a.md, "w", encoding="utf-8").write(text + "\n")
-    if a.max_pct is not None and worst * 100 > a.max_pct:
-        print(f"moved by more than {a.max_pct} %", file=sys.stderr)
+    if a.max_pct is not None and (worst * 100 > a.max_pct or lost):
+        print(f"moved by more than {a.max_pct} %" if worst * 100 > a.max_pct else f"{len(lost)} result{'s' if len(lost) != 1 else ''} missing",
+              file=sys.stderr)
         sys.exit(1)
 
 

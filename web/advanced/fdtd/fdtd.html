@@ -1,0 +1,96 @@
+<!-- kisi-advanced.html, 3D field view (web/advanced/fdtd/, tools/advanced_bundle.py puts it before </body>) -->
+<div id="kisi3d" hidden aria-label="3D via field view">
+<header class="k3-head">
+  <div class="seg k3-mode" role="tablist" aria-label="Field view"><button data-mode="2d" role="tab">2D cross-section</button><button data-mode="3d" role="tab" class="on">3D via</button></div>
+  <h1>3D via field view</h1>
+  <p class="k3-lead">kisi-fdtd (3D FDTD, perfect conductors) runs in this browser in Web Workers. Choose the case, the
+  frequencies and the mesh, run, then move a cut plane through the fields.</p>
+</header>
+<main class="k3-main">
+<section class="k3-panel k3-setup" aria-label="Case and solver settings">
+  <h2>Case</h2>
+  <div class="k3-row"><div class="seg" id="k3-kind"><button data-v="board" disabled title="kisi.html: “Fields…” on a via hands a via of the board over">Board via</button><button data-v="single" class="on">Single via</button><button data-v="pair">Differential pair</button></div></div>
+  <div id="k3-board" class="hidden">
+    <p class="k3-dstitle" id="k3-board-title"></p>
+    <p class="note" id="k3-board-from"></p>
+    <details class="note"><summary>What the cut-out approximates</summary><ul id="k3-board-approx"></ul></details>
+  </div>
+  <div class="k3-grid2" id="k3-ex">
+    <label for="k3-stackup">Stackup</label>
+    <select id="k3-stackup"><option value="s4">4-layer 1.6 mm FR-4 (L1→L4)</option><option value="s8">8-layer 1.6 mm FR-4 (L1→L8)</option><option value="uniform">Uniform (enter below)</option></select>
+    <label class="uni" for="k3-layers">Copper layers</label><input class="uni" id="k3-layers" type="number" min="2" max="12" step="1" value="4">
+    <label class="uni" for="k3-thickness">Thickness (mm)</label><input class="uni" id="k3-thickness" type="number" min="0.2" max="4" step="0.1" value="1.6">
+    <label class="uni" for="k3-er">εr</label><input class="uni" id="k3-er" type="number" min="1" max="12" step="0.1" value="4.3">
+    <label class="uni" for="k3-tand">tanδ</label><input class="uni" id="k3-tand" type="number" min="0" max="0.1" step="0.001" value="0.02">
+    <label for="k3-drill">Drill ⌀ (mm)</label><input id="k3-drill" type="number" min="0.1" max="1" step="0.05" value="0.2">
+    <label for="k3-pad">Pad ⌀ (mm)</label><input id="k3-pad" type="number" min="0.2" max="1.5" step="0.05" value="0.5">
+    <label for="k3-antipad">Antipad ⌀ (mm)</label><input id="k3-antipad" type="number" min="0.3" max="2" step="0.05" value="0.6">
+    <label class="pr" for="k3-pitch">Pitch (mm)</label><input class="pr" id="k3-pitch" type="number" min="0.5" max="3" step="0.05" value="1.0">
+    <label for="k3-gnd">GND vias</label><select id="k3-gnd"><option value="0">none</option><option value="2">2</option><option value="4" selected>4</option></select>
+    <label for="k3-gndDist">GND via distance (mm)</label><input id="k3-gndDist" type="number" min="0.5" max="3" step="0.05" value="1.0">
+    <label for="k3-feed">Feed length (mm)</label><input id="k3-feed" type="number" min="1" max="5" step="0.5" value="2">
+  </div>
+  <p class="note" id="k3-trace"></p>
+  <h2>Solver settings</h2>
+  <div class="k3-row"><span class="lab">Frequencies</span><div class="chips" id="k3-fchips"></div></div>
+  <div class="k3-row"><label for="k3-fother">Other (GHz)</label><input id="k3-fother" type="text" placeholder="e.g. 12.5, 25"></div>
+  <p class="note" id="k3-floss"></p>
+  <div class="k3-row"><label for="k3-mesh">Mesh</label><select id="k3-mesh"><option value="coarse">coarse (0.07 mm at metal)</option><option value="standard" selected>standard (0.05 mm)</option><option value="fine">fine (0.035 mm, as the 3D references)</option></select></div>
+  <div class="k3-row"><span class="lab">Excite</span><span id="k3-excite"></span></div>
+  <div class="k3-estimate" id="k3-estimate">Estimating…</div>
+  <div class="k3-warn hidden" id="k3-warn"></div>
+  <div class="k3-row"><button class="primary" id="k3-run">Run</button><button class="btn" id="k3-cancel" disabled>Cancel</button></div>
+  <div id="k3-progress"></div>
+  <h2>Data</h2>
+  <div class="files"><input type="file" id="k3-file" multiple accept=".kvf,.bin,.json,.gz" aria-label="Load field data"><button class="btn" id="k3-save" disabled>Save .kvf</button><button class="btn" id="k3-save-case">Case JSON</button></div>
+  <p class="note">Load a saved <code>.kvf</code>, or the blobs of <code>kisi-fdtd case.json --volume out.bin</code> (one per excited port) together with the case JSON.</p>
+</section>
+
+<section class="k3-panel k3-viewer" aria-label="Field view">
+  <div class="k3-dstitle" id="k3-dstitle">No fields yet – run the case.</div>
+  <div class="k3-dssub" id="k3-dssub"></div>
+  <div class="controls">
+    <div class="grp"><span>Excitation</span><select id="k3-exc" aria-label="Excitation"></select></div>
+    <div class="grp"><span>Frequency</span><select id="k3-freq" aria-label="Frequency"></select></div>
+  </div>
+  <div class="controls">
+    <div class="grp"><div class="seg" id="k3-view"><button data-v="E" class="on">|E|</button><button data-v="H">|H|</button><button data-v="S">S</button><button data-v="loss">Loss</button></div></div>
+    <div class="grp"><span>Component</span><div class="seg" id="k3-comp"><button data-v="mag" class="on">mag</button><button data-v="0">x</button><button data-v="1">y</button><button data-v="2">z</button></div></div>
+    <div class="grp"><label><input type="checkbox" id="k3-arrows" checked> arrows</label><label><input type="checkbox" id="k3-outline" checked> outline</label></div>
+  </div>
+  <div class="controls">
+    <div class="grp"><span>Plane</span><div class="seg" id="k3-axis"><button data-v="0">x</button><button data-v="1" class="on">y</button><button data-v="2">z</button></div></div>
+    <input type="range" id="k3-plane" min="0" max="10" value="5" aria-label="Cut plane position">
+    <div class="grp"><span id="k3-planepos" class="k3-pos">–</span><select id="k3-jump" aria-label="Jump to"></select></div>
+  </div>
+  <div class="controls">
+    <div class="grp"><span>Scale</span><div class="seg" id="k3-scale"><button data-v="log" class="on">log</button><button data-v="lin">linear</button></div>
+      <select id="k3-range" aria-label="Log range"><option value="20">20 dB</option><option value="30">30 dB</option><option value="40" selected>40 dB</option><option value="60">60 dB</option></select>
+      <label><input type="checkbox" id="k3-lock"> lock scale</label></div>
+    <div class="grp"><span>Time</span><div class="seg" id="k3-tmode"><button data-v="avg" class="on">phasor / average</button><button data-v="inst">instantaneous</button></div></div>
+    <div class="grp"><button class="btn" id="k3-play" aria-label="Play">▶</button><input type="range" id="k3-phase" min="0" max="359" value="0" aria-label="Phase"><span id="k3-phaselab" class="k3-ph">0°</span>
+      <select id="k3-speed" aria-label="Speed"><option value="0.25">¼ period/s</option><option value="0.5" selected>½ period/s</option><option value="1">1 period/s</option></select></div>
+  </div>
+  <div class="k3-canvas" id="k3-cvwrap"><canvas id="k3-cv"></canvas></div>
+  <div class="k3-hover" id="k3-hover">Move the pointer over the plane for values.</div>
+  <div class="k3-info" id="k3-planeinfo"></div>
+</section>
+
+<aside class="k3-panel k3-side" aria-label="Plane, power balance and S-parameters">
+  <h2>Where is the plane</h2>
+  <div class="k3-loc"><canvas id="k3-loc"></canvas></div>
+  <h2>Power balance</h2>
+  <table id="k3-totals"></table>
+  <h2>S-parameters</h2>
+  <table id="k3-sparams"></table>
+  <p class="note" id="k3-norm"></p>
+</aside>
+</main>
+<footer class="k3-foot">
+  <p>Metal is a perfect conductor in the solver; the conductor loss is a perturbation <span class="est">estimate</span>
+  from the tangential H at the metal surfaces, and the dielectric loss at other frequencies than f<sub>loss</sub> is
+  scaled (<span class="est">estimate</span>). Fields within a cell of a metal edge are not resolved (edge singularities).
+  The S-parameters are those of the cut-out with its feeds and lumped 50 Ω ports, not de-embedded.</p>
+  <p id="k3-build"></p>
+</footer>
+</div>

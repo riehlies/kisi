@@ -1,0 +1,378 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: riehlies <118917105+riehlies@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 22:09:45 +0000
+Subject: [PATCH] Light and dark theme (src/fork/theme.css,
+ src/fork/theme.js)
+
+Proposed by kisi (riehlies/kisi, web/advanced/fork-patches/): the page follows the
+browser's preference (prefers-color-scheme), the link key theme=light|dark or
+forkTheme.set(); the plots' layout colours of the original's dark plot theme are swapped
+for light ones when a plot is drawn, the field colour scales stay. Two hooks in <head>.
+---
+ FORK.md                    |  11 ++-
+ deploy/make_site.mjs       |   2 +
+ src/field_solver.html      |   2 +
+ src/fork/handover.js       |   1 +
+ src/fork/theme.css         |  75 +++++++++++++++++
+ src/fork/theme.js          | 166 +++++++++++++++++++++++++++++++++++++
+ tests/fork/check_hooks.mjs |   4 +-
+ 7 files changed, 258 insertions(+), 3 deletions(-)
+ create mode 100644 src/fork/theme.css
+ create mode 100644 src/fork/theme.js
+
+diff --git a/FORK.md b/FORK.md
+index e617fc6..20b9997 100644
+--- a/FORK.md
++++ b/FORK.md
+@@ -37,6 +37,10 @@ Losses**, drawn at the original's *Plot Frequency*:
+   that view without further clicks; a page that opened this one hands over the next
+   cross-section by changing the fragment (no reload) and hears each step by
+   `postMessage`. Used by kisi's “Fields…”
++- light and dark theme (`src/fork/theme.css`, `src/fork/theme.js`): the page follows the
++  browser's preference, or the link key `theme=light|dark`, or `forkTheme.set()`; the
++  plots' layout colours (backgrounds, axes, menus, legend, titles, colour bars) follow
++  it, the field colour scales stay
+ - the page opens with the Full-wave solver
+ - broadside coupled stripline: separate width of the upper trace (*Trace Width
+   (top)*, empty = same as the bottom trace)
+@@ -55,6 +59,7 @@ src/fork/                 the fork, nothing of the original inside
+                           scale dialog, Plot Options controls, help wrapper,
+                           the forkPlot API
+   handover.js             link hand-over (#params=… plus solve, view, mode, …)
++  theme.css, theme.js     light theme of the page and the plots (classic script)
+   field_views.js          traces and colour scales of every view (pure functions)
+   field_excitation.js     V / I / P conversion over Zc
+   field_lines.js          E field lines by equal flux
+@@ -79,8 +84,8 @@ fields it grafts onto the main-thread solver (`x, y, V, Ex, Ey`, `fieldFreq`).
+ ## Hooks in the original's files
+ 
+ Every fork line in the original's files is marked `FORK`;
+-`tests/fork/check_hooks.mjs` checks them and their number per file. The seven
+-hooks of the field views and the link hand-over:
++`tests/fork/check_hooks.mjs` checks them and their number per file. The nine
++hooks of the field views, the link hand-over and the theme:
+ 
+ | File | Line |
+ |---|---|
+@@ -90,6 +95,8 @@ hooks of the field views and the link hand-over:
+ | `src/solve_worker.js` | `...forkJobs(() => simSolver),` in `JOBS` |
+ | `src/field_solver.html` | `<script type="module" src="fork/plot_fields.js">` |
+ | `src/field_solver.html` | `<script type="module" src="fork/handover.js">` |
++| `src/field_solver.html` | `<link rel="stylesheet" href="fork/theme.css">` in `<head>` |
++| `src/field_solver.html` | `<script src="fork/theme.js">` in `<head>` (a classic script: the theme is set before the body is drawn) |
+ | `src/field_solver.html` | `selected` on the Full-wave option |
+ 
+ Further changes of the original's files, also marked `FORK`:
+diff --git a/deploy/make_site.mjs b/deploy/make_site.mjs
+index e892082..35e9546 100644
+--- a/deploy/make_site.mjs
++++ b/deploy/make_site.mjs
+@@ -69,6 +69,8 @@ for (const f of [...files]) {
+ }
+ for (const f of [...files]) if (f.includes(`${path.sep}tests${path.sep}`)) files.delete(f);
+ files.add('solver-style.css');
++files.add('fork/theme.css');               // loaded by field_solver.html's <head>
++files.add('fork/theme.js');
+ files.add('plotly-3.3.0.min.js');
+ 
+ fs.rmSync(OUT, { recursive: true, force: true });
+diff --git a/src/field_solver.html b/src/field_solver.html
+index 1f1968e..4d0e136 100644
+--- a/src/field_solver.html
++++ b/src/field_solver.html
+@@ -65,6 +65,8 @@
+         }
+     </script>
+     <link rel="stylesheet" href="solver-style.css">
++    <link rel="stylesheet" href="fork/theme.css"><!-- FORK: light theme (src/fork/theme.css) -->
++    <script src="fork/theme.js"></script><!-- FORK: light and dark theme (src/fork/theme.js) -->
+ </head>
+ <body>
+ 
+diff --git a/src/fork/handover.js b/src/fork/handover.js
+index c732a22..9e14988 100644
+--- a/src/fork/handover.js
++++ b/src/fork/handover.js
+@@ -19,6 +19,7 @@
+ //   exc=          kind:value[:peak|rms], kind V | Vd | I | P (the fork's excitation)
+ //   title=        a line shown above the plot (where the cross-section comes from)
+ //   editor=hide   collapse the geometry editor under the plot (more room for the field view)
++//   theme=        light | dark | auto (read by fork/theme.js)
+ // Any other key (a counter that makes a repeated link a new fragment) is ignored.
+ // The fragment never reaches a server; a page that opened this one changes the fragment to
+ // hand over the next cross-section without a reload (a location change of a window it
+diff --git a/src/fork/theme.css b/src/fork/theme.css
+new file mode 100644
+index 0000000..3b9cdb9
+--- /dev/null
++++ b/src/fork/theme.css
+@@ -0,0 +1,75 @@
++/* Copyright (C) 2026 David Riehl
++   Part of a modified version (fork) of js_2d_fields by Henrik Forstén,
++   https://github.com/Ttl/js_2d_fields. This file is new in the fork and is licensed
++   under the GNU General Public License v3, like the rest of the project (see LICENSE).
++   See FORK.md for the list of changes.
++
++   Light theme of the page (fork/theme.js sets data-theme="light" or "dark" on <html>, from
++   the link, forkTheme.set() or the browser's preference). The original's stylesheet is dark
++   only: its colour variables are set here, and the rules with fixed dark colours get light
++   ones. The plots' colours are fork/theme.js's. */
++:root[data-theme="light"] {
++    --bg-color: #f3f4f5;
++    --panel-color: #ffffff;
++    --primary-color: #2e7d32;
++    --primary-hover: #27692b;
++    --text-color: #1b1b1b;
++    --text-muted: #555;
++    --border-color: #cfd3d6;
++    --input-bg: #ffffff;
++}
++:root[data-theme="light"] .sidebar-header,
++:root[data-theme="light"] .tab-bar,
++:root[data-theme="light"] .results-controls,
++:root[data-theme="light"] .modes-list th,
++:root[data-theme="light"] .sparam-controls { background: #eceef0; }
++:root[data-theme="light"] .tab-button:hover { background: #e2e5e8; }
++:root[data-theme="light"] .output-panel,
++:root[data-theme="light"] #custom-text-wrap,
++:root[data-theme="light"] #custom_geom_text,
++
++:root[data-theme="light"] #custom-line-numbers { background: #f0f0f0; color: #8a8a8a; }
++:root[data-theme="light"] .progress-container { background: #dfe2e5; }
++:root[data-theme="light"] button:disabled { background-color: #b8bcc0; }
++:root[data-theme="light"] .sparam-controls button:disabled { background-color: #c4c8cc; }
++:root[data-theme="light"] .secondary-btn { color: var(--text-color); }
++:root[data-theme="light"] .secondary-btn:hover { background-color: #e2e5e8; }
++:root[data-theme="light"] .custom-view-toggle .secondary-btn.active { color: #fff; }
++:root[data-theme="light"] .custom-rect-row { background: #f7f8f9; }
++:root[data-theme="light"] .modes-list tbody tr:hover { background: #eef0f8; }
++:root[data-theme="light"] .modes-list tr.selected { background: #d9e2f7; }
++:root[data-theme="light"] .modes-list tr.propagating td.status { color: #1f7a1f; }
++:root[data-theme="light"] .modes-list tr.evanescent td.status,
++:root[data-theme="light"] .modes-list tr.near_cutoff td.status { color: #a15c00; }
++:root[data-theme="light"] .modes-list tr.spurious td.status { color: #c62828; }
++/* errors and warnings: the original's dark red / amber boxes */
++:root[data-theme="light"] .custom-param-row.has-error,
++:root[data-theme="light"] .custom-rect-row.has-error,
++:root[data-theme="light"] #custom-geom-errors,
++:root[data-theme="light"] .custom-error-count { background: #fdecea; }
++:root[data-theme="light"] .custom-error-count:hover { background: #f9d6d2; }
++:root[data-theme="light"] #log-last.is-error,
++:root[data-theme="light"] #custom-geom-errors,
++:root[data-theme="light"] .custom-inline-error,
++:root[data-theme="light"] .custom-error-count { color: #b3261e; }
++:root[data-theme="light"] #custom-line-numbers .err { color: #c62828; }
++:root[data-theme="light"] #log-last.is-warning,
++:root[data-theme="light"] #custom-geom-warnings,
++:root[data-theme="light"] .eye-notice { color: #8a5300; }
++:root[data-theme="light"] #custom-geom-warnings,
++:root[data-theme="light"] .eye-notice { background: #fff4e0; }
++:root[data-theme="light"] .custom-plating-toggle.active { color: #8a6d00; border-color: rgba(160, 120, 0, 0.7); }
++:root[data-theme="light"] .custom-color-band:hover,
++:root[data-theme="light"] .custom-color-band:focus-visible { outline-color: rgba(0, 0, 0, 0.5); }
++/* notices with inline dark styles in the original's page */
++:root[data-theme="light"] #results-notice,
++:root[data-theme="light"] #sparam-notice,
++:root[data-theme="light"] #sweep-notice,
++:root[data-theme="light"] #modes-notice,
++:root[data-theme="light"] #modes-warning { background: #fff4e0 !important; color: #8a5300 !important; }
++:root[data-theme="light"] #tab-about p[style*="#1f2d3d"] { background: #e6effa !important; }
++:root[data-theme="light"] #tab-about p[style*="#aaa"],
++:root[data-theme="light"] #tab-about p[style*="#888"] { color: #555 !important; }
++/* the fork's scale dialog (plot_fields.js, inline dark styles) */
++:root[data-theme="light"] #forkScaleDialog { background: #ffffff !important; color: #222 !important;
++    border-color: #cfd3d6 !important; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important; }
+diff --git a/src/fork/theme.js b/src/fork/theme.js
+new file mode 100644
+index 0000000..51c86bb
+--- /dev/null
++++ b/src/fork/theme.js
+@@ -0,0 +1,166 @@
++// Copyright (C) 2026 David Riehl
++// Part of a modified version (fork) of js_2d_fields by Henrik Forstén,
++// https://github.com/Ttl/js_2d_fields. This file is new in the fork and is licensed
++// under the GNU General Public License v3, like the rest of the project (see
++// LICENSE). See FORK.md for the list of changes.
++//
++// Light and dark theme. The original is dark only; the fork follows the browser's
++// preference (prefers-color-scheme) unless a theme is chosen:
++//   forkTheme.set('light' | 'dark' | 'auto')   ('auto': the browser's preference again)
++//   forkTheme.get()                            the theme shown: 'light' or 'dark'
++//   link key theme=light|dark (with or without src/fork/handover.js's other keys)
++// The page: CSS variables and a few rules of fork/theme.css under :root[data-theme="light"];
++// this classic script in <head> sets data-theme before the body is drawn. The plots: the
++// layout colours of the original's dark plot theme (darkAxis / darkBackground in plot.js)
++// and of the fork's menus, legend, titles and colour bars are swapped for light ones when a
++// plot is drawn, and back on a change of theme; the field colour scales and the lines drawn
++// on them stay as they are (they are drawn over the field, not over the background).
++(function () {
++    'use strict';
++    const root = document.documentElement;
++    const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
++    let chosen = null;   // 'light' | 'dark' | null (the browser's preference)
++    const fromLink = /[#&]theme=(light|dark|auto)(?:&|$)/.exec(location.hash);
++    if (fromLink && fromLink[1] !== 'auto') chosen = fromLink[1];
++    const shown = () => chosen || (mq && mq.matches ? 'light' : 'dark');
++
++    // Colours of the dark plot theme → light, by role (each map one to one, so a light plot
++    // maps back). Keys without spaces, lower case.
++    const ROLE_MAPS = {
++        bg: { '#2a2a2a': '#ffffff', '#1a1a1a': '#f6f6f6', '#1e1e1e': '#f2f2f2',
++              'rgba(30,30,30,0.7)': 'rgba(255,255,255,0.88)', 'rgba(15,15,15,0.9)': 'rgba(255,255,255,0.92)',
++              'rgba(30,30,30,0.55)': 'rgba(255,255,255,0.75)' },
++        fg: { '#fff': '#1b1b1b', '#ffffff': '#1b1b1b', '#aaa': '#505050', '#aaaaaa': '#505050',
++              '#ddd': '#262626', '#dddddd': '#262626', '#bbb': '#4a4a4a', '#bbbbbb': '#4a4a4a', '#ccc': '#3a3a3a',
++              '#888': '#666666', '#eee': '#202020' },
++        line: { '#444': '#d2d2d2', '#444444': '#d2d2d2', '#555': '#b8b8b8', '#555555': '#b8b8b8',
++                '#333': '#e0e0e0', '#666': '#a8a8a8' },
++    };
++    const norm = (v) => String(v).replace(/\s+/g, '').toLowerCase();
++    const MAPS = {};
++    for (const [role, m] of Object.entries(ROLE_MAPS)) {
++        const light = {}, dark = {};
++        for (const [d, l] of Object.entries(m)) { light[norm(d)] = l; dark[norm(l)] = d; }
++        MAPS[role] = { light, dark };
++    }
++    function mapColor(v, role, theme) {
++        if (typeof v !== 'string') return v;
++        const m = MAPS[role][theme];
++        return m[norm(v)] || v;
++    }
++    // role of a colour by its key
++    function roleOf(key) {
++        if (/bgcolor$/.test(key)) return 'bg';
++        if (/^(gridcolor|zerolinecolor|linecolor|bordercolor|outlinecolor|tickcolor)$/.test(key)) return 'line';
++        if (key === 'color') return 'fg';
++        return null;
++    }
++    // inline colours in a title or annotation text (the fork's subtitles)
++    const mapText = (s, theme) => (typeof s === 'string'
++        ? s.replace(/(color:\s*)(#[0-9a-fA-F]{3,6})/g, (_, p, c) => p + mapColor(c, 'fg', theme)) : s);
++    // keys of the layout that hold no plot-theme colours (or too much data to walk)
++    const SKIP = new Set(['shapes', 'images', 'sliders', 'selections', 'colorscale']);
++    function themeObj(o, theme, depth = 0) {
++        if (!o || typeof o !== 'object' || depth > 6) return o;
++        if (Array.isArray(o)) return o.map((x) => themeObj(x, theme, depth + 1));
++        const out = {};
++        for (const [k, v] of Object.entries(o)) {
++            if (SKIP.has(k)) { out[k] = v; continue; }
++            const role = roleOf(k);
++            if (role && typeof v === 'string') out[k] = mapColor(v, role, theme);
++            else if (k === 'text') out[k] = mapText(v, theme);
++            else if (v && typeof v === 'object' && !ArrayBuffer.isView(v) && !(Array.isArray(v) && typeof v[0] !== 'object')) out[k] = themeObj(v, theme, depth + 1);
++            else out[k] = v;
++        }
++        return out;
++    }
++    const themeLayout = (layout, theme) => (layout ? themeObj(layout, theme) : layout);
++    // traces: only their colour bars (the field itself keeps its colours)
++    function themeTrace(t, theme) {
++        if (!t || typeof t !== 'object') return t;
++        let out = t;
++        if (t.colorbar) out = { ...out, colorbar: themeObj(t.colorbar, theme) };
++        if (t.marker && t.marker.colorbar) out = { ...out, marker: { ...t.marker, colorbar: themeObj(t.marker.colorbar, theme) } };
++        return out;
++    }
++    const themeData = (data, theme) => (Array.isArray(data) ? data.map((t) => themeTrace(t, theme)) : data);
++    // relayout / update objects: 'xaxis.gridcolor': '#444', 'updatemenus': [...], 'title.text': '…'
++    function themeUpdate(upd, theme) {
++        if (!upd || typeof upd !== 'object') return upd;
++        const out = {};
++        for (const [k, v] of Object.entries(upd)) {
++            const last = k.split('.').pop().replace(/\[\d+\]$/, '');
++            const role = roleOf(last);
++            if (role && typeof v === 'string') out[k] = mapColor(v, role, theme);
++            else if (last === 'text') out[k] = mapText(v, theme);
++            else if (v && typeof v === 'object' && !SKIP.has(last)) out[k] = themeObj(v, theme);
++            else out[k] = v;
++        }
++        return out;
++    }
++
++    let wrapped = null;
++    function wrapPlotly(P) {
++        if (!P || P === wrapped || P.__forkTheme) return;
++        const orig = { newPlot: P.newPlot, react: P.react, relayout: P.relayout, update: P.update };
++        const fig = (fn) => function (gd, data, layout, config) {
++            const th = shown();
++            if (data && !Array.isArray(data) && typeof data === 'object' && (data.data || data.layout)) {
++                return fn.call(this, gd, { ...data, data: themeData(data.data, th), layout: themeLayout(data.layout, th) });
++            }
++            return fn.call(this, gd, themeData(data, th), themeLayout(layout, th), config);
++        };
++        P.newPlot = fig(orig.newPlot);
++        P.react = fig(orig.react);
++        P.relayout = function (gd, a, b) {
++            const th = shown();
++            if (typeof a === 'string') return orig.relayout.call(this, gd, themeUpdate({ [a]: b }, th));
++            return orig.relayout.call(this, gd, themeUpdate(a, th));
++        };
++        P.update = function (gd, traceUpd, layoutUpd, idx) {
++            return orig.update.call(this, gd, traceUpd, themeUpdate(layoutUpd, shown()), idx);
++        };
++        P.__forkTheme = true;
++        wrapped = P;
++    }
++    // redraw the plots in the shown theme (their current colours are either theme's)
++    function rethemePlots() {
++        const P = window.Plotly;
++        if (!P || !P.react) return;
++        for (const gd of document.querySelectorAll('.js-plotly-plot')) {
++            if (!gd.layout || !gd.data) continue;
++            try { P.react(gd, gd.data, gd.layout, gd._context); } catch (e) { /* a plot being torn down */ }
++        }
++    }
++    function apply() {
++        const t = shown();
++        root.dataset.theme = t;
++        root.style.colorScheme = t;
++        rethemePlots();
++        window.dispatchEvent(new CustomEvent('fork-theme', { detail: t }));
++    }
++
++    window.forkTheme = {
++        get: shown,
++        set(t) {
++            const next = t === 'light' || t === 'dark' ? t : null;
++            if (next === chosen && root.dataset.theme === shown()) return;
++            chosen = next;
++            apply();
++        },
++        // for tests and other scripts: a layout in the shown theme
++        layout: (l) => themeLayout(l, shown()),
++    };
++    root.dataset.theme = shown();
++    root.style.colorScheme = shown();
++    if (mq) {
++        const onChange = () => { if (!chosen) apply(); };
++        if (mq.addEventListener) mq.addEventListener('change', onChange); else if (mq.addListener) mq.addListener(onChange);
++    }
++    window.addEventListener('hashchange', () => {
++        const m = /[#&]theme=(light|dark|auto)(?:&|$)/.exec(location.hash);
++        if (m) window.forkTheme.set(m[1]);
++    });
++    if (window.Plotly) wrapPlotly(window.Plotly);
++    window.addEventListener('plotly-loaded', () => wrapPlotly(window.Plotly));
++})();
+diff --git a/tests/fork/check_hooks.mjs b/tests/fork/check_hooks.mjs
+index 0a98571..c5519c1 100644
+--- a/tests/fork/check_hooks.mjs
++++ b/tests/fork/check_hooks.mjs
+@@ -22,6 +22,8 @@ const HOOKS = [
+     ['src/solve_worker.js', '...forkJobs(() => simSolver)', 'worker job registration'],
+     ['src/field_solver.html', 'src="fork/plot_fields.js"', 'fork module loaded by the page'],
+     ['src/field_solver.html', 'src="fork/handover.js"', 'link hand-over loaded by the page'],
++    ['src/field_solver.html', 'href="fork/theme.css"', 'light theme stylesheet'],
++    ['src/field_solver.html', '<script src="fork/theme.js"></script>', 'theme script in <head>'],
+     ['src/field_solver.html', '<option value="fullwave_mqs" selected>', 'Full-wave solver as the default'],
+     // Separate upper trace width of the broadside coupled stripline (a change of the
+     // original's solver, not a hook: candidate for a pull request upstream).
+@@ -35,7 +37,7 @@ for (const [file, needle, what] of HOOKS) check(read(file).includes(needle), `${
+ // Number of FORK-marked lines per file: a different count after a merge means a fork
+ // line was lost or doubled.
+ const MARKED = {
+-    'src/plot.js': 1, 'src/app_solver.js': 3, 'src/solve_worker.js': 2, 'src/field_solver.html': 9,
++    'src/plot.js': 1, 'src/app_solver.js': 3, 'src/solve_worker.js': 2, 'src/field_solver.html': 11,
+     'src/broadside_stripline.js': 6, 'src/solver_factory.js': 1, 'src/tri_solver/tri_backend.js': 1,
+ };
+ for (const [file, n] of Object.entries(MARKED)) {

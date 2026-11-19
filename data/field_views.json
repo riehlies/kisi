@@ -1,0 +1,105 @@
+{
+ "version": 1,
+ "about": "What the viewer's \"Fields…\" hands to the field page kisi-advanced.html with a segment's cross-section (2D) or a via (3D), and the 3D view's defaults (web/src/field-views.js, web/advanced/fdtd/, docs/reference.md \"Field views\").",
+ "frequency": {
+  "fallback_ghz": 1.0,
+  "sources": [
+   {
+    "kind": "kisi",
+    "text": "A lane is shown at the Nyquist frequency of its interface profile (data/interfaces.json); a net without a profile at 1 GHz, which the page's title says. 2D and 3D alike; the 3D view offers its presets beside it."
+   }
+  ]
+ },
+ "excitation": {
+  "single_v": 1.0,
+  "pair_odd_vdiff": 1.0,
+  "pair_even_vcm": 1.0,
+  "sources": [
+   {
+    "kind": "kisi",
+    "text": "Peak values. Single-ended 1 V; a pair 1 V between the conductors (odd mode, ±0.5 V) or 1 V common mode (even mode, +1 V on both). Every view scales with it; the field shapes do not depend on it."
+   }
+  ]
+ },
+ "copper": {
+  "sigma_s_m": 58000000.0,
+  "rq_um": {
+   "Smooth": 0.0,
+   "Hvlp": 0.27,
+   "Standard": 0.66
+  },
+  "sources": [
+   {
+    "kind": "standard",
+    "text": "Annealed copper, IEC 60028: 5.8e7 S/m, as kisi's line models."
+   },
+   {
+    "kind": "kisi",
+    "text": "RMS roughness for the page's gradient model (Grujić, IEEE T-MTT 70(4), 2022) fitted to kisi's Huray presets (kisi_si::rf::Roughness: HVLP r 0.5 µm SR 0.5, standard r 1 µm SR 1) in the loss factor, 1-20 GHz least squares: HVLP 0.27 µm (3 % rms), standard 0.66 µm (9 % rms). Estimates."
+   }
+  ]
+ },
+ "adaptive": {
+  "initial_grid": 10,
+  "max_nodes": 60000,
+  "min_converged_passes": 1,
+  "estimate_error": true,
+  "sources": [
+   {
+    "kind": "kisi",
+    "text": "kisi's own adaptive mesh, so that the page's quasi-static solve of the same cross-section gives kisi's numbers: the settings of web/solver/backend_forsten.js (the solver's initial grid nx = ny = 10, solve_adaptive with 60 k nodes, one converged pass and the error certificate), with kisi's tolerance FIELD_TOL (web/src/field-cache.js, 1 %) as the page's energy and parameter tolerance (fork patch 0004). The page's own defaults are a 30-cell grid, 5 % parameter tolerance, 20 k nodes and two passes. The full-wave backend takes the same node cap, tolerance and passes."
+   }
+  ]
+ },
+ "fdtd": {
+  "presets_ghz": [
+   5,
+   10,
+   20,
+   30
+  ],
+  "default_ghz": [
+   10,
+   20,
+   30
+  ],
+  "board": {
+   "keep_mm": 1.2,
+   "feed_mm": 2.5,
+   "margin_mm": 1.5
+  },
+  "board_mesh": {
+   "single": "coarse",
+   "pair": "standard"
+  },
+  "workers": 2,
+  "warn_worker_mb": 300,
+  "warn_total_mb": 600,
+  "time": {
+   "example_ns": [
+    0.107,
+    3.33
+   ],
+   "board_ns": [
+    0.15,
+    3.33
+   ],
+   "example_setup_s_per_mcell": 1.5,
+   "board_setup_s_per_mcell": 12
+  },
+  "sources": [
+   {
+    "kind": "kisi",
+    "text": "3D view (kisi-fdtd in the browser): frequency presets and the frequencies chosen first without a hand-over; a board via is cut out with a 1.2 mm keep box (kisi-validate via-case's default), feeds of 2.5 mm and a 1.5 mm margin (shorter than the 3D references' 4 mm / 2.5 mm, fewer cells; the feed is a straight line from the keep box on)."
+   },
+   {
+    "kind": "kisi",
+    "text": "Mesh first chosen for a board via: coarse (0.07 mm) for a single via, standard (0.05 mm) for a pair – 0.07 mm does not resolve the 0.13 mm gap of a typical pair (validation/vias.md, the board vias' quick meshes: |S21| within 0.07–0.20 dB of the reference mesh up to 20 GHz)."
+   },
+   {
+    "kind": "kisi",
+    "text": "Estimates before a run: the simulated time to the stop level a + b/fmax ns (fit of kisi-fdtd runs of the examples; board vias ring longer in their plane cavities), the setup per million cells (WebAssembly; board vias with polygon copper take longer), 75 B per cell and 48 B per field node and frequency (docs/research/fdtd-field-view.md); a warning above 300 MB per worker or 600 MB in all – phones are warned, no limit is enforced."
+   }
+  ]
+ }
+}

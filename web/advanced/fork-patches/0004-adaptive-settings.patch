@@ -1,0 +1,135 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: riehlies <118917105+riehlies@users.noreply.github.com>
+Date: Thu, 19 Nov 2026 12:00:00 +0000
+Subject: [PATCH] Solver Settings: Parameter Tolerance and Initial Grid of
+ the adaptive solve
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Proposed by kisi (riehlies/kisi, web/advanced/fork-patches/): the
+quasi-static adaptive solve's parameter tolerance was fixed at 5 % in
+solve_worker.js and its initial grid at 30 cells per axis in getParams; both
+become settings – *Parameter Tolerance (%)* (default 5) and *Initial Grid
+(cells per axis)* (default 30), in the Solver Settings and the link's
+settings – so that a page that hands a cross-section over can ask for the
+same adaptive mesh as its own solver (kisi: 1 % energy and parameter
+tolerance, a 10-cell initial grid, 60 k nodes, one converged pass), and the
+same geometry gives the same numbers.
+---
+ FORK.md                    | 5 +++--
+ src/app_solver.js          | 7 +++++++
+ src/field_solver.html      | 8 ++++++++
+ src/solve_worker.js        | 4 ++--
+ tests/fork/check_hooks.mjs | 2 +-
+ 5 files changed, 21 insertions(+), 5 deletions(-)
+
+diff --git a/FORK.md b/FORK.md
+index 20b9997..3055c09 100644
+--- a/FORK.md
++++ b/FORK.md
+@@ -103,8 +103,9 @@ Further changes of the original's files, also marked `FORK`:
+ 
+ | File | Change |
+ |---|---|
+-| `src/field_solver.html` | page metadata of the hosted version (canonical URL, author, description instead of the original's site and icons), notice of the modified version and license text in the About tab, input and help text *Trace Width (top)* |
+-| `src/app_solver.js` | setting `bs_w_top` (default and settings table) |
++| `src/field_solver.html` | page metadata of the hosted version (canonical URL, author, description instead of the original's site and icons), notice of the modified version and license text in the About tab, input and help text *Trace Width (top)*, inputs *Parameter Tolerance (%)* and *Initial Grid (cells per axis)* in the Solver Settings |
++| `src/app_solver.js` | setting `bs_w_top` (default and settings table); settings `param_tolerance` and `initial_grid` (default, settings table, bounds; the initial grid replaces the fixed 30 cells per axis in `getParams`) |
++| `src/solve_worker.js` | the quasi-static adaptive solve takes `param_tolerance` (the original's fixed 5 % as the default) |
+ | `src/solver_factory.js` | passes `trace_width_top` |
+ | `src/broadside_stripline.js` | upper trace with its own width, domain margin and enclosure check with the wider trace |
+ | `src/tri_solver/tri_backend.js` | mesh reference width: the narrower trace |
+diff --git a/src/app_solver.js b/src/app_solver.js
+index 1c7d28c..cbb010e 100644
+--- a/src/app_solver.js
++++ b/src/app_solver.js
+@@ -211,6 +211,8 @@ const DEFAULT_SETTINGS = {
+     enclosure_height: NaN, // auto
+     max_iters: 10,
+     tolerance: 0.01,
++    param_tolerance: 0.05,  // FORK: parameter tolerance of the quasi-static adaptive solve
++    initial_grid: DEFAULT_GRID_N,  // FORK: initial grid of the adaptive solve (cells per axis)
+     min_converged_passes: 2,
+     estimate_error: 1,
+     max_nodes: 20,
+@@ -330,6 +332,8 @@ const SETTINGS_FIELDS = [
+     ['enclosure_height', 'inp_enclosure_height', 'unit', 'sphl'],
+     ['max_iters', 'inp_max_iters', 'int', 'sp'],
+     ['tolerance', 'inp_tolerance', 'pct', 'sp'],
++    ['param_tolerance', 'inp_param_tolerance', 'pct', 'sp'],  // FORK: parameter tolerance
++    ['initial_grid', 'inp_initial_grid', 'int', 'sp'],  // FORK: initial grid
+     ['min_converged_passes', 'inp_min_converged_passes', 'num', 'sp'],
+     ['estimate_error', 'chk_estimate_error', 'chk', 'sp'],
+     ['max_nodes', 'inp_max_nodes', 'int', 'sp'],
+@@ -1606,6 +1610,7 @@ function getParams() {
+             p[key] = readParam(id, kind);
+         }
+     }
++    if (p.initial_grid > 0 && p.nx !== undefined) { p.nx = p.initial_grid; p.ny = p.initial_grid; }  // FORK: initial grid
+     return p;
+ }
+ 
+@@ -2518,6 +2523,8 @@ function bindEvents() {
+         'inp_max_iters': { min: 1, default: 10, integer: true, label: 'Max iterations' },
+         'inp_max_nodes': { min: 1, default: 20, integer: true, label: 'Max nodes' },
+         'inp_tolerance': { min: 0, max: 100, default: 1, label: 'Tolerance' },
++        'inp_param_tolerance': { min: 0, max: 100, default: 5, label: 'Parameter tolerance' },  // FORK
++        'inp_initial_grid': { min: 4, max: 200, default: 30, integer: true, label: 'Initial grid' },  // FORK
+         'sparam-length': { default: 0.01, label: 'Line length' },
+         'sparam-z-ref': { min: 1, default: 50, label: 'Reference impedance' }
+     };
+diff --git a/src/field_solver.html b/src/field_solver.html
+index 4d0e136..30b2c71 100644
+--- a/src/field_solver.html
++++ b/src/field_solver.html
+@@ -587,6 +587,14 @@
+         <label>Tolerance (%) <span class="help-icon" onclick="showHelpModal('tolerance')">?</span></label>
+         <input type="number" id="inp_tolerance" value="1" inputmode="decimal" min="0" max="100">
+     </div>
++    <div class="control-group"><!-- FORK: parameter tolerance of the quasi-static solve (was fixed at 5 %) -->
++        <label>Parameter Tolerance (%)</label>
++        <input type="number" id="inp_param_tolerance" value="5" inputmode="decimal" min="0" max="100">
++    </div>
++    <div class="control-group"><!-- FORK: initial grid of the adaptive solve (was fixed at 30 cells per axis) -->
++        <label>Initial Grid (cells per axis)</label>
++        <input type="number" id="inp_initial_grid" value="30" step="1" min="4" max="200">
++    </div>
+     <div class="control-group">
+         <label><input type="checkbox" id="chk_estimate_error" checked> Estimate solution error <span class="help-icon" onclick="showHelpModal('estimate_error', event)">?</span></label>
+     </div>
+diff --git a/src/solve_worker.js b/src/solve_worker.js
+index e0663c9..6ce42b2 100644
+--- a/src/solve_worker.js
++++ b/src/solve_worker.js
+@@ -173,7 +173,7 @@ function adaptiveSolve(solver, p, onProgress) {
+     return solver.solve_adaptive({
+         max_iters: p.max_iters,
+         energy_tol: p.tolerance,
+-        param_tol: 0.05,
++        param_tol: p.param_tolerance ?? 0.05,  // FORK: the Parameter Tolerance setting
+         max_nodes: p.max_nodes * 1000,
+         min_converged_passes: p.min_converged_passes,
+         certify: !!p.estimate_error,
+@@ -536,7 +536,7 @@ async function jobParamSweep({ points, freqHz, opts }) {
+             cached = await solver.solve_adaptive({
+                 max_iters: params.max_iters,
+                 energy_tol: params.tolerance,
+-                param_tol: 0.05,
++                param_tol: params.param_tolerance ?? 0.05,  // FORK: the Parameter Tolerance setting
+                 max_nodes: params.max_nodes * 1000,
+                 min_converged_passes: params.min_converged_passes,
+                 // Verify the first point only. Adjacent sweep points share the geometry
+diff --git a/tests/fork/check_hooks.mjs b/tests/fork/check_hooks.mjs
+index c5519c1..79ed8c1 100644
+--- a/tests/fork/check_hooks.mjs
++++ b/tests/fork/check_hooks.mjs
+@@ -37,7 +37,7 @@ for (const [file, needle, what] of HOOKS) check(read(file).includes(needle), `${
+ // Number of FORK-marked lines per file: a different count after a merge means a fork
+ // line was lost or doubled.
+ const MARKED = {
+-    'src/plot.js': 1, 'src/app_solver.js': 3, 'src/solve_worker.js': 2, 'src/field_solver.html': 11,
++    'src/plot.js': 1, 'src/app_solver.js': 10, 'src/solve_worker.js': 4, 'src/field_solver.html': 13,
+     'src/broadside_stripline.js': 6, 'src/solver_factory.js': 1, 'src/tri_solver/tri_backend.js': 1,
+ };
+ for (const [file, n] of Object.entries(MARKED)) {

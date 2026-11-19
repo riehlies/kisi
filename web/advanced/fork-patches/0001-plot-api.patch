@@ -1,0 +1,68 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: riehlies <118917105+riehlies@users.noreply.github.com>
+Date: Tue, 17 Nov 2026 22:05:41 +0000
+Subject: [PATCH] Plot API: forkPlot.view, views, setView, fit
+
+Proposed by kisi (riehlies/kisi, web/advanced/fork-patches/): a script that drives the
+plot (the link hand-over, a page that embeds this one) sets the view and fits the axes
+without the Plotly menu's plotly_buttonclicked event or deleting the plot's axis ranges.
+---
+ FORK.md                 |  3 +++
+ src/fork/plot_fields.js | 29 ++++++++++++++++++++++++++++-
+ 2 files changed, 31 insertions(+), 1 deletion(-)
+
+diff --git a/FORK.md b/FORK.md
+index 3d202c9..585a863 100644
+--- a/FORK.md
++++ b/FORK.md
+@@ -28,6 +28,9 @@ Losses**, drawn at the original's *Plot Frequency*:
+   hidden), colour scales readable with colour-vision deficiency, own scale dialog
+   with real values, help texts
+ - coax and rectangular waveguide from the closed-form fields
++- an API for a script that drives the plot (`window.forkPlot`: `view()`, `views()`,
++  `setView(view, { fit })`, `fit()`), so that it needs neither the Plotly menu's
++  events nor the plot's layout
+ - the page opens with the Full-wave solver
+ - broadside coupled stripline: separate width of the upper trace (*Trace Width
+   (top)*, empty = same as the bottom trace)
+diff --git a/src/fork/plot_fields.js b/src/fork/plot_fields.js
+index dc51144..f1a3de7 100644
+--- a/src/fork/plot_fields.js
++++ b/src/fork/plot_fields.js
+@@ -602,8 +602,35 @@ function wrapHelp() {
+     window.showHelpModal = wrapped;
+ }
+ 
++// ---- API for a page or script that drives the plot ---------------------------------
++// (src/fork/handover.js; a page that embeds this one) – no Plotly internals needed:
++//   forkPlot.view()                the shown view ('geometry', 'potential', 'efield', 'hfield',
++//                                  'jfield', 'sfield', 'lossfield')
++//   forkPlot.views()               the views the current solve offers (the menu's buttons)
++//   forkPlot.setView(v, { fit })   show view v (as a click on its menu button); fit: the axes
++//                                  fitted to the cross-section. false when the solve does not
++//                                  offer v (yet: the field views follow the solve)
++//   forkPlot.fit()                 fit the axes to the cross-section (the next draw of a new
++//                                  geometry otherwise keeps the current zoom)
++function offeredViews() {
++    const solver = get && get.solver();
++    if (!solver) return [];
++    const labels = new Set(viewButtonsFor(solver).map(b => b.label));
++    return VIEW_BUTTONS.filter(([, l]) => labels.has(l)).map(([v]) => v);
++}
++function setView(v, { fit = false } = {}) {
++    if (!offeredViews().includes(v)) return false;
++    view = v;
++    closeScaleDialog();
++    draw(!!fit);
++    return true;
++}
++function fitPlot() {
++    if (get && get.solver()) draw(true);
++}
++
+ export function initForkPlot() {
+-    window.forkPlot = { draw: forkDraw };
++    window.forkPlot = { draw: forkDraw, view: () => view, views: offeredViews, setView, fit: fitPlot };
+     const start = () => {
+         addControls(); wrapHelp();
+         // Line type changes: excitation choices follow (waveguide: power only).

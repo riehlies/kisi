@@ -344,7 +344,7 @@ own it starts with the 2D page and offers the built-in 3D examples.
   at the same frequency then gives kisi's impedance (the quasi-static solve within the page's 0.01 Ω rounding;
   with the page's own settings it was 0.16–0.3 % off). kisi's impedances are at 1 GHz; the page solves at the
   frequency below, so its value moves with the dielectric's dispersion (a 500 MHz Nyquist frequency: about −0.2 %),
-  and the full-wave solve differs from the quasi-static one by its physics (a few tenths of a percent);
+  and the full-wave solve differs from the quasi-static one by its physics (the ThunderScope's microstrip at 500 MHz +0.1 %, a PCIe pair at 8 GHz +1 % against kisi's 1 GHz value);
 - the frequency: the Nyquist frequency of the net's interface profile (the one the channel check uses; the generic
   profiles: 1 Gbit/s → 500 MHz), 1 GHz when the net has none – the title says which;
 - the excitation (peak values): a single trace 1 V; a pair 1 V between the conductors (odd mode, ±0.5 V) with the

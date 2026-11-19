@@ -24,3 +24,4 @@ pub mod par;
 pub mod service;
 pub mod stackups;
 pub mod variant;
+pub mod viacase;

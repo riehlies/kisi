@@ -1255,6 +1255,42 @@ pub extern "C" fn kisi_net_path(p: *const u8, n: usize) -> i32 {
     }
 }
 
+/// A via of the board as a kisi-fdtd case (`kisi_core::viacase`, as `kisi-validate via-case`) for the 3D
+/// field view of kisi-advanced.html: the board as analysed (variant, configuration, active stackup).
+/// Input: {"net": name, "at": [x, y] (board mm, the via nearest to it), "layers": [in, out] | null, "board_file",
+/// "with_config", "keep", "feed", "margin" (mm; each optional, the exporter's defaults otherwise)}.
+/// Output: {"name", "case", "notes"} (no 2×thru fixtures; the page sets the mesh and the frequencies).
+#[no_mangle]
+pub extern "C" fn kisi_via_case(p: *const u8, n: usize) -> i32 {
+    let txt = input(p, n);
+    let r = ST.with(|st| -> Result<String, String> {
+        let st = st.borrow();
+        let b = st.board.as_ref().ok_or("no board loaded")?;
+        let an = st.an.as_ref().ok_or("no analysis")?;
+        let v: serde_json::Value = serde_json::from_str(&txt).map_err(|e| e.to_string())?;
+        let f = |k: &str, d: f64| v[k].as_f64().unwrap_or(d);
+        let d = kisi_core::viacase::Opts::default();
+        let s = |x: &serde_json::Value| x.as_str().unwrap_or("").to_string();
+        let o = kisi_core::viacase::Opts {
+            net: s(&v["net"]),
+            board_file: s(&v["board_file"]),
+            with_config: v["with_config"].as_bool().unwrap_or(false),
+            at: v["at"]
+                .as_array()
+                .filter(|a| a.len() == 2)
+                .map(|a| [a[0].as_f64().unwrap_or(0.0), a[1].as_f64().unwrap_or(0.0)]),
+            layers: v["layers"].as_array().filter(|a| a.len() == 2).map(|l| (s(&l[0]), s(&l[1]))),
+            keep: f("keep", d.keep),
+            feed: f("feed", d.feed),
+            margin: f("margin", d.margin),
+            ..d
+        };
+        let r = kisi_core::viacase::export(b, an, &o)?;
+        Ok(serde_json::json!({ "name": r.name, "case": r.case, "notes": r.notes }).to_string())
+    });
+    reply(r)
+}
+
 /// Stage 1 of the coupling analysis for several nets (formula estimate, or the field solver where
 /// it has already solved). Input: {"nets": [id…], "rf": RfParams, "threshold": 0.01}.
 /// Output: XtScan {rows, threshold, critical_geoms}.

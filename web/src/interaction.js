@@ -68,7 +68,7 @@ const endPtr = (e) => {
   // click on a track: the net (impedance view) or its channel (channel view, board map)
   if (e.type === "pointerup" && !wasDrag && ptrs.size === 0 && (S.tab === "si" || (S.tab === "ch" && S.chMode === "m"))) {
     const i = pick(e.offsetX, e.offsetY);
-    S.fvPiece = i;   // the clicked segment: its cross-section first in the field views' list (field-views.js)
+    S.fvPiece = i;   // the clicked segment: its cross-section marked in the Impedance tab (net-detail.js)
     if (S.tab === "ch") S.selLane = null;
     if (i >= 0) selectNet(S.pieces.net[i], false); else if (S.selNet >= 0) selectNet(-1);
   }

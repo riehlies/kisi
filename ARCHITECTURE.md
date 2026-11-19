@@ -79,8 +79,9 @@ to one thread.
   `kisi_gaps` in a worker, the draft = the board's kisi.json, kept per board in the browser, forms by entry key,
   `kisi_config_check`, `kisi_config_subset` for saving one category, `kisi_edits_to_fields` for the views' power
   edits, the checklist with Apply per step and markers that count a step's open items) ·
-  `field-views` (the option "Advanced solvers: field views": the row "Fields" that `net-detail` draws with the clicked
-  segment from `interaction`, and a button per via in the Vias tab (`si-tabs`) and the lane's path table (`lanes`);
+  `field-views` (the option "Advanced solvers: field views": a "Fields…" column: per cross-section in the Impedance
+  tab (`si-tabs`, rows from `net-detail` with the clicked segment from `interaction` marked), per via in the Vias tab,
+  both in the path tables (`lanes`, `channel`);
   2D: the cross-section handed to the field page `kisi-advanced.html` next to the file in the fork's link form in the
   URL fragment, with kisi's adaptive mesh and the values of `data/field_views.json`; 3D: the via cut out of the board
   as analysed by `kisi_core::viacase` (WASM `kisi_via_case`, the exporter of `kisi-validate via-case`) handed over by

@@ -230,5 +230,9 @@ it ([`docs/reference.md`, "Field views"](../reference.md#field-views) for users)
    `data/field_views.json`; the release and the KiCad plugin carry `kisi-advanced.html` (served at
    `/open/kisi-advanced.html` by the plugin's host).
 
+5. **The 2D entry works like the 3D one** (after a first review of v3): no row with two dropdowns above the tabs, but a
+   "Fields…" per cross-section in the *Impedance* tab (the clicked segment's marked and always listed) and per line
+   row in a path table, beside the via buttons; the page opens on the power flow and its own view tabs switch views.
+
 Patch 0002 gained one rule for the quasi-static build: a view the solver does not offer (|H|, J, S, losses) is shown
 as |E| after a short wait, instead of an error.

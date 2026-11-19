@@ -142,11 +142,11 @@ def fields(ctx, pg, tag):
         return check(False, f"{tag}: no impedance estimate")
     pg.evaluate("() => { document.getElementById('fs-opts').open = true; }")
     pg.check("#fv-on")
-    pg.evaluate("() => { const pc = S.pieces; for (let i = 0; i < pc.n; i++) if (S.an.cross_sections[pc.xs[i]].geom != null && classTarget(pc.net[i])) return selectNet(pc.net[i]); }")
-    if not check(pg.evaluate("() => !!document.getElementById('fv-go')"), f"{tag}: no Fields row in the net detail"):
+    pg.evaluate("() => { const pc = S.pieces; for (let i = 0; i < pc.n; i++) if (S.an.cross_sections[pc.xs[i]].geom != null && classTarget(pc.net[i])) { S.detailTab = 'z'; return selectNet(pc.net[i]); } }")
+    if not check(pg.evaluate("() => !!document.querySelector('#tab-body [data-fv2]')"), f"{tag}: no Fields… button in the Impedance tab"):
         return
     with ctx.expect_page(timeout=60000) as pinfo:
-        pg.click("#fv-go")
+        pg.click("#tab-body [data-fv2]")
     popup = pinfo.value
     popup.on("pageerror", lambda e: errs.append(f"field page error: {e}"))
     popup.on("console", lambda m: errs.append(f"field page console {m.type}: {m.text[:300]}") if m.type == "error" else None)
@@ -164,8 +164,8 @@ def fields(ctx, pg, tag):
         pg.click("#detail [data-tab='via']")
         if check(poll(pg, "document.querySelector('button[data-fv3]')", 180), f"{tag}: no Fields… button in the Vias tab of {net}"):
             pg.click("button[data-fv3='0']")
-            ok = poll(pg, "/Shown in the field window|reports|cannot|No field page/.test(document.getElementById('fv3-msg').textContent)", 1200)
-            msg = pg.evaluate("() => document.getElementById('fv3-msg').textContent")
+            ok = poll(pg, "/Shown in the field window|reports|cannot|No field page/.test(document.getElementById('fv-msg').textContent)", 1200)
+            msg = pg.evaluate("() => document.getElementById('fv-msg').textContent")
             check(ok and "Shown in the field window" in msg, f"{tag}: Fields… on a via: {msg!r}")
             popup.wait_for_timeout(800)
             popup.screenshot(path=f"{out}/kicad-fields3d-{tag}.png")

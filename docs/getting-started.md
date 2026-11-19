@@ -56,12 +56,13 @@ The estimate also gives NEXT/FEXT for every net with a target: the Couplings car
 1 %), the map mode "Crosstalk" marks the critical stretches, and per net a chart shows where along the path the
 crosstalk comes from. The field solver refines only the critical couplings (on by default).
 
-With the option *Advanced solvers: field views* (field solver → Solver options; off by default) a net's detail gets
-a row **Fields**: "Fields…" opens the clicked segment's cross-section in the field page `kisi-advanced.html` next to
-the viewer – potential, |E|, |H| with field lines, current density, power flow with the ∫S dA check and the losses
-split into signal conductor, ground and dielectric, at the lane's Nyquist frequency. The net's *Vias* tab (and a lane's
-path table) gets a "Fields…" per via: the via, cut out of the board, runs in 3D in the same page – cut planes of |E|,
-|H|, the power flow and the losses, the power balance and the S-parameters ([Field views](reference.md#field-views)).
+With the option *Advanced solvers: field views* (field solver → Solver options; off by default) the net's *Impedance*
+tab gets a "Fields…" per cross-section (the clicked segment's is marked): it opens the cross-section in the field page
+`kisi-advanced.html` next to the viewer – potential, |E|, |H| with field lines, current density, power flow with the
+∫S dA check and the losses split into signal conductor, ground and dielectric, at the lane's Nyquist frequency. The
+net's *Vias* tab gets a "Fields…" per via, a lane's path table both: the via, cut out of the board, runs in 3D in the
+same page – cut planes of |E|, |H|, the power flow and the losses, the power balance and the S-parameters
+([Field views](reference.md#field-views)).
 
 ### 2. Channel
 ![The channel view: interfaces and lanes with their verdicts](img/channel.png)

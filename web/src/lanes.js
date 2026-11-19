@@ -351,19 +351,21 @@ function pathRows(ch) {
   const segs = [];
   for (const s of ch.segments) {
     const last = segs[segs.length - 1];
-    if (s.kind === "line" && last && last.kind === "line" && last.layer === s.layer && Math.abs((last.z ?? -1) - (s.z ?? -1)) < 0.5 && last.source === s.source) { last.len_mm += s.len_mm; continue; }
-    segs.push({ ...s });
+    if (s.kind === "line" && last && last.kind === "line" && last.layer === s.layer && Math.abs((last.z ?? -1) - (s.z ?? -1)) < 0.5 && last.source === s.source) { last.len_mm += s.len_mm; last.xl.set(s.xs, (last.xl.get(s.xs) || 0) + s.len_mm); continue; }
+    segs.push({ ...s, xl: new Map([[s.xs, s.len_mm]]) });
   }
+  // a merged line row: the cross-section of its longest share (the 2D field view's button)
+  const lx = (s) => { const e = [...s.xl].filter((x) => x[0] != null).sort((a, b) => b[1] - a[1]); return e.length ? fv2Cell(e[0][0], e.length > 1 ? `; the longest of the ${e.length} cross-sections in this row` : "") : fv2Cell(null); };
   // the via rows in the order of the channel's via list (the 3D field view's button)
   const vi = (ch.via_info || []).length === segs.filter((s) => s.kind === "via").length ? { k: 0 } : null;
   const rows = segs.map((s) => {
-    if (s.kind === "line") return `<tr><td>line</td><td>${L(s.layer)}</td><td class="n">${fmt(s.len_mm, 1)} mm</td><td class="n">${s.z != null ? fmt(ch.diff ? 2 * s.z : s.z, 1) + " Ω" : "–"}</td><td class="muted">${esc(s.source)}</td></tr>`;
+    if (s.kind === "line") return `<tr><td>line</td><td>${L(s.layer)}</td><td class="n">${fmt(s.len_mm, 1)} mm</td><td class="n">${s.z != null ? fmt(ch.diff ? 2 * s.z : s.z, 1) + " Ω" : "–"}</td><td class="muted">${esc(s.source)}</td>${lx(s)}</tr>`;
     if (s.kind === "via") return `<tr><td>via</td><td>${L(s.layer)}</td><td class="n">${fmt(s.len_mm, 2)} mm</td><td class="n">${s.z != null ? fmt(ch.diff ? 2 * s.z : s.z, 0) + " Ω" : "–"}</td><td class="muted">via model</td>${vi ? fv3Cell(vi.k++) : ""}</tr>`;
-    if (s.kind === "branch") return `<tr class="warnrow"><td>${/^stub/.test(s.part || "") ? "stub" : "branch"}</td><td colspan="2">${esc(s.part || "")}</td><td></td><td class="muted">open${/not fitted/.test(s.part || "") ? (/pad geometry/.test(s.part || "") ? ", pad C from its geometry" : ", pad C estimated") : ""}</td></tr>`;
+    if (s.kind === "branch") return `<tr class="warnrow"><td>${/^stub/.test(s.part || "") ? "stub" : "branch"}</td><td colspan="2" class="wr">${esc(s.part || "")}</td><td></td><td class="muted">open${/not fitted/.test(s.part || "") ? (/pad geometry/.test(s.part || "") ? ", pad C from its geometry" : ", pad C estimated") : ""}</td></tr>`;
     if (/ pad( \(|$)/.test(s.part || "")) return "";
     return `<tr><td>${s.kind === "series" ? "series" : "shunt"}</td><td colspan="3"><b>${esc(s.part || "")}</b></td><td class="muted">estimated parasitics</td></tr>`;
   }).join("");
-  return `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Element</th><th>Layer / part</th><th>Length</th><th>Z</th><th>Source</th>${vi && vi.k ? fv3Head() : ""}</tr></thead><tbody>${rows}</tbody></table></div>${vi && vi.k ? fv3Msg() : ""}`;
+  return `<div class="tablewrap"><table class="xs-table"><thead><tr><th>Element</th><th>Layer / part</th><th>Length</th><th>Z</th><th>Source</th>${fvHead(!/data-fv3/.test(rows) ? "2D" : /data-fv2/.test(rows) ? "Fields" : "3D")}</tr></thead><tbody>${rows}</tbody></table></div>${fvMsg(ch.net)}`;
 }
 // impedance along a channel (lane or net without devices), from its segments in the signal
 // direction: lines as steps (coloured by the deviation from the target), vias as small marks,
@@ -453,7 +455,7 @@ function renderLanePath(body, l, r) {
     <div class="chart"><canvas id="ch-lprof" style="height:210px" aria-label="Impedance along the channel"></canvas></div>
     ${pathRows(ch)}
     <p class="note">Nets: ${l.nets.map((n) => esc(shortNet(n))).join(" → ")}${l.diff ? ` · partner ${l.partner_nets.map((n) => esc(shortNet(n))).join(" → ")}` : ""}.${laneBranches(l).map((b) => ` Branch (open, dashed on the board): ${b.through ? esc(b.through.refdes) + " → " : ""}${esc(b.nets.map(shortNet).join(" → "))} → ${esc(b.to)}.`).join("")}${sh ? ` Terminations: ${sh}.` : ""}${l.others.length ? ` Also connected (not modelled): ${esc(l.others.join(", "))}.` : ""} Direction: ${esc(laneSwaps()[laneKey(l)] ? "swapped by you" : l.direction)}.</p>`;
-  fv3Wire(body, ch.via_info || []);
+  fvWire(body, ch.net, ch.via_info || []);
   const tg = classTarget(laneNet(l));
   drawChannelProfile($("ch-lprof"), ch, tg ? { z: tg.z, diff: tg.diff } : null, [pinLabel(laneTx(l)), pinLabel(laneRx(l))]);
 }

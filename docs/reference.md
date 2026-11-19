@@ -314,13 +314,19 @@ dismissed.
 
 ## Field views
 The viewer's option *Advanced solvers: field views* (field solver → Solver options; off by default, kept in the
-browser) adds two entry points, both called "Fields…":
-- **a segment (2D):** a row *Fields* in a net's detail – the net's cross-sections, the clicked segment's first, the
-  first view to show;
-- **a via (3D):** a column in the net's *Vias* tab and in a lane's path table (channel view) – one button per via.
+browser) adds a column of "Fields…" buttons to three tables:
+- **a cross-section (2D):** the net's *Impedance* tab – one button per cross-section row; the table shows the six
+  longest and, marked, the clicked segment's (kept in even when it is not among them);
+- **a via (3D):** the net's *Vias* tab – one button per via;
+- **both:** the path table of a lane or a channel (channel view) – a line row's cross-section (a row that merges
+  pieces of several cross-sections takes the longest one's, its button says so) and each via; the column is named
+  *2D*, *3D* or, with both, *Fields*.
+
+A status line under the table follows the hand-over. A cross-section without a solvable geometry gets no button.
 
 Both open the field page **`kisi-advanced.html`** in a second window (reused: the next segment or via goes to the same
-window without a reload). The page holds two views, one click apart (*2D cross-section* / *3D via*):
+window without a reload). The page holds two views, one click apart (*2D cross-section* / *3D via*); a cross-section
+opens on its power flow S (|E| in the quasi-static build), the page's view tabs show the others:
 
 | View | Solver | What it shows |
 |---|---|---|

@@ -3,59 +3,35 @@
 // window – 2D: a segment's cross-section by the fork's link hand-over (URL fragment, kisi's adaptive mesh); 3D: a via
 // cut out of the board (kisi_via_case) by postMessage. docs/reference.md "Field views"; data/field_views.json.
 const FV_FILE = "kisi-advanced.html";
-const FV_VIEWS = [["sfield", "Power flow S"], ["efield", "|E|"], ["potential", "Potential"], ["hfield", "|H|"], ["jfield", "Current J"], ["lossfield", "Losses"]];
 const FVD = DATA.field_views;
-const FV = Object.assign({ on: false, view: "sfield" }, lsGet("kisi.fields.v1") || {},
-  { win: null, base: null, build: null, n: 0, msg: "", msgNet: -1, err: false, msg3: "", err3: false, probeMs: 6000, waiters: [], seq3: 0 });
-const fvSave = () => lsSet("kisi.fields.v1", { on: FV.on, view: FV.view });
+const FV = Object.assign({ on: false }, lsGet("kisi.fields.v1") || {},
+  { win: null, base: null, build: null, n: 0, msg: "", msgNet: -1, err: false, probeMs: 6000, waiters: [], seq3: 0 });
+const fvSave = () => lsSet("kisi.fields.v1", { on: FV.on });
 const fvOn = () => FV.on && (S.tab === "si" || S.tab === "ch") && S.an && !S.an.skeleton;
 const fvWeb = () => /^https?:$/.test(location.protocol);
 $("fv-on").checked = FV.on;
 $("fv-on").onchange = (e) => { FV.on = e.target.checked; fvSave(); if (S.selNet >= 0) selectNet(S.selNet, false); };
 
-// the net's cross-sections, longest first, the clicked segment's (interaction.js) first
-function fvNetXs(net) {
-  const pc = S.pieces, len = new Map(), p = S.fvPiece ?? -1;
-  for (let i = 0; i < pc.n; i++) if (pc.net[i] === net && S.an.cross_sections[pc.xs[i]].geom != null)
-    len.set(pc.xs[i], (len.get(pc.xs[i]) || 0) + Math.hypot(pc.bx[i] - pc.ax[i], pc.by[i] - pc.ay[i]));
-  const hit = p >= 0 && pc.net[p] === net ? pc.xs[p] : null;
-  return [...len.entries()].sort((a, b) => (b[0] === hit) - (a[0] === hit) || b[1] - a[1]).map(([xi, l]) => ({ xi, len: l, hit: xi === hit }));
-}
 function fvXsLabel(xs) {
   return `${S.scene.stackup.copper[xs.layer].name} · ${KIND_LABEL[xs.kind].split(",")[0]} · w ${fmt(xs.w * 1000, 0)} µm` +
     (xs.diff_gap != null ? ` / gap ${fmt(xs.diff_gap * 1000, 0)} µm, pair` : "");
 }
-function fvRow(net) {
-  const list = fvOn() && S.tab === "si" ? fvNetXs(net) : [];
-  if (!list.length) return "";
-  return `<div class="fv-row"><span class="fv-l">Fields</span><select id="fv-xs" aria-label="Cross-section">${list.map((x) =>
-    `<option value="${x.xi}">${esc((x.hit ? "clicked: " : "") + fvXsLabel(S.an.cross_sections[x.xi]) + ` · ${fmt(x.len, 1)} mm`)}</option>`).join("")}</select>` +
-    `<select id="fv-view" aria-label="First view">${FV_VIEWS.map(([v, t]) => `<option value="${v}"${v === FV.view ? " selected" : ""}>${t}</option>`).join("")}</select>` +
-    `<button class="btn small" id="fv-go">Fields…</button></div>` +
-    `<p class="note fv-msg${FV.err ? " err" : ""}" id="fv-msg"${FV.msg && FV.msgNet === net ? "" : " hidden"}>${FV.msgNet === net ? FV.msg : ""}</p>`;
+const fvTip = (i) => fvOn() && S.an.cross_sections[S.pieces.xs[i]].geom != null ? `<div class="muted">Click: “Fields…” in ${S.tab === "si" ? "the net's Impedance tab" : "the channel's path"} shows its fields</div>` : "";
+// the field-view column of a table (Impedance tab, Vias tab, a channel's path): a cross-section's (2D) or a via's (3D)
+// "Fields…", the column head and the status line under the table (of the table's net)
+const fv2Cell = (xi, also = "") => !fvOn() ? "" : xi != null && S.an.cross_sections[xi].geom != null
+  ? `<td><button class="btn small" data-fv2="${xi}" title="This cross-section in 2D (js_2d_fields)${also}">Fields…</button></td>` : "<td></td>";
+const fv3Cell = (i) => fvOn() ? `<td><button class="btn small" data-fv3="${i}" title="This via in 3D (kisi-fdtd)">Fields…</button></td>` : "";
+const fvHead = (h) => fvOn() ? `<th>${h}</th>` : "";
+const fvMsg = (net) => fvOn() ? `<p class="note fv-msg${FV.err ? " err" : ""}" id="fv-msg" data-net="${net}"${FV.msg && FV.msgNet === net ? "" : " hidden"}>${FV.msgNet === net ? FV.msg : ""}</p>` : "";
+function fvWire(root, net, infos = []) {
+  root.querySelectorAll("button[data-fv2]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); fvOpen(net, +b.dataset.fv2); });
+  root.querySelectorAll("button[data-fv3]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); fv3Open(net, infos[+b.dataset.fv3]); });
 }
-function fvWire(net) {
-  if (!$("fv-go")) return;
-  $("fv-go").onclick = () => fvOpen(net, +$("fv-xs").value);
-  $("fv-view").onchange = (e) => { FV.view = e.target.value; fvSave(); };
-}
-const fvTip = (i) => fvOn() && S.an.cross_sections[S.pieces.xs[i]].geom != null ? `<div class="muted">Click: “Fields…” in the net's detail shows its fields</div>` : "";
 function fvStatus(html, err = false) {
   Object.assign(FV, { msg: html, err });
-  const el = S.selNet === FV.msgNet && $("fv-msg");
-  if (el) { el.innerHTML = html; el.hidden = !html; el.classList.toggle("err", err); }
-}
-// the 3D button of a via row (Vias tab, lane path) and its status line
-const fv3Cell = (i) => fvOn() ? `<td><button class="btn small" data-fv3="${i}" title="This via in 3D (kisi-fdtd)">Fields…</button></td>` : "";
-const fv3Head = () => fvOn() ? "<th>3D</th>" : "";
-const fv3Msg = () => fvOn() ? `<p class="note fv-msg${FV.err3 ? " err" : ""}" id="fv3-msg"${FV.msg3 ? "" : " hidden"}>${FV.msg3}</p>` : "";
-function fv3Wire(root, infos) {
-  root.querySelectorAll("button[data-fv3]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); fv3Open(infos[+b.dataset.fv3]); });
-}
-function fv3Status(html, err = false) {
-  Object.assign(FV, { msg3: html, err3: err });
-  const el = $("fv3-msg");
-  if (el) { el.innerHTML = html; el.hidden = !html; el.classList.toggle("err", err); }
+  const el = $("fv-msg");
+  if (el && +el.dataset.net === FV.msgNet) { el.innerHTML = html; el.hidden = !html; el.classList.toggle("err", err); }
 }
 
 // the Nyquist frequency of the net's profile, else the fallback
@@ -79,7 +55,7 @@ async function fvHandover(net, xi) {
   // kisi's roughness preset as the page's RMS roughness (mm)
   const text = rq > 0 && /^units mm$/m.test(S.an.geometries[xs.geom].text)
     ? S.an.geometries[xs.geom].text.replace(/^((?:gnd|sig[+-]?)\s.*?)\s*$/gm, `$1 rq=${+(rq / 1000).toPrecision(4)}`) : S.an.geometries[xs.geom].text;
-  const qs = FV.build !== "full", view = FV.view, act = fabOn() && stkActiveLabel();
+  const qs = FV.build !== "full", act = fabOn() && stkActiveLabel();
   // kisi's adaptive mesh: FIELD_TOL as energy and parameter tolerance, initial grid, node cap, passes
   const set = { tl_type: "custom", custom_geom: text, mesh_backend: qs ? "rectilinear" : "fullwave_mqs", freq_start: ghz, freq_stop: ghz, freq_points: 1,
     custom_sigma: FVD.copper.sigma_s_m, tolerance: FIELD_TOL, param_tolerance: FIELD_TOL, initial_grid: ad.initial_grid, max_nodes: ad.max_nodes / 1000,
@@ -88,7 +64,7 @@ async function fvHandover(net, xi) {
     (!pair ? `${ex.single_v} V` : even ? `common mode ${ex.pair_even_vcm} V` : `${ex.pair_odd_vdiff} V differential`) +
     ` · copper ${rough.selectedOptions[0].textContent}${rq > 0 ? ` (Rq ${fmt(rq, 2)} µm, estimate)` : ""}${act ? ` · stackup ${act} (what-if)` : ""} · kisi's adaptive mesh · kisi, ${S.name}`;
   const exc = !pair ? `V:${ex.single_v}:peak` : even ? `V:${ex.pair_even_vcm}:peak` : `Vd:${ex.pair_odd_vdiff}:peak`;
-  return { at: `${fvHz(ghz)} (${esc(why)})`, frag: `#params=${await fvB64(JSON.stringify(set))}&solve=1&view=${view}${pair ? `&mode=${even ? "even" : "odd"}` : ""}` +
+  return { at: `${fvHz(ghz)} (${esc(why)})`, frag: `#params=${await fvB64(JSON.stringify(set))}&solve=1&view=${qs ? "efield" : "sfield"}${pair ? `&mode=${even ? "even" : "odd"}` : ""}` +
     `&exc=${exc}&editor=hide&theme=${fvTheme()}&title=${encodeURIComponent(title)}&n=${++FV.n}` };
 }
 
@@ -101,10 +77,10 @@ window.addEventListener("message", (e) => {
   else if (d.type === "field-handover" && d.phase === "error") fvStatus(`The field page reports: ${esc(d.error)}`, true);
   else if (d.type === "field-handover" && d.phase === "solving") fvStatus(`Solving in ${FV_FILE}…`);
   else if (d.type === "field3d" && d.seq === FV.seq3) {
-    if (d.phase === "running") fv3Status(`Running kisi-fdtd in the field window (${d.ports} run${d.ports > 1 ? "s" : ""})…`);
-    else if (d.phase === "shown") fv3Status(`Shown in the field window, computed in ${fmt(d.seconds, 1)} s.`);
-    else if (d.phase === "cancelled") fv3Status("The run was cancelled in the field window.");
-    else if (d.phase === "error") fv3Status(`The field page reports: ${esc(d.error)}`, true);
+    if (d.phase === "running") fvStatus(`Running kisi-fdtd in the field window (${d.ports} run${d.ports > 1 ? "s" : ""})…`);
+    else if (d.phase === "shown") fvStatus(`Shown in the field window, computed in ${fmt(d.seconds, 1)} s.`);
+    else if (d.phase === "cancelled") fvStatus("The run was cancelled in the field window.");
+    else if (d.phase === "error") fvStatus(`The field page reports: ${esc(d.error)}`, true);
   }
 });
 const fvHello = (ms) => new Promise((res) => {
@@ -151,27 +127,28 @@ async function fvOpen(net, xi) {
 }
 
 // a via in 3D: kisi's exporter on the board as analysed
-async function fv3Open(info) {
+async function fv3Open(net0, info) {
+  FV.msgNet = net0;
   const sv = S.scene.vias;
   let best = -1, bd = Infinity;
   for (let k = 0; k < sv.length / 7; k++) { const d = Math.hypot(sv[7 * k] - info.at[0], sv[7 * k + 1] - info.at[1]); if (d < bd) { bd = d; best = k; } }
-  if (best < 0 || bd > 0.05) return fv3Status("This via is not on the board as loaded.", true);
+  if (best < 0 || bd > 0.05) return fvStatus("This via is not on the board as loaded.", true);
   const net = sv[7 * best + 6], L = (k) => S.scene.stackup.copper[k].name, fb = FVD.fdtd.board;
   let r;
   try {
     r = S.engine.viaCase({ net: S.scene.nets[net], at: info.at, layers: [L(info.layer_in), L(info.layer_out)], board_file: S.name, with_config: !!S.config,
       keep: fb.keep_mm, feed: fb.feed_mm, margin: fb.margin_mm });
-  } catch (e) { return fv3Status(`The via cannot be cut out: ${esc(e.message)}`, true); }
+  } catch (e) { return fvStatus(`The via cannot be cut out: ${esc(e.message)}`, true); }
   const c = r.case;
   c.meta.copper_names = S.scene.stackup.copper.map((x) => x.name);
   const { ghz, why } = fvFreq(net), act = fabOn() && stkActiveLabel();
   const title = `${c.meta.title}${act ? ` · stackup ${act} (what-if)` : ""} · kisi, ${S.name}`;
   const from = `Cut out of ${S.name} by kisi's exporter (kisi-validate via-case): ${c.sheets.length} copper pieces, ${c.vias.length} vias, ports ${c.ports.length}; ` +
     `${fvHz(ghz)}: ${why}.${r.notes.filter((n) => !/^board_|sheets \(/.test(n)).map((n) => " " + n).join("")}`;
-  const w = await fvWindow(fv3Status);
+  const w = await fvWindow(fvStatus);
   if (!w) return;
   FV.seq3 = ++FV.n;
   w.postMessage({ type: "kisi-3d-case", seq: FV.seq3, case: c, title, from, freqs: [{ ghz, label: why }], run: true, theme: fvTheme() }, "*");
-  fv3Status(`Handed over at ${fvHz(ghz)} (${esc(why)}); the field window computes it…`);
+  fvStatus(`Handed over at ${fvHz(ghz)} (${esc(why)}); the field window computes it…`);
   w.focus();
 }

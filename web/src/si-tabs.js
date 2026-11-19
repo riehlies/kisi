@@ -33,8 +33,9 @@ function renderTab(net, t, rowsXs) {
   if (S.detailTab === "z") {
     const pc = !!(t && t.diff && S.pairMode === "c");
     body.innerHTML = `<div class="chart"><canvas id="profile" aria-label="Impedance profile along the net, from A to B"></canvas></div>
-      <div class="tablewrap"><table class="xs-table"><thead><tr><th>mm</th><th>Layer</th><th>Type</th><th>w µm</th><th>gap µm</th><th>Z₀</th><th>${pc ? "Z comm" : "Z diff"}</th><th>compared</th></tr></thead><tbody>${rowsXs}</tbody></table></div>
+      <div class="tablewrap"><table class="xs-table"><thead><tr><th>mm</th><th>Layer</th><th>Type</th><th>w µm</th><th>gap µm</th><th>Z₀</th><th>${pc ? "Z comm" : "Z diff"}</th><th>compared</th>${fvHead("2D")}</tr></thead><tbody>${rowsXs}</tbody></table></div>${fvMsg(net)}
       ${pc ? `<p class="note">Common mode: Zcommon = Zeven/2 of each cross-section (field solver, or estimated from the formulas as Z₀²/Zodd/2).</p>` : ""}`;
+    fvWire(body, net);
     drawProfile(net, t);
     return;
   }
@@ -213,14 +214,14 @@ function renderVias(body, r) {
     return `<tr class="click" data-via="${i}"><td>${L(v.layer_in)} → ${L(v.layer_out)}</td><td>${fmt(v.drill_mm * 1000, 0)} / ${fmt(v.pad_mm * 1000, 0)}</td><td>${v.antipad_mm != null ? fmt(v.antipad_mm * 1000, 0) : "–"}</td><td>${fmt(v.z_via, 0)}</td><td>${fmt(v.barrel_mm, 2)}</td><td${res ? ' class="warn"' : ""}>${fmt(v.stub_mm, 2)}${v.stub_f_ghz != null && v.stub_mm > 0.01 ? ` (${fmt(v.stub_f_ghz, v.stub_f_ghz < 100 ? 1 : 0)} GHz)` : ""}${v.backdrilled ? " bd" : ""}</td><td${open ? ' class="warn"' : ""}>${ret[v.return_kind] || v.return_kind}${v.return_kind === "stitch" ? ` ${fmt(v.return_mm, 1)} mm` : ""}${open ? `; ${open} not bridged` : ""}</td>${fv3Cell(i)}</tr>`;
   }).join("");
   body.innerHTML = ch.via_info.length ? `<div class="dstats"><span>${ch.via_info.length} Via${ch.via_info.length > 1 ? "s" : ""} in path</span><span class="muted">Z ${ch.diff ? "differential" : "single-ended"}, target ${fmt(ch.diff ? 2 * ch.z_ref : ch.z_ref, 0)} Ω</span></div>
-    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Layers</th><th>drill/pad µm</th><th>antipad µm</th><th>Z Ω</th><th>barrel mm</th><th>stub mm</th><th>return path</th>${fv3Head()}</tr></thead><tbody>${rows}</tbody></table></div>${fv3Msg()}
+    <div class="tablewrap"><table class="xs-table"><thead><tr><th>Layers</th><th>drill/pad µm</th><th>antipad µm</th><th>Z Ω</th><th>barrel mm</th><th>stub mm</th><th>return path</th>${fvHead("3D")}</tr></thead><tbody>${rows}</tbody></table></div>${fvMsg(ch.net)}
     <p class="note">Antipad = mean clearance in the planes the via passes through. A stub (unused via end) acts as an open line; its quarter-wave resonance causes a dip in S21. “bd” = back-drilled. Click a row to show the via on the board. A plane pair “not bridged”: no via within 3 mm joins both planes or the planes beyond them, so the return current crosses the pair's cavity (see the warning).</p>`
     : `<p class="note">The computed path does not change layers.</p>`;
   body.querySelectorAll("tr[data-via]").forEach((tr) => tr.onclick = () => {
     const v = ch.via_info[+tr.dataset.via];
     zoomTo(v.at[0], v.at[1], 3);
   });
-  fv3Wire(body, ch.via_info);
+  fvWire(body, ch.net, ch.via_info);
 }
 
 function renderXt(body, r, net) {

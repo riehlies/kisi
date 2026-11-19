@@ -409,7 +409,7 @@ def field_views(pg, tag, step):
     """the option "Advanced solvers: field views" (field-views.js)"""
     here = os.path.dirname(os.path.abspath(a.html))
     present = [n for n in ("kisi-advanced.html",) if os.path.exists(os.path.join(here, n))]
-    if pg.evaluate("FV.on || !!document.getElementById('fv-go')"):
+    if pg.evaluate("FV.on || !!document.querySelector('[data-fv2], [data-fv3]')"):
         problems.append(f"{tag}: field views: the option is on by default")
     if not pg.evaluate("$('fs-opts').open"):
         pg.click("#fs-opts > summary")
@@ -418,10 +418,20 @@ def field_views(pg, tag, step):
     if n < 0:
         notes.append(f"{tag}: field views: no net with a cross-section geometry")
         return
-    pg.evaluate(f"selectNet({n})"); pg.wait_for_timeout(300)
-    if not pg.evaluate("!!document.getElementById('fv-go') && document.getElementById('fv-xs').options.length > 0"):
-        problems.append(f"{tag}: field views: no Fields row with cross-sections in the net detail")
+    # the clicked segment: the net's piece of its shortest cross-section (kept in the table, marked)
+    pi = pg.evaluate(f"""(() => {{ const pc = S.pieces, len = new Map(), at = new Map();
+      for (let i = 0; i < pc.n; i++) if (pc.net[i] === {n} && S.an.cross_sections[pc.xs[i]].geom != null) {{
+        len.set(pc.xs[i], (len.get(pc.xs[i]) || 0) + Math.hypot(pc.bx[i] - pc.ax[i], pc.by[i] - pc.ay[i])); at.set(pc.xs[i], i); }}
+      const e = [...len].sort((a, b) => a[1] - b[1])[0]; return [at.get(e[0]), e[0], len.size]; }})()""")
+    pg.evaluate(f"S.fvPiece = {pi[0]}; S.detailTab = 'z'; selectNet({n})"); pg.wait_for_timeout(300)
+    z = pg.evaluate("""(() => { const rows = [...document.querySelectorAll('#tab-body .xs-table tbody tr')], c = document.querySelector('#tab-body tr.clicked [data-fv2]');
+      return { rows: rows.length, btn: document.querySelectorAll('#tab-body [data-fv2]').length, head: [...document.querySelectorAll('#tab-body .xs-table th')].pop().textContent,
+               clicked: c ? +c.dataset.fv2 : null, msg: !!document.getElementById('fv-msg') }; })()""")
+    if not z["btn"] or z["head"] != "2D" or not z["msg"]:
+        problems.append(f"{tag}: field views: no 2D column with Fields… buttons and status line in the Impedance tab ({z})")
         return
+    if z["clicked"] != pi[1]:
+        problems.append(f"{tag}: field views: the clicked segment's cross-section {pi[1]} is not the marked row ({z}; {pi[2]} cross-sections)")
     tip = pg.evaluate(f"(() => {{ const pc = S.pieces; for (let i = 0; i < pc.n; i++) if (pc.net[i] === {n} && S.an.cross_sections[pc.xs[i]].geom != null) {{ showTip(i, 50, 50); return $('tip').textContent; }} return ''; }})()")
     pg.evaluate("showTip(-1)")
     if "Fields…" not in tip:
@@ -431,7 +441,7 @@ def field_views(pg, tag, step):
     else:
         pg.evaluate("FV.probeMs = 1000")
         with pg.context.expect_page(timeout=30000) as pinfo:
-            pg.click("#fv-go")
+            pg.click("#tab-body [data-fv2]")
         try:
             pg.wait_for_function("/No field page next to this file/.test(document.getElementById('fv-msg').textContent)", timeout=30000)
         except Exception:
@@ -442,7 +452,7 @@ def field_views(pg, tag, step):
         pg.wait_for_timeout(300)
         if not pinfo.value.is_closed():
             problems.append(f"{tag}: field views: the empty field window was not closed")
-        pg.locator("#fv-go").scroll_into_view_if_needed()
+        pg.locator("#fv-msg").scroll_into_view_if_needed()
         step("fields_not_found")
     # the Vias tab: a 3D column with the option on (when the net's path has vias)
     pg.click("#detail [data-tab='via']")
@@ -455,8 +465,8 @@ def field_views(pg, tag, step):
         problems.append(f"{tag}: field views: not every via row has its Fields… button")
     pg.click("#detail [data-tab='z']")
     pg.uncheck("#fv-on"); pg.wait_for_timeout(200)
-    if pg.evaluate("!!document.getElementById('fv-go')"):
-        problems.append(f"{tag}: field views: the Fields row stays with the option off")
+    if pg.evaluate("!!document.querySelector('[data-fv2], [data-fv3], #fv-msg')"):
+        problems.append(f"{tag}: field views: the Fields… column stays with the option off")
     pg.evaluate("selectNet(-1)")
 
 

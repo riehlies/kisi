@@ -156,10 +156,13 @@ function selectNet(net, zoom = true) {
   // a differential pair: one mode switch for all tabs (differential first, common mode on request)
   const pair = !!(partner && t && t.diff);
   const comm = pair && S.pairMode === "c";
-  const rowsXs = [...xsLen.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([xi, l]) => {
+  // the 6 longest cross-sections and the clicked segment's (interaction.js), marked
+  const p = S.fvPiece ?? -1, hit = p >= 0 && pc.net[p] === net ? pc.xs[p] : -1, all = [...xsLen.entries()].sort((a, b) => b[1] - a[1]), top = all.slice(0, 6);
+  if (hit >= 0 && !top.some((e) => e[0] === hit)) top.push(all.find((e) => e[0] === hit));
+  const rowsXs = top.map(([xi, l]) => {
     const xs = S.an.cross_sections[xi], L = S.scene.stackup.copper;
     const z = comm ? (xs.zeven != null ? { v: xs.zeven / 2 } : null) : comparedZ(xs, t);
-    return `<tr><td>${fmt(l, 1)}</td><td>${L[xs.layer].name}</td><td>${KIND_LABEL[xs.kind].split(",")[0]}</td><td>${fmt(xs.w * 1000, 0)}</td><td>${xs.diff_gap != null ? fmt(xs.diff_gap * 1000, 0) : "–"}</td><td>${fmt(xs.z0, 1)}</td><td>${fmt(comm ? (xs.zeven != null ? xs.zeven / 2 : null) : xs.zdiff, 1)}</td><td>${z ? fmt(z.v, 1) : "–"}</td></tr>`;
+    return `<tr${xi === hit ? ' class="clicked" title="The clicked segment\'s cross-section"' : ""}><td>${fmt(l, 1)}</td><td>${L[xs.layer].name}</td><td>${KIND_LABEL[xs.kind].split(",")[0]}</td><td>${fmt(xs.w * 1000, 0)}</td><td>${xs.diff_gap != null ? fmt(xs.diff_gap * 1000, 0) : "–"}</td><td>${fmt(xs.z0, 1)}</td><td>${fmt(comm ? (xs.zeven != null ? xs.zeven / 2 : null) : xs.zdiff, 1)}</td><td>${z ? fmt(z.v, 1) : "–"}</td>${fv2Cell(xi)}</tr>`;
   }).join("");
   const tabs = [["z", "Impedance"], ["loss", "Loss"], ["tdr", "TDR"]].concat(pair ? [["skew", "Skew"]] : [], [["via", "Vias"], ["xt", "Crosstalk"]]);
   if (!pair && S.detailTab === "skew") S.detailTab = "z";
@@ -169,14 +172,12 @@ function selectNet(net, zoom = true) {
     <div class="dstats"><span>Length <b>${fmt(st?.length, 1)} mm</b></span><span>Target <b>${t ? fmt(t.z, 0) + " Ω " + (t.diff ? "diff" : "SE") : "–"}</b></span>
     <span>min/mean/max <b title="${esc(zAccTitle(st?.z_unc_pct, st?.field_share))}">${fmt(st?.z_min, 1)} / ${fmt(st?.z_mean, 1)} / ${fmt(st?.z_max, 1)} Ω</b>${zSpread(netBand(st))}</span>${t && st?.within5 != null ? `<span>within ±5 % of target <b>${pct(st.within5)}</b></span>` : ""}</div>
     ${pathLine(net)}
-    ${fvRow(net)}
     <div class="tabs" role="tablist" aria-label="Net view">
       ${tabs.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${S.detailTab === k}">${n}</button>`).join("")}
     </div>
     <div id="tab-body"></div>`;
   d.hidden = false;
   $("closeDetail").onclick = () => selectNet(-1);
-  fvWire(net);
   d.querySelectorAll("[data-pm]").forEach((b) => b.onclick = () => { S.pairMode = b.dataset.pm; selectNet(net, false); });
   const pf = $("path-flip");
   if (pf) pf.onclick = () => { setPathFlip(net, !pathFlipped(net)); S.rfCache = null; S.pathCursor = null; selectNet(net, false); };

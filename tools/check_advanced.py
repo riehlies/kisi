@@ -108,7 +108,7 @@ def click_segment(pg, seg):
       return best; }""", list(seg[1:]))
     if not check(hit is not None, f"segment {seg[0]} ({seg[1]}) not found on the board"):
         return None
-    pg.evaluate("(n) => selectNet(n, true)", hit["net"])
+    pg.evaluate("(n) => { S.detailTab = 'z'; selectNet(n, true); }", hit["net"])
     pg.wait_for_timeout(300)
     x, y = pg.evaluate("""(i) => { const pc = S.pieces, v = S.view, r = cv.getBoundingClientRect(); let p = null;
       for (const t of [0.5, 0.3, 0.7, 0.15, 0.85, 0.05, 0.95]) {
@@ -123,9 +123,11 @@ def click_segment(pg, seg):
     hit["real_click"] = pg.evaluate("S.fvPiece >= 0 ? S.pieces.xs[S.fvPiece] : null") == hit["xi"]
     if not hit["real_click"]:  # another track on top at that point: as if chosen in the list
         pg.evaluate("([p, n]) => { S.fvPiece = p; selectNet(n, false); }", [hit["piece"], hit["net"]])
-    row = pg.evaluate("({ row: !!document.getElementById('fv-go'), first: document.getElementById('fv-xs') && document.getElementById('fv-xs').value })")
-    check(row["row"], f"{seg[0]}: no Fields row in the net detail")
-    check(row["first"] == str(hit["xi"]), f"{seg[0]}: the clicked segment's cross-section is not the first in the list ({row['first']} != {hit['xi']})")
+    row = pg.evaluate("""() => { const b = document.querySelector('#tab-body tr.clicked [data-fv2]');
+      return { n: document.querySelectorAll('#tab-body [data-fv2]').length, clicked: b ? +b.dataset.fv2 : null,
+               head: [...document.querySelectorAll('#tab-body .xs-table th')].pop().textContent }; }""")
+    check(row["n"] > 0 and row["head"] == "2D", f"{seg[0]}: no 2D column with Fields… buttons in the Impedance tab ({row})")
+    check(row["clicked"] == hit["xi"], f"{seg[0]}: the clicked segment's cross-section is not the marked row ({row['clicked']} != {hit['xi']})")
     return hit
 
 
@@ -147,17 +149,21 @@ PAGE_INFO = """() => { const gd = document.getElementById('sim_canvas'), log = d
            z0_even: last(/Z0_even:\\s*([\\d.]+)/g) }; }"""
 
 
-def fields(ctx, pg, popup, tag, errs):
-    """Fields… for the selected cross-section: the field window, the page's answer and the view; returns (popup, info)"""
+CLICKED = "#tab-body tr.clicked [data-fv2]"
+
+
+def fields(ctx, pg, popup, tag, errs, button=CLICKED):
+    """Fields… of a cross-section (the clicked segment's row of the Impedance tab): the field window, the page's
+    answer and the view; returns (popup, info)"""
     t = time.time()
     if popup is None:
         with ctx.expect_page(timeout=60000) as pinfo:
-            pg.click("#fv-go")
+            pg.click(button)
         popup = pinfo.value
         watch(popup, "field page", errs)
     else:
         n0 = popup.evaluate("window.__fieldHandover ? window.__fieldHandover.seq : 0")
-        pg.click("#fv-go")
+        pg.click(button)
         popup.wait_for_function("(n) => window.__fieldHandover && window.__fieldHandover.seq > n", arg=n0, timeout=60000)
     popup.wait_for_function("window.__fieldHandover && ['shown', 'error'].includes(window.__fieldHandover.phase)", timeout=1800000, polling=200)
     h = popup.evaluate("({ ...window.__fieldHandover, request: undefined })")
@@ -245,8 +251,7 @@ def run_2d(ctx, pg, tag0, errs, quick):
         if not hit:
             continue
         tag = f"{tag0} {seg[0]}"
-        want = "sfield" if FULL else "efield"
-        pg.select_option("#fv-view", want)
+        want = "sfield" if FULL else "efield"   # the page opens a cross-section on S (|E| in the quasi-static build)
         popup, info = fields(ctx, pg, popup, tag, errs)
         check(info["view"] == want, f"{tag}: the page shows {info['view']}, not {want}")
         check(info["mode"] == "2d", f"{tag}: the page is not in its 2D view ({info['mode']})")
@@ -265,15 +270,16 @@ def run_2d(ctx, pg, tag0, errs, quick):
         if quick:
             break
         n0 = popup.evaluate("window.__fieldHandover ? window.__fieldHandover.seq : 0")
-        pg.click("#fv-go")   # the segment's hand-over again (at_1ghz replaced it) for the views
+        pg.click(CLICKED)   # the segment's hand-over again (at_1ghz replaced it) for the views
         popup.wait_for_function("(n) => window.__fieldHandover && window.__fieldHandover.seq > n && ['shown', 'error'].includes(window.__fieldHandover.phase)",
                                 arg=n0, timeout=600000, polling=200)
         views(popup, tag, f"{theme}_2d_{seg[0]}")
         if seg[0] == "pair":
             pg.click("#detail [data-pm='c']")
             pg.wait_for_timeout(300)
-            pg.select_option("#fv-view", "efield")
             popup, cm = fields(ctx, pg, popup, f"{tag} common mode", errs)
+            check(popup.evaluate("window.forkPlot.setView('efield')"), f"{tag} common mode: no |E| view")
+            popup.wait_for_function(FIELD_DRAWN, timeout=180000, polling=200)
             check("common mode" in cm["handover_title"] and "Even" in popup.evaluate(
                 "(document.getElementById('sim_canvas')._fullLayout.updatemenus || []).filter((m) => m.name === 'mode').map((m) => m.buttons[m.active].label).join()"),
                 f"{tag} common mode: not in the even mode: {cm['handover_title']!r}")
@@ -331,9 +337,9 @@ def run_3d(ctx, pg, popup, theme, errs, first):
     if not check(not lr.get("error"), f"3D {theme}: the run failed: {lr.get('error')}"):
         return popup
     try:
-        pg.wait_for_function("/Shown in the field window/.test(document.getElementById('fv3-msg').textContent)", timeout=20000)
+        pg.wait_for_function("/Shown in the field window/.test(document.getElementById('fv-msg').textContent)", timeout=20000)
     except Exception:
-        check(False, f"3D {theme}: the viewer's status line: {pg.inner_text('#fv3-msg')!r}")
+        check(False, f"3D {theme}: the viewer's status line: {pg.inner_text('#fv-msg')!r}")
     wall = round(time.time() - t, 1)
     pg.screenshot(path=os.path.join(out, f"{theme}_3d_viewer_vias.png"))
     popup.wait_for_timeout(500)
@@ -480,6 +486,43 @@ def phone(pw, d):
         b.close()
 
 
+def path_table(ctx, pg, popup, theme, errs):
+    """a lane's path table (channel view): the Fields… column with the line rows' cross-sections (2D) and the vias
+    (3D); a line row's Fields… hands its cross-section over"""
+    pg.click("#view-ch")
+    pg.wait_for_timeout(400)
+    got = None
+    for nm in (SEGMENTS[1][1], VIA_NET):
+        n = pg.evaluate("(nm) => S.scene.nets.indexOf(nm)", nm)
+        pg.evaluate("(n) => { if (S.chMode === 'o') setChMode('m'); S.chTab = 'path'; selectNet(n, true); }", n)
+        try:
+            pg.wait_for_function("document.querySelector('#ch-body .xs-table [data-fv2]')", timeout=180000)
+        except Exception:
+            continue
+        got = pg.evaluate("""() => { const t = document.querySelector('#ch-body .xs-table'), rows = [...t.querySelectorAll('tbody tr')];
+          const kind = (k) => rows.filter((r) => r.cells[0] && r.cells[0].textContent === k);
+          return { head: [...t.querySelectorAll('th')].pop().textContent, lines: kind('line').length, vias: kind('via').length,
+                   fv2: t.querySelectorAll('[data-fv2]').length, fv3: t.querySelectorAll('[data-fv3]').length,
+                   merged: [...t.querySelectorAll('[data-fv2]')].filter((b) => /longest of the/.test(b.title)).length,
+                   empty: kind('line').filter((r) => !r.querySelector('[data-fv2]')).length, msg: !!document.getElementById('fv-msg') }; }""")
+        got["net"] = nm
+        break
+    if not check(got is not None, f"path {theme}: no lane path table with a 2D Fields… button"):
+        pg.click("#view-si")
+        return
+    results.setdefault("path", []).append({"theme": theme, **got})
+    want = "Fields" if got["fv3"] else "2D"
+    check(got["head"] == want and got["msg"], f"path {theme}: the column {got['head']!r} (expected {want!r}) or no status line: {got}")
+    check(got["fv2"] + got["empty"] == got["lines"], f"path {theme}: a line row without its cell: {got}")
+    check(got["fv3"] in (0, got["vias"]), f"path {theme}: not every via row has its Fields…: {got}")
+    pg.locator("#ch-body .xs-table").scroll_into_view_if_needed()
+    pg.screenshot(path=os.path.join(out, f"{theme}_viewer_lane_path.png"))
+    popup, info = fields(ctx, pg, popup, f"path {theme}", errs, "#ch-body .xs-table [data-fv2]")
+    check(info["mode"] == "2d", f"path {theme}: the page is not in its 2D view ({info['mode']})")
+    pg.screenshot(path=os.path.join(out, f"{theme}_viewer_lane_path_shown.png"))
+    pg.click("#view-si")
+
+
 def run(pw, theme, first, base_url=None, quick=False, d=None):
     errs = []
     own = d is None
@@ -492,7 +535,9 @@ def run(pw, theme, first, base_url=None, quick=False, d=None):
         pg = open_viewer(ctx, url, errs)
         popup = run_2d(ctx, pg, tag0, errs, quick or base_url is not None)
         if not a.no_3d and base_url is None:
-            run_3d(ctx, pg, popup, theme, errs, first and not quick)
+            popup = run_3d(ctx, pg, popup, theme, errs, first and not quick)
+        if base_url is None:
+            path_table(ctx, pg, popup, theme, errs)
     except Exception as e:
         check(False, f"{tag0}: {type(e).__name__}: {str(e)[:400]}")
         try:

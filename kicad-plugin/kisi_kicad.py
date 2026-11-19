@@ -11,10 +11,11 @@ Given the open board's file on disk, it
   into a copy of the viewer page shipped with the plugin (viewer/kisi.html, which has the marker below), and
 * writes that page to analysis/<board>.kisi.html next to the board (the folder `kisi report` and `kisi export`
   use), or to the plugin's own folder (temp_dir: the temporary folder, on Linux ~/.cache) when analysis/ cannot be
-  written.
+  written, and the field page the plugin carries (viewer/kisi-advanced.html, the viewer's "Fields…") next to it when
+  it is not there yet in this version.
 
-Next to the board it writes exactly <board>.kisi.json and, in analysis/, <board>.kisi.html and the backups
-<board>.kisi.json.<time>.bak – the Guard refuses anything else; KiCad's files are never written.
+Next to the board it writes exactly <board>.kisi.json and, in analysis/, <board>.kisi.html, kisi-advanced.html and the
+backups <board>.kisi.json.<time>.bak – the Guard refuses anything else; KiCad's files are never written.
 The viewer loads the embedded files the way it loads dropped files (web/src/main.js, loadKicadBoard).
 """
 import base64
@@ -38,6 +39,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR_NAME = "kisi-kicad"
 LOG_NAME = "kisi-kicad.log"
 ANALYSIS = "analysis"
+ADVANCED = "kisi-advanced.html"  # the field page: next to the page from disk, at /open/kisi-advanced.html when served
 KEEP_DAYS = 14  # pages in the plugin's folder (temp_dir) older than this are removed
 MAX_EXTRA = 64 * 1024 * 1024  # largest BOM / Touchstone file that is embedded
 NODE_MIN = 18
@@ -73,6 +75,12 @@ def find_viewer():
     if not p:
         raise PluginError("the viewer page viewer/kisi.html is missing from the plugin – reinstall the kisi plugin")
     return p
+
+
+def find_advanced():
+    """The field page shipped with the plugin (viewer/kisi-advanced.html), else dist/kisi-advanced.html of the source
+    tree; or None (the viewer's "Fields…" then says which file is missing)."""
+    return _first_file(os.path.join(HERE, "viewer", ADVANCED), os.path.join(HERE, "..", "dist", ADVANCED))
 
 
 def find_cli():
@@ -219,7 +227,7 @@ def board_paths(board_filename, project_dir, project_name, pathmod=os.path):
         pros.append(pathmod.join(pathmod.normpath(project_dir), project_name + ".kicad_pro"))
     analysis = pathmod.join(folder, ANALYSIS)
     return {"pcb": pcb, "pro_candidates": pros, "cfg": pathmod.join(folder, stem + ".kisi.json"), "dir": folder, "stem": stem,
-            "analysis": analysis, "page": pathmod.join(analysis, stem + ".kisi.html")}
+            "analysis": analysis, "page": pathmod.join(analysis, stem + ".kisi.html"), "advanced": pathmod.join(analysis, ADVANCED)}
 
 
 def page_name(pcb_path, stem):
@@ -232,15 +240,15 @@ def page_name(pcb_path, stem):
 # ---- writing: exactly these files ---------------------------------------------------------------------------------
 class Guard:
     """The only way the plugin writes: next to the board exactly <board>.kisi.json, in analysis/ exactly
-    <board>.kisi.html and the backups <board>.kisi.json.<YYYYmmdd-HHMMSS>[-n].bak, and anything in its own folder
-    (temp_dir); never a KiCad file."""
+    <board>.kisi.html, kisi-advanced.html and the backups <board>.kisi.json.<YYYYmmdd-HHMMSS>[-n].bak, and anything in
+    its own folder (temp_dir); never a KiCad file."""
 
     def __init__(self, paths, temp=None, pathmod=os.path):
         self.p, self.pm = paths, pathmod
         self.temp = temp or temp_dir()
         key = lambda x: pathmod.normcase(pathmod.abspath(x)) if pathmod is os.path else pathmod.normcase(x)
         self.key = key
-        self.exact = {key(paths["cfg"]), key(paths["page"])}
+        self.exact = {key(paths["cfg"]), key(paths["page"]), key(paths["advanced"])}
         self.backup_re = re.compile(re.escape(paths["stem"]) + r"\.kisi\.json\.\d{8}-\d{6}(-\d+)?\.bak", re.I)
 
     def allowed(self, path):
@@ -610,11 +618,31 @@ def cleanup(folder, keep_days=KEEP_DAYS, now=None):
     return removed
 
 
+def place_advanced(guard, folder, advanced):
+    """The field page next to the viewer page in `folder` (opened from disk, the viewer finds it there), written only
+    when it is missing or another version (it is about 9 MB). Returns its path, or "" without one or on a write error
+    (the viewer's "Fields…" then names the missing file)."""
+    if not advanced:
+        return ""
+    target = os.path.join(folder, ADVANCED)
+    try:
+        with open(advanced, "rb") as f:
+            data = f.read()
+        if os.path.isfile(target) and os.path.getsize(target) == len(data):
+            with open(target, "rb") as f:
+                if hashlib.sha256(f.read()).digest() == hashlib.sha256(data).digest():
+                    return target
+        guard.write(target, data)
+        return target
+    except OSError:
+        return ""
+
+
 def make_page(board_filename, project_dir, project_name, modified="unknown", kicad_version="", viewer=None, temp=None,
-              create_config=True, downloads="auto", node="auto", cli="auto", run=subprocess.run, now=None):
+              create_config=True, downloads="auto", node="auto", cli="auto", run=subprocess.run, now=None, advanced="auto"):
     """The whole job: returns (page path, payload). Raises PluginError for problems the user can fix.
-    downloads/node/cli: "auto" finds them (the user's Downloads folder, Node.js, the plugin's kisi.mjs);
-    tests pass their own or None."""
+    downloads/node/cli/advanced: "auto" finds them (the user's Downloads folder, Node.js, the plugin's kisi.mjs and
+    field page); tests pass their own or None."""
     paths = board_paths(board_filename, project_dir, project_name)
     temp = temp or temp_dir()
     guard = Guard(paths, temp)
@@ -624,12 +652,14 @@ def make_page(board_filename, project_dir, project_name, modified="unknown", kic
     payload = collect(paths, guard, modified=modified, kicad_version=kicad_version, create_config=create_config, now=now,
                       downloads=downloads, node=node, cli=cli, run=run)
     viewer = viewer or find_viewer()
+    advanced = find_advanced() if advanced == "auto" else advanced
     with open(viewer, encoding="utf-8") as f:
         template = f.read()
     # analysis/<board>.kisi.html next to the board; the plugin's folder when analysis/ cannot be written
     payload["page"] = {"path": paths["page"], "where": "analysis", "reason": ""}
     try:
         guard.write(paths["page"], embed(template, payload).encode("utf-8"))
+        place_advanced(guard, paths["analysis"], advanced)
         return paths["page"], payload
     except OSError as e:
         reason = f"{paths['analysis']} could not be written ({e.strerror or e})"
@@ -638,6 +668,7 @@ def make_page(board_filename, project_dir, project_name, modified="unknown", kic
     page = os.path.join(temp, page_name(paths["pcb"], paths["stem"]))
     payload["page"] = {"path": page, "where": "temp", "reason": reason}
     guard.write(page, embed(template, payload).encode("utf-8"))
+    place_advanced(guard, temp, advanced)
     return page, payload
 
 

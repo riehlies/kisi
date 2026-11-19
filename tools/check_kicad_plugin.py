@@ -20,10 +20,15 @@ path from the API), with a HOME of its own whose Downloads folder the plugin wat
    is there), the previous kisi.json kept in analysis/, the card says so; two candidates: nothing is taken over
 5. --config: a full kisi.json next to the board, checked without errors; KiCad's "unsaved changes" notice; the agent
    card without Node.js (the nodejs.org note)
+6. a package with the field page (viewer/kisi-advanced.html): written next to the page in analysis/; "Fields…" for a
+   segment from the page on disk and from the page the plugin's loopback host serves (kisi_action.py --serve, the
+   field page at /open/kisi-advanced.html under the host's Content-Security-Policy): the field window answers, solves
+   and shows its first view; from disk also "Fields…" on a via: the 3D view runs the via kisi cut out; no console
+   errors
 Screenshots (kicad-start.png, kicad-prepare.png, kicad-saved.png, kicad-download.png, kicad-import.png, …) and a
 generated page go to --out. Exit code 1 on problems.
 """
-import argparse, json, os, pathlib, re, shutil, subprocess, sys, tempfile, time, zipfile
+import argparse, json, os, pathlib, queue, re, shutil, subprocess, sys, tempfile, threading, time, zipfile
 from playwright.sync_api import sync_playwright
 
 ap = argparse.ArgumentParser()
@@ -114,6 +119,60 @@ def open_page(pg, page, tag):
         raise SystemExit(1)
     pg.wait_for_timeout(300)
     return errs
+
+
+def poll(pg, expr, timeout=180):
+    """wait for a JavaScript expression without eval (the plugin's host forbids it, Playwright's wait_for_function uses it)"""
+    end = time.time() + timeout
+    while time.time() < end:
+        if pg.evaluate("() => { try { return !!(" + expr + "); } catch (e) { return false; } }"):
+            return True
+        time.sleep(0.25)
+    return False
+
+
+def fields(ctx, pg, tag):
+    """the impedance estimate, the option, the first net with a cross-section geometry, Fields…: the field page answers
+    and shows its view"""
+    errs = []
+    if not poll(pg, f"typeof S !== 'undefined' && S.scene && {BUSY}"):
+        return check(False, f"{tag}: the board did not load")
+    pg.click("#an-start")
+    if not poll(pg, f"S.full && {BUSY}"):
+        return check(False, f"{tag}: no impedance estimate")
+    pg.evaluate("() => { document.getElementById('fs-opts').open = true; }")
+    pg.check("#fv-on")
+    pg.evaluate("() => { const pc = S.pieces; for (let i = 0; i < pc.n; i++) if (S.an.cross_sections[pc.xs[i]].geom != null && classTarget(pc.net[i])) return selectNet(pc.net[i]); }")
+    if not check(pg.evaluate("() => !!document.getElementById('fv-go')"), f"{tag}: no Fields row in the net detail"):
+        return
+    with ctx.expect_page(timeout=60000) as pinfo:
+        pg.click("#fv-go")
+    popup = pinfo.value
+    popup.on("pageerror", lambda e: errs.append(f"field page error: {e}"))
+    popup.on("console", lambda m: errs.append(f"field page console {m.type}: {m.text[:300]}") if m.type == "error" else None)
+    ok = poll(pg, "/Shown in the field window|reports|No field page/.test(document.getElementById('fv-msg').textContent)", 900)
+    msg = pg.evaluate("() => document.getElementById('fv-msg').textContent")
+    check(ok and "Shown in the field window" in msg, f"{tag}: Fields…: {msg!r}")
+    poll(popup, "(document.getElementById('sim_canvas').data || []).some((t) => ['heatmap', 'contour'].includes(t.type))", 120)
+    popup.wait_for_timeout(800)
+    popup.screenshot(path=f"{out}/kicad-fields-{tag}.png")
+    notes.append(f"field page {tag}: {msg} ({popup.url.split('#')[0]})")
+    # 3D: "Fields…" on a via of a known net (the example boards); the same window runs the case kisi cut out
+    net = pg.evaluate("() => ['/TS-PCIe Components/REFINOUT2', '/Attenuator Amp Switches/RF_HBLB_PORT1'].find((n) => S.scene.nets.includes(n)) || null")
+    if net:
+        pg.evaluate("(n) => selectNet(S.scene.nets.indexOf(n))", net)
+        pg.click("#detail [data-tab='via']")
+        if check(poll(pg, "document.querySelector('button[data-fv3]')", 180), f"{tag}: no Fields… button in the Vias tab of {net}"):
+            pg.click("button[data-fv3='0']")
+            ok = poll(pg, "/Shown in the field window|reports|cannot|No field page/.test(document.getElementById('fv3-msg').textContent)", 1200)
+            msg = pg.evaluate("() => document.getElementById('fv3-msg').textContent")
+            check(ok and "Shown in the field window" in msg, f"{tag}: Fields… on a via: {msg!r}")
+            popup.wait_for_timeout(800)
+            popup.screenshot(path=f"{out}/kicad-fields3d-{tag}.png")
+            notes.append(f"field page 3D {tag}: {msg}")
+    for e in errs:
+        check(False, f"{tag}: {e}")
+    popup.close()
 
 
 def card(pg):
@@ -316,6 +375,39 @@ with sync_playwright() as p:
     for e in errs:
         check(False, f"modified page: {e}")
     pg.close()
+    # 6. the field page: next to the page from disk, and served by the plugin's loopback host
+    if os.path.isfile(os.path.join(plugin, "viewer", "kisi-advanced.html")):
+        adv = os.path.join(bdir, "analysis", "kisi-advanced.html")
+        check(os.path.isfile(adv) and pathlib.Path(adv).read_bytes() == pathlib.Path(plugin, "viewer", "kisi-advanced.html").read_bytes(),
+              "the field page is not next to the page in analysis/")
+        pg = ctx.new_page()
+        errs = open_page(pg, page4, "fields-disk")
+        fields(ctx, pg, "disk")
+        for e in errs:
+            check(False, f"fields from disk: {e}")
+        pg.close()
+        proc = subprocess.Popen([sys.executable, "-I", action, "--pcb", pcb, "--no-browser", "--serve", "--idle-timeout", "120"],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", env=ENV, cwd=plugin)
+        try:
+            lines = queue.Queue()
+            threading.Thread(target=lambda: lines.put(proc.stdout.readline()), daemon=True).start()
+            url = lines.get(timeout=60).strip()
+            pg = ctx.new_page()
+            errs = []
+            pg.on("pageerror", lambda e: errs.append(f"page error: {e}"))
+            pg.on("console", lambda m: errs.append(f"console {m.type}: {m.text}") if m.type == "error" else None)
+            pg.goto(url)
+            fields(ctx, pg, "served")
+            for e in errs:
+                check(False, f"fields from the loopback host: {e}")
+            pg.close()
+        finally:
+            proc.terminate()
+            proc.wait(timeout=10)
+            proc.stdout.close()
+            proc.stderr.close()
+    else:
+        notes.append("the package has no field page (viewer/kisi-advanced.html): step 6 skipped")
     b.close()
 
 for n in notes:

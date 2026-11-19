@@ -16,6 +16,7 @@ import build_kicad_pcm as pcm  # noqa: E402
 
 VIEWER = '<!doctype html><script>const KICAD_BOARD = null; /*@kicad-board*/</script><span class="ver">v0.0.0</span>'
 CLI = '#!/usr/bin/env node\nconst VERSION = "0.0.0";\nconsole.log(JSON.stringify({ok: true, errors: []}));\n'
+ADVANCED = '<!DOCTYPE html>\n<!-- kisi-advanced.html (full build): the field views (stand-in) -->\n<p>fields</p>\n'
 # KiCad's package folders (kicad/pcm/pcm.h, PCM_PACKAGE_DIRECTORIES)
 PCM_DIRS = {"plugins", "footprints", "3dmodels", "symbols", "resources", "colors", "templates", "scripts"}
 
@@ -46,7 +47,10 @@ class PackageTests(unittest.TestCase):
         pathlib.Path(cls.viewer).write_text(encoding="utf-8", data=VIEWER)
         cls.cli = os.path.join(cls.tmp, "kisi.mjs")
         pathlib.Path(cls.cli).write_text(encoding="utf-8", data=CLI)
-        cls.r = pcm.build(cls.viewer, cls.cli, os.path.join(cls.tmp, "dist"), version="0.0.0", test_viewer=True)
+        cls.advanced = os.path.join(cls.tmp, "kisi-advanced.html")
+        pathlib.Path(cls.advanced).write_bytes(ADVANCED.encode())  # bytes: no newline translation on Windows
+        cls.r = pcm.build(cls.viewer, cls.cli, os.path.join(cls.tmp, "dist"), version="0.0.0", test_viewer=True,
+                          advanced=cls.advanced, require_full=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -56,7 +60,8 @@ class PackageTests(unittest.TestCase):
         names = zipfile.ZipFile(self.r["zip"]).namelist()
         self.assertEqual(names[0], "metadata.json")
         for n in ["plugins/plugin.json", "plugins/requirements.txt", "plugins/kisi_action.py", "plugins/kisi_kicad.py", "plugins/kisi_server.py",
-                  "plugins/kisi_build.json", "plugins/viewer/kisi.html", "plugins/cli/kisi.mjs", "plugins/agent/KISI-AGENT-GUIDE.md",
+                  "plugins/kisi_build.json", "plugins/viewer/kisi.html", "plugins/viewer/kisi-advanced.html", "plugins/cli/kisi.mjs",
+                  "plugins/agent/KISI-AGENT-GUIDE.md",
                   "plugins/LICENSE", "resources/icon.png"]:
             self.assertIn(n, names)
         # nothing else at the root, no nested plugin folder, no tests or generator scripts
@@ -98,6 +103,13 @@ class PackageTests(unittest.TestCase):
             conn.close()
             self.assertEqual(json.loads(board.with_suffix(".kisi.json").read_bytes())["notes"], ["from the installed host"])
             self.assertNotIn(bridge["token"], pathlib.Path(board.parent, "analysis", "Live.kisi.html").read_text(encoding="utf-8"))
+            # the field page: next to the page from disk, and at its fixed path of the host
+            self.assertEqual(pathlib.Path(board.parent, "analysis", "kisi-advanced.html").read_bytes(), ADVANCED.encode())
+            conn = http.client.HTTPConnection(url.hostname, url.port, timeout=5)
+            conn.request("GET", "/open/kisi-advanced.html")
+            response = conn.getresponse()
+            self.assertEqual((response.status, response.read().decode()), (200, ADVANCED))
+            conn.close()
             self.assertEqual(proc.wait(timeout=10), 0, proc.stderr.read())
         finally:
             if proc.poll() is None:
@@ -191,10 +203,23 @@ class PackageTests(unittest.TestCase):
             self.assertEqual((int.from_bytes(d[16:20], "big"), int.from_bytes(d[20:24], "big")), (size, size), n)
 
     def test_reproducible(self):
-        r2 = pcm.build(self.viewer, self.cli, os.path.join(self.tmp, "dist2"), version="0.0.0", test_viewer=True)
+        r2 = pcm.build(self.viewer, self.cli, os.path.join(self.tmp, "dist2"), version="0.0.0", test_viewer=True, advanced=self.advanced)
         self.assertEqual(r2["sha256"], self.r["sha256"])
         for zi in zipfile.ZipFile(self.r["zip"]).infolist():
             self.assertEqual(zi.date_time, (1980, 1, 1, 0, 0, 0))
+
+    def test_field_page(self):
+        info = json.loads(zipfile.ZipFile(self.r["zip"]).read("plugins/kisi_build.json"))
+        self.assertEqual(info["advanced_build"], "full")
+        self.assertEqual(info["advanced_sha256"], hashlib.sha256(ADVANCED.encode()).hexdigest())
+        self.assertEqual(pcm.check_advanced(ADVANCED, require_full=True), ("full", []))
+        self.assertTrue(pcm.check_advanced(ADVANCED.replace("full build", "quasi-static build"), require_full=True)[1])
+        self.assertEqual(pcm.check_advanced(ADVANCED.replace("full build", "quasi-static build"))[1], [])
+        self.assertTrue(pcm.check_advanced("<!doctype html><p>other page</p>")[1])
+        with self.assertRaises(SystemExit):  # the release asks for the full page and gets none
+            pcm.build(self.viewer, self.cli, os.path.join(self.tmp, "dist3"), version="0.0.0", test_viewer=True, require_full=True)
+        r = pcm.build(self.viewer, self.cli, os.path.join(self.tmp, "dist4"), version="0.0.0", test_viewer=True)
+        self.assertNotIn("plugins/viewer/kisi-advanced.html", zipfile.ZipFile(r["zip"]).namelist())
 
     def test_viewer_checks(self):
         self.assertTrue(pcm.check_viewer("<html></html>", "0.0.0"))

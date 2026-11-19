@@ -13,6 +13,10 @@ PLUGIN = os.path.dirname(HERE)
 sys.path.insert(0, PLUGIN)
 import kisi_kicad as core  # noqa: E402
 
+# a source tree's dist/kisi-advanced.html must not reach the tests: a test that wants a field page passes advanced=
+core.find_advanced = lambda: None
+ADVANCED = '<!DOCTYPE html>\n<!-- kisi-advanced.html (full build): the field views (stand-in) -->\n<p>fields</p>\n'
+
 TEMPLATE = '<!doctype html><script>const SAMPLES = {};\nconst KICAD_BOARD = null; /*@kicad-board*/\n</script><span class="ver">v9.9.9</span>'
 PCB = '(kicad_pcb (version 20241229) (generator "pcbnew")\n  (general (thickness 1.6))\n)\n'
 PRO = '{"net_settings": {"classes": []}}\n'
@@ -104,6 +108,36 @@ class PageTests(unittest.TestCase):
         self.assertEqual(p1, p2)
         self.assertEqual(q["config"], "loaded")
         self.assertEqual(os.listdir(os.path.join(self.b.dir, "analysis")), [self.b.stem + ".kisi.html"])
+
+    def test_field_page_next_to_the_page(self):
+        keep = tempfile.mkdtemp(prefix="kisi-adv-test-")
+        self.addCleanup(shutil.rmtree, keep, True)
+        adv = os.path.join(keep, "kisi-advanced.html")
+        pathlib.Path(adv).write_bytes(ADVANCED.encode())  # bytes: the same file on Windows
+        page, _ = self.make(advanced=adv)
+        placed = os.path.join(os.path.dirname(page), "kisi-advanced.html")
+        self.assertEqual(sorted(os.listdir(os.path.dirname(page))), sorted([self.b.stem + ".kisi.html", "kisi-advanced.html"]))
+        self.assertEqual(pathlib.Path(placed).read_bytes(), ADVANCED.encode())
+        # the same version is not written again (9 MB), another one is
+        t = time.time() - 3600
+        os.utime(placed, (t, t))
+        self.make(advanced=adv)
+        self.assertEqual(os.path.getmtime(placed), t)
+        pathlib.Path(adv).write_bytes(ADVANCED.replace("fields", "fields v2").encode())
+        self.make(advanced=adv)
+        self.assertIn("fields v2", pathlib.Path(placed).read_text(encoding="utf-8"))
+        # analysis/ not writable: both in the plugin's folder
+        self.b.close()
+        self.b = Board()
+        pathlib.Path(self.b.dir, "analysis").write_text("not a folder", encoding="utf-8")
+        page, p = self.make(advanced=adv)
+        self.assertEqual(p["page"]["where"], "temp")
+        self.assertTrue(os.path.isfile(os.path.join(self.b.out, "kisi-advanced.html")))
+        # no field page in the plugin: nothing next to the page
+        self.b.close()
+        self.b = Board()
+        page, _ = self.make()
+        self.assertEqual(os.listdir(os.path.dirname(page)), [self.b.stem + ".kisi.html"])
 
     def test_cli_and_node_in_the_payload(self):
         _, p = self.make(node=NODE_OK, cli="C:\\Users\\Jürgen\\Documents\\KiCad\\10.0\\3rdparty\\plugins\\com_github_riehlies_kisi\\cli\\kisi.mjs")
@@ -211,19 +245,21 @@ class PageTests(unittest.TestCase):
 
 
 class GuardTests(unittest.TestCase):
-    """Next to the board exactly <board>.kisi.json, analysis/<board>.kisi.html and the backups; the temp folder."""
+    """Next to the board exactly <board>.kisi.json, analysis/<board>.kisi.html, analysis/kisi-advanced.html and the
+    backups; the temp folder."""
 
     def test_exact_paths(self):
         b = Board()
         try:
             paths = core.board_paths(b.stem + ".kicad_pcb", b.dir, b.stem)
             g = core.Guard(paths, b.out)
-            ok = [paths["cfg"], paths["page"], os.path.join(paths["analysis"], b.stem + ".kisi.json.20261027-081500.bak"),
+            ok = [paths["cfg"], paths["page"], paths["advanced"], os.path.join(paths["analysis"], b.stem + ".kisi.json.20261027-081500.bak"),
                   os.path.join(paths["analysis"], b.stem + ".kisi.json.20261027-081500-2.bak"), os.path.join(b.out, "x-1234.html")]
             bad = [paths["pcb"], os.path.join(b.dir, b.stem + ".kicad_pro"), os.path.join(b.dir, "other.kisi.json"),
                    os.path.join(b.dir, b.stem + ".kisi.html"), os.path.join(paths["analysis"], "other.kisi.html"),
                    os.path.join(paths["analysis"], b.stem + ".kisi.json"), os.path.join(paths["analysis"], b.stem + ".kisi.json.bak"),
                    os.path.join(paths["analysis"], "report.md"), os.path.join(b.dir, "notes.txt"), os.path.join(b.out, "x.kicad_pcb"),
+                   os.path.join(b.dir, "kisi-advanced.html"), os.path.join(paths["analysis"], "kisi-advanced-other.html"),
                    os.path.join(b.root, "outside", "x.html"), b.out + "-other" + os.sep + "x.html"]
             for p in ok:
                 self.assertTrue(g.allowed(p), p)
@@ -243,6 +279,7 @@ class GuardTests(unittest.TestCase):
         g = core.Guard(paths, "C:\\Users\\Jürgen\\AppData\\Local\\Temp\\kisi-kicad", pathmod=ntpath)
         self.assertTrue(g.allowed("c:\\users\\jürgen\\documents\\kicad projekte\\mein board\\mein board.kisi.json"))  # case-insensitive
         self.assertTrue(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\analysis\\Mein Board.kisi.html"))
+        self.assertTrue(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\analysis\\kisi-advanced.html"))
         self.assertTrue(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\analysis\\Mein Board.kisi.json.20261027-081500.bak"))
         self.assertTrue(g.allowed("C:\\Users\\Jürgen\\AppData\\Local\\Temp\\kisi-kicad\\Mein_Board-0123abcd.html"))
         self.assertFalse(g.allowed("C:\\Users\\Jürgen\\Documents\\KiCad Projekte\\Mein Board\\Mein Board.kicad_pcb"))

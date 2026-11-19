@@ -10,7 +10,12 @@ numbers within 1e-4 relative. A model change that moves results updates them in 
 ```
 python3 tools/golden.py boards target/release/kisi examples --update
 python3 tools/golden.py vias target/release/kisi --update      # validation/fdtd/results/kisi_models.json
+python3 tools/golden.py viacase target/release/kisi-validate examples --update   # viacase.json
 ```
+
+`viacase.json`: how many vias of the signal nets kisi's board-via exporter (`kisi_core::viacase`, the 3D view's
+"Fields…" on a via) can cut out, per board, per reason and per net class, and the vias it cannot. CI fails when a
+share drops, and asks for `--update` when it rises.
 
 The diff of these files in the review is the list of what the change moved. Whether the new values are better is
 decided against the references ([validation/README.md](../README.md)), not here.

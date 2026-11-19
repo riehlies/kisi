@@ -309,6 +309,26 @@ def balance(p):
     return (float(m.group(1)) if m else None), txt
 
 
+PAD_VIA = ("/ADC/D2A_P", [166.1411, 116.1736], ["In3.Cu", "F.Cu"])  # a BGA fan-out: its F.Cu trace ends at the FPGA's pad
+
+
+def exporter(pg):
+    """the exporter in the viewer: a pad port for a BGA fan-out; a via it cannot cut out: the reason in plain words"""
+    r = pg.evaluate("""([net, at, layers]) => { try { const r = S.engine.viaCase({ net, at, layers, board_file: S.name, keep: 1.2, feed: 2.5, margin: 1.5 });
+      return { ports: r.case.meta.ports, approx: r.case.meta.approximations.filter((a) => /pad port|lumped 50/.test(a)) }; } catch (e) { return { error: e.message }; } }""", list(PAD_VIA))
+    pads = [q for q in r.get("ports", []) if q.get("pad")]
+    check(len(pads) == 2 and r.get("approx"), f"exporter: no pad ports for the BGA fan-out {PAD_VIA[0]}: {r}")
+    results["exporter"] = {"pad_case": r}
+    st = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "validation", "golden", "viacase.json")))
+    bad = [x for x in st["boards"]["ts"]["not_exportable"] if x.endswith(": layers")] or st["boards"]["ts"]["not_exportable"]
+    if bad:
+        net, rest = bad[0].rsplit(" at ", 1)
+        at = [float(v) for v in rest.split(":")[0].split(",")]
+        e = pg.evaluate("""([net, at]) => { try { S.engine.viaCase({ net, at, layers: null }); return null; } catch (e) { return e.message; } }""", [net, at])
+        check(e and "--" not in e, f"exporter: the reason for {net} is not in plain words: {e!r}")
+        results["exporter"]["reason"] = {"via": bad[0], "message": e}
+
+
 def run_3d(ctx, pg, popup, theme, errs, first):
     """Fields… on a board via: the field window's 3D view runs the exported case"""
     n = pg.evaluate("(nm) => S.scene.nets.indexOf(nm)", VIA_NET)
@@ -533,6 +553,8 @@ def run(pw, theme, first, base_url=None, quick=False, d=None):
     tag0 = f"{theme}{' http' if base_url else ''}"
     try:
         pg = open_viewer(ctx, url, errs)
+        if first and base_url is None:
+            exporter(pg)
         popup = run_2d(ctx, pg, tag0, errs, quick or base_url is not None)
         if not a.no_3d and base_url is None:
             popup = run_3d(ctx, pg, popup, theme, errs, first and not quick)

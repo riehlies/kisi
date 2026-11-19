@@ -7,6 +7,11 @@
   golden.py vias <kisi> [--update]
       runs validation/fdtd/compare_kisi.py (kisi's channel models on the 3D via reference cases) and compares
       its table with validation/fdtd/results/kisi_models.json
+  golden.py viacase <kisi-validate> <examples dir> [--update]
+      the board-via exporter (kisi_core::viacase, the 3D view's "Fields…" on a via) on every via of a signal net of
+      both boards (`kisi-validate via-case --sweep`): how many can be cut out, per board, per reason and per net
+      class, against validation/golden/viacase.json; fails when a share of exportable vias drops (a rise asks for
+      --update)
   golden.py diff <stored.json> <new.json>
       compares two JSON files with the same rules
 
@@ -23,6 +28,7 @@ import json, os, subprocess, sys, tempfile, time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(ROOT, "validation", "golden")
 VIAS = os.path.join(ROOT, "validation", "fdtd", "results", "kisi_models.json")
+VIACASE = os.path.join(GOLDEN, "viacase.json")
 # board key, file stem, rail for the PDN analysis
 BOARDS = [("ts", "Thunderscope_Rev5.3", "+1V0"), ("vna", "VNA", "+3V3")]
 COMMANDS = {
@@ -169,6 +175,64 @@ def vias(kisi, update):
     return n
 
 
+def viacase(exe, ex, update):
+    """the exporter on every signal via: counts per board, reason and class; the vias it cannot cut out"""
+    new = {"about": "kisi-validate via-case --sweep on the example boards (tools/golden.py viacase): every via of a signal net, "
+                    "with the layers of kisi's via model where the via is on its net's channel (the vias that get a Fields… button "
+                    "in the viewer: on_channel), else the two layers its tracks join; keep 1.2, feed 2.5, margin 1.5 mm",
+           "boards": {}}
+    rows = []
+    for key, stem, _ in BOARDS:
+        pcb = os.path.relpath(os.path.join(ex, stem + ".kicad_pcb"), ROOT)
+        r = subprocess.run([exe, "via-case", pcb, "--config", os.path.join("web", "samples", key + ".kisi.json"), "--sweep"],
+                           capture_output=True, text=True, cwd=ROOT)
+        if r.returncode != 0:
+            print(f"{key}: via-case --sweep failed ({r.returncode})\n{r.stderr[-1500:]}")
+            return 1
+        vias = [json.loads(x) for x in r.stdout.splitlines() if x.strip()]
+        share = lambda vs: [sum(v["ok"] for v in vs), len(vs)]
+        classes, reasons = {}, {}
+        for v in vias:
+            c = classes.setdefault(v["class"], [0, 0])
+            c[0] += v["ok"]; c[1] += 1
+            if not v["ok"]:
+                reasons[v["code"]] = reasons.get(v["code"], 0) + 1
+        new["boards"][key] = {"exportable": share(vias), "on_channel": share([v for v in vias if v["model"]]),
+                              "with_pad_ports": sum(1 for v in vias if v["ok"] and v.get("pad_ports")),
+                              "reasons": dict(sorted(reasons.items())), "classes": dict(sorted(classes.items())),
+                              "not_exportable": [f"{v['net']} at {v['at'][0]:.4f},{v['at'][1]:.4f}: {v['code']}" for v in vias if not v["ok"]]}
+    stored = load(VIACASE)
+    bad, better = [], []
+    for key, b in new["boards"].items():
+        o = (stored or {}).get("boards", {}).get(key, {})
+        for what, now, was in [("all vias", b["exportable"], o.get("exportable")), ("on a channel", b["on_channel"], o.get("on_channel"))] + \
+                [(f"class {c}", v, o.get("classes", {}).get(c)) for c, v in b["classes"].items()]:
+            rows.append(f"| {key} | {what} | {was[0] if was else '–'}/{was[1] if was else '–'} | {now[0]}/{now[1]} |")
+            if was and now[1] and was[1] and now[0] / now[1] < was[0] / was[1] - 1e-9:
+                bad.append(f"{key} {what}: {now[0]}/{now[1]} exportable, stored {was[0]}/{was[1]}")
+            elif was and now[1] and was[1] and now[0] / now[1] > was[0] / was[1] + 1e-9:
+                better.append(f"{key} {what}: {now[0]}/{now[1]}, stored {was[0]}/{was[1]}")
+        print(f"{key}: {b['exportable'][0]}/{b['exportable'][1]} vias exportable ({b['on_channel'][0]}/{b['on_channel'][1]} on a channel); "
+              f"not: {', '.join(f'{k} {v}' for k, v in b['reasons'].items()) or 'none'}")
+    summary(["### Board vias the exporter can cut out (3D view)", "", "| board | vias | stored | now |", "|---|---|---|---|"] + rows)
+    if update:
+        dump(new, VIACASE)
+        print("viacase: stored")
+        return 0
+    if stored is None:
+        print(f"viacase: no stored result ({os.path.relpath(VIACASE, ROOT)}) – run with --update")
+        return 1
+    for x in bad:
+        print("   fewer:", x)
+        if os.environ.get("GITHUB_ACTIONS"):
+            print(f"::error title=board vias the exporter can cut out::{x}")
+    for x in better:
+        print("   more:", x)
+    if better and not bad:
+        print("More vias can be cut out than stored: run with --update and commit validation/golden/viacase.json.")
+    return len(bad) + len(better)
+
+
 def main():
     a = sys.argv[1:]
     update = "--update" in a
@@ -178,6 +242,8 @@ def main():
         bad = boards(os.path.abspath(pos[1]), pos[2], update, only)
     elif pos[:1] == ["vias"] and len(pos) == 2:
         bad = vias(os.path.abspath(pos[1]), update)
+    elif pos[:1] == ["viacase"] and len(pos) == 3:
+        bad = viacase(os.path.abspath(pos[1]), pos[2], update)
     elif pos[:1] == ["diff"] and len(pos) == 3:
         bad = report("diff", norm(load(pos[1])), norm(load(pos[2])), False, pos[1])
     else:

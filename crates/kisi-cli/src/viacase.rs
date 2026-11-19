@@ -5,8 +5,12 @@
 //! kisi-validate via-case <board.kicad_pcb> --net NAME --out DIR
 //!     [--at X,Y | --via K] [--layers IN,OUT] [--pro F] [--config F | --no-config] [--variant NAME]
 //!     [--keep 1.2] [--keep-cell 0.05] [--rotate DEG] [--feed 4.0] [--margin 2.5] [--air 1.0]
-//!     [--fmax 40e9] [--dfine 0.035] [--name ID] [--list] [--scan]
+//!     [--fmax 40e9] [--dfine 0.035] [--name ID] [--list] [--scan] [--sweep]
 //! ```
+//!
+//! `--sweep`: the exporter on every via of a signal net, as the viewer's "Fields…" calls it (the layers of kisi's
+//! via model in the net's channel where the via is on it, else the two layers its tracks join; keep 1.2, feed 2.5,
+//! margin 1.5 mm unless given): one JSON line per via with the result or the reason (`tools/golden.py viacase`).
 //!
 //! Writes `DIR/<name>.json` (the case) and the 2×thru fixture of each side,
 //! `DIR/thru_<name>_in.json` and `DIR/thru_<name>_out.json`.
@@ -31,6 +35,8 @@ struct Opt {
     out: Option<PathBuf>,
     list: bool,
     scan: bool,
+    /// every signal via with the viewer's layers and options: one JSON line per via (tools/golden.py viacase)
+    sweep: bool,
     /// what to cut out (kisi_core::viacase)
     v: Opts,
 }
@@ -45,6 +51,7 @@ fn parse(args: &[String]) -> Opt {
         out: None,
         list: false,
         scan: false,
+        sweep: false,
         v: Opts::default(),
     };
     let mut i = 0;
@@ -69,6 +76,11 @@ fn parse(args: &[String]) -> Opt {
             }
             "--scan" => {
                 o.scan = true;
+                i += 1;
+                continue;
+            }
+            "--sweep" => {
+                o.sweep = true;
                 i += 1;
                 continue;
             }
@@ -106,7 +118,7 @@ fn parse(args: &[String]) -> Opt {
         }
         i += 2;
     }
-    if o.pcb.as_os_str().is_empty() || (o.v.net.is_empty() && !o.scan) {
+    if o.pcb.as_os_str().is_empty() || (o.v.net.is_empty() && !o.scan && !o.sweep) {
         die("usage: kisi-validate via-case <board.kicad_pcb> --net NAME --out DIR [options], see viacase.rs");
     }
     o
@@ -131,7 +143,10 @@ pub fn run(args: &[String]) {
     }
     o.v.board_file = o.pcb.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
     o.v.with_config = cfg.is_some();
-    let r = viacase::export(&p.board, &p.an, &o.v).unwrap_or_else(|e| die(&e));
+    if o.sweep {
+        return sweep(&p, &o);
+    }
+    let r = viacase::export(&p.board, &p.an, &o.v).unwrap_or_else(|e| die(&e.to_string()));
     let out = o.out.clone().unwrap_or_else(|| PathBuf::from("."));
     std::fs::create_dir_all(&out).unwrap_or_else(|e| die(&e.to_string()));
     write(&out, &r.name, &r.case);
@@ -147,4 +162,58 @@ fn write(dir: &Path, name: &str, v: &Value) {
     let p = dir.join(format!("{name}.json"));
     std::fs::write(&p, serde_json::to_string(v).unwrap()).unwrap_or_else(|e| die(&format!("{}: {e}", p.display())));
     eprintln!("via-case: wrote {}", p.display());
+}
+
+/// `--sweep`: every signal via, its layers from kisi's channel of its net where it lies on it (the viewer's "Fields…"
+/// passes those), the export's result or reason as one JSON line.
+fn sweep(p: &Project, o: &Opt) {
+    use kisi_core::{geom, rf};
+    let b = &p.board;
+    let su = b.stackup();
+    let lname = |k: u16| su.copper[k as usize].name.clone();
+    // the viewer's options (data/field_views.json "fdtd.board") unless given
+    let given = |a: &str| std::env::args().any(|x| x == a);
+    let mut v = o.v.clone();
+    if !given("--feed") {
+        v.feed = 2.5;
+    }
+    if !given("--margin") {
+        v.margin = 1.5;
+    }
+    v.board_file = o.pcb.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+    v.with_config = p.config_path.is_some();
+    // kisi's via model on each net's channel: at → (layer in, layer out)
+    let rp = rf::RfParams::default();
+    let mut model: Vec<(geom::P, u16, u16)> = Vec::new();
+    let mut nets: Vec<u32> = b.vias.iter().map(|w| w.net).filter(|&n| n != 0).collect();
+    nets.sort();
+    nets.dedup();
+    for &n in &nets {
+        if b.plane_net.get(n as usize).copied().unwrap_or(false) {
+            continue;
+        }
+        if let Ok(ch) = rf::channel(b, &p.an, n, &p.params.field, p.target(n), &rp) {
+            model.extend(ch.via_info.iter().map(|i| (i.at, i.layer_in, i.layer_out)));
+        }
+    }
+    for w in &b.vias {
+        if w.net == 0 || b.plane_net.get(w.net as usize).copied().unwrap_or(false) {
+            continue;
+        }
+        let m = model.iter().find(|m| geom::len(geom::sub(m.0, w.at)) < 1e-3);
+        let mut vo = v.clone();
+        vo.net = b.net_name(w.net).to_string();
+        vo.at = Some(w.at);
+        vo.layers = m.map(|m| (lname(m.1), lname(m.2)));
+        let r = viacase::export(b, &p.an, &vo);
+        let line = serde_json::json!({
+            "net": vo.net, "class": b.class_of(w.net).name, "at": [w.at[0], w.at[1]],
+            "layers": vo.layers.as_ref().map(|l| [l.0.clone(), l.1.clone()]), "model": m.is_some(),
+            "ok": r.is_ok(), "code": r.as_ref().err().map(|e| e.code), "reason": r.as_ref().err().map(|e| e.msg.clone()),
+            "notes": r.as_ref().map(|x| x.notes.clone()).unwrap_or_default(),
+            "pad_ports": r.as_ref().map(|x| x.case["meta"]["ports"].as_array().map(|p| p.iter().filter(|q| q.get("pad").is_some()).count()).unwrap_or(0)).unwrap_or(0),
+            "sheets": r.as_ref().map(|x| x.case["sheets"].as_array().map(|a| a.len()).unwrap_or(0)).unwrap_or(0),
+        });
+        println!("{line}");
+    }
 }

@@ -1,0 +1,115 @@
+{
+ "about": "kisi-validate via-case --sweep on the example boards (tools/golden.py viacase): every via of a signal net, with the layers of kisi's via model where the via is on its net's channel (the vias that get a Fields… button in the viewer: on_channel), else the two layers its tracks join; keep 1.2, feed 2.5, margin 1.5 mm",
+ "boards": {
+  "ts": {
+   "exportable": [
+    266,
+    272
+   ],
+   "on_channel": [
+    231,
+    236
+   ],
+   "with_pad_ports": 175,
+   "reasons": {
+    "branch": 3,
+    "layers": 1,
+    "short_trace": 2
+   },
+   "classes": {
+    "50Z": [
+     1,
+     1
+    ],
+    "Default": [
+     156,
+     160
+    ],
+    "LVDS_ADC": [
+     20,
+     20
+    ],
+    "LVDS_SYNC": [
+     8,
+     8
+    ],
+    "LVDS_USRIO": [
+     22,
+     24
+    ],
+    "PCIe": [
+     48,
+     48
+    ],
+    "PWR": [
+     2,
+     2
+    ],
+    "QSPI": [
+     9,
+     9
+    ]
+   },
+   "not_exportable": [
+    "Net-(U18D-INIT_B_0) at 176.5991,116.1656: branch",
+    "/DC_CPL_2 at 173.3348,112.1844: branch",
+    "/DC_CPL_4 at 125.5761,134.7036: branch",
+    "/FPGA/USRIO_4_N at 168.5511,113.7636: short_trace",
+    "/FPGA/USRIO_4_P at 169.3511,113.7636: short_trace",
+    "/FPGA/FPGA Voltage Regs/PG_1V8 at 151.0087,114.3036: layers"
+   ]
+  },
+  "vna": {
+   "exportable": [
+    381,
+    397
+   ],
+   "on_channel": [
+    290,
+    296
+   ],
+   "with_pad_ports": 169,
+   "reasons": {
+    "branch": 5,
+    "layers": 9,
+    "via_in_box": 2
+   },
+   "classes": {
+    "3V3": [
+     77,
+     86
+    ],
+    "5V": [
+     18,
+     21
+    ],
+    "Default": [
+     262,
+     266
+    ],
+    "RF": [
+     24,
+     24
+    ]
+   },
+   "not_exportable": [
+    "+3V3 at 161.2011,62.9536: layers",
+    "+3V3 at 116.9011,94.1536: layers",
+    "+3V3 at 113.1011,73.1536: layers",
+    "+3V3 at 161.2011,63.7536: layers",
+    "+5V{slash}1 at 106.4011,101.5536: layers",
+    "+5V{slash}2 at 191.0011,77.2536: layers",
+    "+5V{slash}3 at 119.4011,121.3536: layers",
+    "Net-(IC34-EN) at 122.9011,99.0536: branch",
+    "MCU_MISO at 145.7725,66.3822: branch",
+    "MCU_MOSI at 145.8725,67.6822: branch",
+    "/HF Source/SRC_TUNE at 151.7011,84.5536: branch",
+    "/1.LO/3V3_LO1_1 at 168.9011,109.5536: layers",
+    "/1.LO/3V3_LO1_1 at 177.8884,111.6536: branch",
+    "/1.LO/3V3_LO1_2 at 171.8011,119.1536: via_in_box",
+    "/1.LO/3V3_LO1_2 at 171.0011,119.1536: via_in_box",
+    "/HF Source/3V3_SRC_2 at 160.4011,82.3536: layers"
+   ]
+  }
+ }
+}

@@ -19,6 +19,11 @@
 //!   fixture is a clean line;
 //! * every other via in the window: return vias (plane nets) and other nets' vias as barrels;
 //!   plated holes of pads as barrels.
+//! * a trace leaves the keep box where it crosses its edge (a pair by the same edge); a corner, an edge it runs along
+//!   or two edges retry with keep boxes of ±1.0 / ±1.5 mm and the rotations 0° / 45° before the corner is taken;
+//! * a trace that ends inside the keep box at an SMD pad of its net is a pad port side: the routed trace and the pad,
+//!   a lumped 50 Ω port from the pad to the nearest plane under or over it, the board's copper on that layer in the
+//!   whole window, no extension and no 2×thru.
 //!
 //! The 2×thru of each side: the straight trace (or pair) of the feed, 2·feed long, with solid
 //! sheets on the layers that have copper at the port in the case.
@@ -35,6 +40,29 @@ thread_local! {
 }
 fn note(s: String) {
     NOTES.with(|n| n.borrow_mut().push(s));
+}
+
+/// Why a via cannot be cut out: a stable code (the sweep's counts, `kisi-validate via-case --sweep`), the reason in
+/// plain words (what the viewer shows) and a hint for the CLI's options (empty when there is none).
+#[derive(Debug, Clone)]
+pub struct CutError {
+    pub code: &'static str,
+    pub msg: String,
+    pub hint: &'static str,
+}
+
+impl std::fmt::Display for CutError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.msg)?;
+        if !self.hint.is_empty() {
+            write!(f, " ({})", self.hint)?;
+        }
+        Ok(())
+    }
+}
+
+fn cut(code: &'static str, msg: String, hint: &'static str) -> CutError {
+    CutError { code, msg, hint }
 }
 
 /// What to cut out and how (`kisi-validate via-case` options of the same names).
@@ -116,6 +144,7 @@ impl Output {
         let lname = |k: u16| su.copper[k as usize].name.clone();
         let f = &self.fix;
         (0..f.sides.len())
+            .filter(|&si| f.sides[si].pads.is_empty())
             .map(|si| {
                 let th = thru_case(&f.names[si], &f.sides[si], &f.planes_at_port[si], &f.cpws[si], &f.z, b, o, &lname);
                 (f.names[si].clone(), th)
@@ -308,11 +337,13 @@ fn capsule(a: P, b: P, w: f64) -> Vec<P> {
     v
 }
 
-/// Ordered segments (a, b, width) of the trace of `net` that leaves the via at `at` on `layer`,
-/// starting at the via; None if no track of the net ends at the via on this layer.
-fn chain(b: &Board, net: u32, at: P, r: f64, layer: u16) -> Option<Vec<(P, P, f64)>> {
+/// A trace from a via: its ordered segments (a, b, width), starting at the via, and the points where it forks (more
+/// than one track of the net goes on; the first is followed).
+type Chain = (Vec<(P, P, f64)>, Vec<P>);
+
+/// The trace of `net` that leaves the via at `at` on `layer`; None if no track of the net ends at the via on this layer.
+fn chain(b: &Board, net: u32, at: P, r: f64, layer: u16) -> Option<Chain> {
     let near = |p: P, q: P, tol: f64| geom::len(geom::sub(p, q)) < tol;
-    let mut used = vec![false; b.tracks.len()];
     // the track whose end is nearest to the via centre (a short piece into the via may be
     // followed by one that ends inside the pad as well)
     let dist = |i: usize| {
@@ -327,33 +358,62 @@ fn chain(b: &Board, net: u32, at: P, r: f64, layer: u16) -> Option<Vec<(P, P, f6
         .collect();
     sort_by_f64(&mut starts, |&x| dist(x));
     let &s0 = starts.first()?;
-    if starts.len() > 1 && (dist(starts[1]) - dist(s0)).abs() < 1e-3 {
-        note(format!("{} tracks of {} leave the via on layer {layer}; following one", starts.len(), b.net_name(net)));
+    let alike: Vec<usize> = starts.iter().copied().filter(|&i| (dist(i) - dist(s0)).abs() < 1e-3).collect();
+    if alike.len() > 1 {
+        note(format!(
+            "{} tracks of {} leave the via on layer {layer}; following the one that goes farthest",
+            alike.len(),
+            b.net_name(net)
+        ));
     }
-    let t = &b.tracks[s0];
-    used[s0] = true;
-    let mut segs = vec![if geom::len(geom::sub(t.a, at)) <= geom::len(geom::sub(t.b, at)) {
-        (t.a, t.b, t.width)
-    } else {
-        (t.b, t.a, t.width)
-    }];
-    let mut total = geom::len(geom::sub(t.b, t.a));
-    while total < 40.0 {
-        let end = segs.last().unwrap().1;
-        let nx = (0..b.tracks.len()).find(|&i| {
+    // from one start track on: the segments and the forks
+    let from = |s0: usize| -> Chain {
+        let mut used = vec![false; b.tracks.len()];
+        let t = &b.tracks[s0];
+        used[s0] = true;
+        let mut segs = vec![if geom::len(geom::sub(t.a, at)) <= geom::len(geom::sub(t.b, at)) {
+            (t.a, t.b, t.width)
+        } else {
+            (t.b, t.a, t.width)
+        }];
+        let mut total = geom::len(geom::sub(t.b, t.a));
+        let mut forks = Vec::new();
+        while total < 40.0 {
+            let end = segs.last().unwrap().1;
+            let nx: Vec<usize> = (0..b.tracks.len())
+                .filter(|&i| {
+                    let t = &b.tracks[i];
+                    !used[i]
+                        && t.net == net
+                        && t.layer == layer
+                        && !t.pad
+                        && (near(t.a, end, 1e-3) || near(t.b, end, 1e-3))
+                })
+                .collect();
+            if nx.len() > 1 {
+                forks.push(end);
+            }
+            let Some(&i) = nx.first() else { break };
+            used[i] = true;
             let t = &b.tracks[i];
-            !used[i] && t.net == net && t.layer == layer && !t.pad && (near(t.a, end, 1e-3) || near(t.b, end, 1e-3))
-        });
-        let Some(i) = nx else { break };
-        used[i] = true;
-        let t = &b.tracks[i];
-        segs.push(if near(t.a, end, 1e-3) { (t.a, t.b, t.width) } else { (t.b, t.a, t.width) });
-        total += geom::len(geom::sub(t.b, t.a));
+            segs.push(if near(t.a, end, 1e-3) { (t.a, t.b, t.width) } else { (t.b, t.a, t.width) });
+            total += geom::len(geom::sub(t.b, t.a));
+        }
+        (segs, forks)
+    };
+    let reach = |c: &Chain| c.0.iter().map(|s| geom::len(geom::sub(s.1, at))).fold(0.0, f64::max);
+    let mut best = from(s0);
+    for &i in &alike[1..] {
+        let c = from(i);
+        if reach(&c) > reach(&best) + 1e-6 {
+            best = c;
+        }
     }
+    let (segs, forks) = best;
     if std::env::var("KISI_DEBUG_VIACASE").is_ok() {
         eprintln!("chain {} layer {layer}: {:?}", b.net_name(net), segs.iter().map(|s| (s.0, s.1)).collect::<Vec<_>>());
     }
-    Some(segs)
+    Some((segs, forks))
 }
 
 /// Barrel range (top, bottom layer) of a via without its back-drilled part.
@@ -382,6 +442,23 @@ struct Side {
     kept: Vec<(Vec<(P, P)>, f64, f64)>,
     /// reference layer of the feed
     ref_layer: u16,
+    /// a pad port side: the pad each trace ends at inside the keep box (no extension, no fixture)
+    pads: Vec<PadEnd>,
+}
+
+/// The pad a trace ends at inside the keep box: its name, centre and outline (case coordinates), the half width of the
+/// lumped port across it.
+#[derive(Debug, Clone)]
+struct PadEnd {
+    name: String,
+    at: P,
+    poly: Vec<P>,
+    half: f64,
+}
+
+/// "U3.A7", the footprint's reference and the pad number.
+fn pad_name(b: &Board, pd: &crate::board::Pad) -> String {
+    format!("{}.{}", b.footprints.get(pd.fp as usize).map(|f| f.reference.as_str()).unwrap_or("?"), pd.number)
 }
 
 /// Every via of a signal net with the layers its tracks join: net class, net, position, layers,
@@ -439,24 +516,24 @@ pub fn list(b: &Board, net: &str) -> Result<Vec<String>, String> {
 
 /// The case of one via (the via of `o.net` chosen by `o.at` / `o.via_k`) and its fixtures, from the
 /// board as analysed (`an`: the reference planes of the feeds' cross-sections).
-pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
+pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, CutError> {
     NOTES.with(|n| n.borrow_mut().clear());
     let su = b.stackup();
     let nl = su.n();
     let z = copper_z(b);
     let lname = |k: u16| su.copper[k as usize].name.clone();
-    let net = crate::pi::find_net(b, &o.net).ok_or_else(|| format!("net {} not found", o.net))?;
+    let net = crate::pi::find_net(b, &o.net).ok_or_else(|| cut("net", format!("net {} not found", o.net), ""))?;
     let partner = crate::extract::diff_partners(&b.nets).get(net as usize).copied().flatten();
     let vias: Vec<&Via> = b.vias.iter().filter(|v| v.net == net).collect();
     if vias.is_empty() {
-        return Err("the net has no via".into());
+        return Err(cut("no_via", "the net has no via".into(), ""));
     }
     let v: &Via = match (o.at, o.via_k) {
         (Some(at), _) => vias
             .iter()
             .min_by(|a, c| geom::len(geom::sub(a.at, at)).total_cmp(&geom::len(geom::sub(c.at, at))))
             .unwrap(),
-        (None, Some(k)) => vias.get(k).ok_or("--via index out of range")?,
+        (None, Some(k)) => vias.get(k).ok_or_else(|| cut("via_index", format!("the net has no via {k}"), "--list"))?,
         (None, None) => {
             if vias.len() > 1 {
                 note(format!("the net has {} vias, taking the first (--list, --via K, --at X,Y)", vias.len()));
@@ -484,116 +561,305 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
     let conn: Vec<u16> = (v.from..=v.to).filter(|&l| chain(b, net, v.at, v.size / 2.0 + 1e-3, l).is_some()).collect();
     let (l_in, l_out) = match &o.layers {
         Some((a, c)) => {
-            let f = |s: &str| su.layer_index(s).map(|i| i as u16).ok_or_else(|| format!("unknown layer {s}"));
+            let f = |s: &str| {
+                su.layer_index(s)
+                    .map(|i| i as u16)
+                    .ok_or_else(|| cut("layers", format!("no layer {s} in the stackup"), ""))
+            };
             (f(a)?, f(c)?)
         }
         None => {
             if conn.len() != 2 {
-                return Err(format!(
-                    "the via connects tracks on {} layers {:?}; choose two with --layers IN,OUT",
-                    conn.len(),
-                    conn.iter().map(|&l| lname(l)).collect::<Vec<_>>()
+                return Err(cut(
+                    "layers",
+                    format!(
+                        "the via joins tracks on {} layers ({}), so the two layers of the signal are not known",
+                        conn.len(),
+                        conn.iter().map(|&l| lname(l)).collect::<Vec<_>>().join(", ")
+                    ),
+                    "choose two with --layers IN,OUT",
                 ));
             }
             (conn[0], conn[1])
         }
     };
-    // the traces of both sides and their exit directions: from the origin to the first point at
-    // least `keep` away, summed over the vias of a pair
-    let all_chains: Vec<Vec<Vec<(P, P, f64)>>> = [l_in, l_out]
+    let all_chains: Vec<Vec<Chain>> = [l_in, l_out]
         .iter()
         .map(|&l| {
             sig.iter()
                 .map(|&(w, n)| {
-                    chain(b, n, w.at, w.size / 2.0 + 1e-3, l)
-                        .ok_or_else(|| format!("no track of {} at the via on {}", b.net_name(n), lname(l)))
+                    chain(b, n, w.at, w.size / 2.0 + 1e-3, l).ok_or_else(|| {
+                        cut("no_track", format!("no track of {} leaves the via on {}", b.net_name(n), lname(l)), "")
+                    })
                 })
-                .collect::<Result<Vec<_>, String>>()
+                .collect::<Result<Vec<_>, CutError>>()
         })
-        .collect::<Result<_, String>>()?;
-    let dirs: Vec<P> = all_chains
-        .iter()
-        .zip([l_in, l_out])
-        .map(|(chains, l)| {
-            let mut dir = [0.0, 0.0];
-            for ch in chains {
-                let q = ch.iter().map(|s| tc0(s.1)).find(|&q| geom::len(q) >= o.keep).ok_or_else(|| {
-                    format!("the trace on {} ends within {} mm of the via; lower --keep", lname(l), o.keep)
-                })?;
-                dir = geom::add(dir, geom::scale(q, 1.0 / geom::len(q)));
+        .collect::<Result<_, CutError>>()?;
+    // the feed sides for a keep box and a rotation (None: 0° or 45°, whichever puts the exit directions closer to the
+    // axes): a trace leaves the box by one face (a pair by the same face), or ends inside it at a pad of its net
+    // `strict`: a trace must leave the box clear of its corners, the two of a pair by the same face (else: the corner
+    // as it is, the pair by the first trace's face)
+    let attempt = |keep: f64, rot: Option<f64>, strict: bool| -> Result<(f64, Vec<Side>), CutError> {
+        // exit directions: from the origin to the first point at least `keep` away, summed over the vias of a pair
+        let dirs: Vec<P> = all_chains
+            .iter()
+            .map(|chains| {
+                let mut dir = [0.0, 0.0];
+                for ch in chains {
+                    if let Some(q) = ch.0.iter().map(|s| tc0(s.1)).find(|&q| geom::len(q) >= keep) {
+                        dir = geom::add(dir, geom::scale(q, 1.0 / geom::len(q)));
+                    }
+                }
+                dir
+            })
+            .collect();
+        let dev = |d: P, rho: f64| -> f64 {
+            let th = d[1].atan2(d[0]).to_degrees() + rho;
+            ((th % 90.0 + 90.0 + 45.0) % 90.0 - 45.0).abs()
+        };
+        let rho = rot.unwrap_or_else(|| {
+            let worst = |r: f64| dirs.iter().filter(|d| geom::len(**d) > 0.0).map(|&d| dev(d, r)).fold(0.0, f64::max);
+            if worst(45.0) + 1.0 < worst(0.0) {
+                45.0
+            } else {
+                0.0
             }
-            Ok(dir)
-        })
-        .collect::<Result<_, String>>()?;
-    // rotation: 0° or 45°, whichever brings the exit directions closer to the axes
-    let dev = |d: P, rho: f64| -> f64 {
-        let th = d[1].atan2(d[0]).to_degrees() + rho;
-        ((th % 90.0 + 90.0 + 45.0) % 90.0 - 45.0).abs()
-    };
-    let rho = o.rotate.unwrap_or_else(|| {
-        let worst = |r: f64| dirs.iter().map(|&d| dev(d, r)).fold(0.0, f64::max);
-        if worst(45.0) + 1.0 < worst(0.0) {
-            45.0
-        } else {
-            0.0
+        });
+        let (sr, cr) = rho.to_radians().sin_cos();
+        let tc = |q: P| -> P {
+            let a = tc0(q);
+            [r6(a[0] * cr - a[1] * sr), r6(a[0] * sr + a[1] * cr)]
+        };
+        let inside = |q: P| q[0].abs().max(q[1].abs()) <= keep + 1e-9;
+        // the routed segments up to where the trace leaves the box (by any face, or by the given one), the exit
+        // (axis, sign, width, lateral position, the cut in board coordinates) and whether it is at a corner
+        type Exit = (usize, f64, f64, f64, P);
+        let walk = |ch: &[(P, P, f64)], face: Option<(usize, f64)>| -> (Vec<(P, P)>, Option<Exit>, bool) {
+            let mut segs = Vec::new();
+            for &(a, c, w) in ch {
+                let (pa, pc) = (tc(a), tc(c));
+                let (axis, sign, corner) = match face {
+                    Some((ax, sg)) if sg * pc[ax] >= keep && sg * pa[ax] < keep => (ax, sg, false),
+                    None if pa[0].abs().max(pa[1].abs()) < keep && pc[0].abs().max(pc[1].abs()) >= keep => {
+                        let q = clip_seg(pa, pc, [-keep, -keep, keep, keep]).map(|x| x.1).unwrap_or(pa);
+                        let on = |k: usize| (q[k].abs() - keep).abs() < 1e-6;
+                        let axis = if on(0) { 0 } else { 1 };
+                        (axis, q[axis].signum(), on(0) && on(1) || q[1 - axis].abs() > keep - 0.1)
+                    }
+                    _ => {
+                        segs.push((pa, pc));
+                        continue;
+                    }
+                };
+                let (sa, sc) = (sign * pa[axis], sign * pc[axis]);
+                let t = (keep - sa) / (sc - sa);
+                let q = geom::lerp(pa, pc, t);
+                segs.push((pa, q));
+                return (segs, Some((axis, sign, w, q[1 - axis], geom::lerp(a, c, t))), corner);
+            }
+            (segs, None, false)
+        };
+        let mut sides: Vec<Side> = Vec::new();
+        for (si, &l) in [l_in, l_out].iter().enumerate() {
+            let zl = z[l as usize];
+            let near_ref = |refs: Vec<u16>| {
+                refs.into_iter().min_by(|x, y| (z[*x as usize] - zl).abs().total_cmp(&(z[*y as usize] - zl).abs()))
+            };
+            // per via: the exit (axis, sign, kept segments, width, lateral position, the cut in board coordinates)
+            // or the pad it ends at
+            let mut exits = Vec::new();
+            let mut pads = Vec::new();
+            for (vi, (ch, forks)) in all_chains[si].iter().enumerate() {
+                let (segs, done, corner) = walk(ch, None);
+                if corner && strict {
+                    return Err(cut(
+                        "exit",
+                        format!("the trace on {} leaves the cut-out at a corner or along its edge", lname(l)),
+                        "--keep, --rotate",
+                    ));
+                }
+                if forks.iter().any(|&f| inside(tc(f))) && done.is_none() {
+                    return Err(cut(
+                        "branch",
+                        format!("the trace on {} branches inside the cut-out", lname(l)),
+                        "--keep",
+                    ));
+                }
+                match done {
+                    Some(d) => exits.push((vi, segs, d)),
+                    None => {
+                        let (n, end) = (sig[vi].1, ch.last().unwrap().1);
+                        let pd = b.pads.iter().find(|pd| {
+                            pd.net == n
+                                && pd.layers.contains(&l)
+                                && (inside_ring(&pad_polygon(pd), end) || geom::len(geom::sub(pd.at, end)) < 0.02)
+                        });
+                        let Some(pd) = pd else {
+                            let other = b.vias.iter().any(|w| {
+                                w.net == n
+                                    && !std::ptr::eq(w, sig[vi].0)
+                                    && geom::len(geom::sub(w.at, end)) < w.size / 2.0
+                            });
+                            return Err(if other {
+                                cut(
+                                    "via_in_box",
+                                    format!(
+                                        "the trace on {} ends at another via of the net inside the cut-out",
+                                        lname(l)
+                                    ),
+                                    "--keep",
+                                )
+                            } else {
+                                cut(
+                                    "short_trace",
+                                    format!(
+                                        "the trace on {} ends inside the cut-out ({keep} mm around the via) at no pad",
+                                        lname(l)
+                                    ),
+                                    "--keep",
+                                )
+                            });
+                        };
+                        if pd.drill > 0.0 {
+                            return Err(cut(
+                                "tht_pad",
+                                format!("the trace on {} ends at a through-hole pad inside the cut-out", lname(l)),
+                                "",
+                            ));
+                        }
+                        let w = ch.last().unwrap().2;
+                        pads.push((segs, w, pd, end));
+                    }
+                }
+            }
+            if !exits.is_empty() && !pads.is_empty() {
+                return Err(cut(
+                    "pair_mixed",
+                    format!(
+                        "one trace of the pair on {} ends at a pad inside the cut-out, the other leaves it",
+                        lname(l)
+                    ),
+                    "--keep",
+                ));
+            }
+            if !exits.is_empty() {
+                let (axis, sign) = (exits[0].2 .0, exits[0].2 .1);
+                if exits.iter().any(|e| e.2 .0 != axis || e.2 .1 != sign) {
+                    if strict {
+                        return Err(cut(
+                            "exit",
+                            format!("the traces of the pair on {} leave the cut-out by different sides", lname(l)),
+                            "--keep, --rotate",
+                        ));
+                    }
+                    // both by the first trace's face
+                    for e in exits.iter_mut() {
+                        let (segs, d, _) = walk(&all_chains[si][e.0].0, Some((axis, sign)));
+                        let d = d.ok_or_else(|| {
+                            cut(
+                                "exit",
+                                format!("the traces of the pair on {} leave the cut-out by different sides", lname(l)),
+                                "--keep, --rotate",
+                            )
+                        })?;
+                        (e.1, e.2) = (segs, d);
+                    }
+                }
+                // reference planes of the trace piece at the cut (kisi's extraction)
+                let ref_layer = near_ref(piece_refs(b, an, sig[0].1, l, exits[0].2 .4)).ok_or_else(|| {
+                    cut(
+                        "no_ref",
+                        format!("the trace on {} has no reference plane where it leaves the cut-out", lname(l)),
+                        "",
+                    )
+                })?;
+                let kept = exits.into_iter().map(|(_, segs, d)| (segs, d.2, d.3)).collect();
+                sides.push(Side { layer: l, axis, sign, kept, ref_layer, pads: vec![] });
+            } else {
+                // a pad port: the routed trace and the pad, the lumped port from the pad to the nearest plane under or
+                // over it (the trace's reference first, as kisi's extraction gives it)
+                let (segs0, _, pd0, end0) = &pads[0];
+                let (pa, pc) = *segs0.last().unwrap();
+                let d = geom::sub(pc, pa);
+                let axis = if d[0].abs() >= d[1].abs() { 0 } else { 1 };
+                let sign = if d[axis] < 0.0 { -1.0 } else { 1.0 };
+                let mut cand: Vec<u16> = near_ref(piece_refs(b, an, sig[0].1, l, *end0)).into_iter().collect();
+                let mut by_z: Vec<u16> = (0..nl as u16).collect();
+                sort_by_f64(&mut by_z, |&k| (z[k as usize] - zl).abs());
+                cand.extend(by_z);
+                let ref_layer = cand
+                    .into_iter()
+                    .find(|&k| {
+                        k != l_in
+                            && k != l_out
+                            && b.zones.iter().any(|zf| zf.layer == k && !own(zf.net) && inside_ring(&zf.pts, pd0.at))
+                    })
+                    .ok_or_else(|| {
+                        cut(
+                            "no_ref",
+                            format!("there is no plane under the pad {} on {}", pad_name(b, pd0), lname(l)),
+                            "",
+                        )
+                    })?;
+                let mut kept = Vec::new();
+                let mut pp = Vec::new();
+                for (segs, w, pd, _) in pads {
+                    let poly: Vec<P> = pad_polygon(pd).into_iter().map(tc).collect();
+                    let c = tc(pd.at);
+                    let bb = bbox(&poly);
+                    let half = r6(0.4 * (bb[3 - axis] - bb[1 - axis]));
+                    kept.push((segs, w, c[1 - axis]));
+                    pp.push(PadEnd { name: pad_name(b, pd), at: c, poly, half });
+                }
+                sides.push(Side { layer: l, axis, sign, kept, ref_layer, pads: pp });
+            }
         }
-    });
+        if sides.iter().any(|s| s.ref_layer == l_in || s.ref_layer == l_out) {
+            return Err(cut("ref_feed", "the reference plane of one feed is the other feed's layer".into(), ""));
+        }
+        Ok((rho, sides))
+    };
+    // as asked first; then, when that fails, the other keep boxes and rotations
+    let mut tries = vec![(o.keep, o.rotate, true)];
+    if o.rotate.is_none() {
+        for k in [o.keep, 1.0, 1.5] {
+            tries.push((k, Some(0.0), true));
+            tries.push((k, Some(45.0), true));
+        }
+    }
+    tries.push((o.keep, o.rotate, false));
+    let mut first: Option<CutError> = None;
+    let mut got = None;
+    for (k, r, strict) in tries {
+        match attempt(k, r, strict) {
+            Ok(x) => {
+                got = Some((k, x));
+                break;
+            }
+            Err(e) => {
+                first.get_or_insert(e);
+            }
+        }
+    }
+    let (keep, (rho, sides)) = got.ok_or_else(|| first.clone().unwrap())?;
+    if let Some(e) = &first {
+        note(format!("as asked, {}; cut out with a keep box of ±{keep} mm, rotated {rho}°", e.msg));
+    }
+    let o = &Opts { keep, ..o.clone() };
     let (sr, cr) = rho.to_radians().sin_cos();
     let tc = |q: P| -> P {
         let a = tc0(q);
         [r6(a[0] * cr - a[1] * sr), r6(a[0] * sr + a[1] * cr)]
     };
-    let mut sides: Vec<Side> = Vec::new();
-    for (si, &l) in [l_in, l_out].iter().enumerate() {
-        let chains = &all_chains[si];
-        let d0 = dirs[si];
-        let dir = [d0[0] * cr - d0[1] * sr, d0[0] * sr + d0[1] * cr];
-        let axis = if dir[0].abs() >= dir[1].abs() { 0 } else { 1 };
-        let sign = dir[axis].signum();
-        let mut kept = Vec::new();
-        let mut ref_layer = None;
-        for (vi, ch) in chains.iter().enumerate() {
-            let mut segs = Vec::new();
-            let mut done = None;
-            for &(a, c, w) in ch {
-                let (pa, pc) = (tc(a), tc(c));
-                let (sa, sc) = (sign * pa[axis], sign * pc[axis]);
-                if sc >= o.keep && sa < o.keep {
-                    let t = (o.keep - sa) / (sc - sa);
-                    let q = geom::lerp(pa, pc, t);
-                    segs.push((pa, q));
-                    done = Some((w, q[1 - axis], a, c, t));
-                    break;
-                }
-                segs.push((pa, pc));
-            }
-            let (w, u, a, c, t) = done
-                .ok_or_else(|| format!("the trace on {} does not leave the keep box along its exit axis", lname(l)))?;
-            // reference planes of the trace piece at the cut (kisi's extraction)
-            let q = geom::lerp(a, c, t);
-            let refs = piece_refs(b, an, sig[vi].1, l, q);
-            let rl = refs.into_iter().min_by(|x, y| {
-                (z[*x as usize] - z[l as usize]).abs().total_cmp(&(z[*y as usize] - z[l as usize]).abs())
-            });
-            if ref_layer.is_none() {
-                ref_layer = rl;
-            }
-            kept.push((segs, w, u));
-        }
-        let ref_layer = ref_layer
-            .ok_or_else(|| format!("the trace on {} has no reference plane at the keep-box edge", lname(l)))?;
-        sides.push(Side { layer: l, axis, sign, kept, ref_layer });
-    }
-    for s in &sides {
-        if s.ref_layer == l_in || s.ref_layer == l_out {
-            return Err("a feed's reference plane is the other feed layer; not supported".into());
-        }
-    }
 
     // window: keep box and the extensions, a margin around them, 1.5 mm beyond the ports
     let keep_box = [-o.keep, -o.keep, o.keep, o.keep];
     let mut win = keep_box;
-    for s in &sides {
+    for p in sides.iter().flat_map(|s| s.pads.iter()) {
+        let bb = bbox(&p.poly);
+        win = [win[0].min(bb[0]), win[1].min(bb[1]), win[2].max(bb[2]), win[3].max(bb[3])];
+    }
+    for s in sides.iter().filter(|s| s.pads.is_empty()) {
         for &(_, w, u) in &s.kept {
             let (lo, hi) = (u - w / 2.0, u + w / 2.0);
             let la = 1 - s.axis;
@@ -602,13 +868,14 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
         }
     }
     win = [win[0] - o.margin, win[1] - o.margin, win[2] + o.margin, win[3] + o.margin];
-    for s in &sides {
+    for s in sides.iter().filter(|s| s.pads.is_empty()) {
         let k = if s.sign > 0.0 { s.axis + 2 } else { s.axis };
         win[k] = s.sign * (o.feed + 1.5);
     }
     let win = win.map(r6);
     let region = [win[0] - 1.0, win[1] - 1.0, win[2] + 1.0, win[3] + 1.0];
-    let feed_layer = |l: u16| l == l_in || l == l_out;
+    // a layer with an extension: only its keep box from the board (a pad port side keeps the board's copper)
+    let feed_layer = |l: u16| sides.iter().any(|s| s.layer == l && s.pads.is_empty());
     let reg_of = |l: u16| if feed_layer(l) && !o.preview { keep_box } else { region };
     let in_win = |q: P| q[0] >= win[0] && q[0] <= win[2] && q[1] >= win[1] && q[1] <= win[3];
 
@@ -647,6 +914,9 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
     let cpws: Vec<[Option<(f64, String)>; 2]> = sides
         .iter()
         .map(|s| {
+            if !s.pads.is_empty() {
+                return [None, None];
+            }
             let h = (z[s.layer as usize] - z[s.ref_layer as usize]).abs();
             let gmax = (3.0 * h).clamp(0.1, 0.6);
             let lo = s.kept.iter().map(|k| k.2 - k.1 / 2.0).fold(f64::INFINITY, f64::min);
@@ -752,6 +1022,32 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
                     sheets.push(sheet(zl, bb, Some(&cap), "SIG"));
                 }
             }
+            let num = si * sig.len() + vi + 1;
+            let pn = if pair {
+                format!("{num} {} {}", if vi == 0 { "P" } else { "N" }, if si == 0 { "in" } else { "out" })
+            } else {
+                format!("{num} {}", if si == 0 { "in" } else { "out" })
+            };
+            if let Some(pd) = s.pads.get(vi) {
+                // the pad and a lumped port across it, from the pad down (or up) to the reference plane
+                let bb = bbox(&pd.poly);
+                sheets.push(sheet(zl, bb, Some(&pd.poly), "SIG"));
+                refine.push([
+                    r6(bb[0] - o.dfine),
+                    r6(bb[1] - o.dfine),
+                    r6(bb[2] + o.dfine),
+                    r6(bb[3] + o.dfine),
+                    o.dfine,
+                ]);
+                let (c, h) = (pd.at, pd.half);
+                ports.push(if s.axis == 0 {
+                    json!({"x": c[0], "y0": r6(c[1] - h), "y1": r6(c[1] + h), "z0": zr, "z1": zl, "r": 50.0})
+                } else {
+                    json!({"x": r6(c[0] - h), "x1": r6(c[0] + h), "y0": c[1], "y1": c[1], "z0": zr, "z1": zl, "r": 50.0})
+                });
+                port_meta.push(json!({"name": format!("{pn} (pad {})", pd.name), "layer": lname(s.layer), "ref": lname(s.ref_layer), "pad": pd.name, "z_ref_ohm": 50.0}));
+                continue;
+            }
             // extension from the keep-box edge to the port
             let (s0, s1) = (s.sign * o.keep, s.sign * o.feed);
             let (lo, hi) = (s0.min(s1), s0.max(s1));
@@ -761,12 +1057,6 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
                 json!({"x": r6(s1), "y0": r6(u - w / 2.0), "y1": r6(u + w / 2.0), "z0": zr, "z1": zl, "r": 50.0})
             } else {
                 json!({"x": r6(u - w / 2.0), "x1": r6(u + w / 2.0), "y0": r6(s1), "y1": r6(s1), "z0": zr, "z1": zl, "r": 50.0})
-            };
-            let num = si * sig.len() + vi + 1;
-            let pn = if pair {
-                format!("{num} {} {}", if vi == 0 { "P" } else { "N" }, if si == 0 { "in" } else { "out" })
-            } else {
-                format!("{num} {}", if si == 0 { "in" } else { "out" })
             };
             ports.push(port);
             port_meta.push(json!({"name": pn, "layer": lname(s.layer), "ref": lname(s.ref_layer)}));
@@ -780,7 +1070,11 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
         .iter()
         .map(|s| {
             let (_, _, u) = s.kept[0];
-            let q = if s.axis == 0 { [s.sign * o.feed, u] } else { [u, s.sign * o.feed] };
+            let q = match s.pads.first() {
+                Some(p) => p.at,
+                None if s.axis == 0 => [s.sign * o.feed, u],
+                None => [u, s.sign * o.feed],
+            };
             let pl: Vec<(u16, String)> = (0..nl as u16)
                 .filter(|&l| l != s.layer)
                 .filter_map(|l| fill_net_at_any(&sheets, z[l as usize], q).map(|n| (l, n)))
@@ -805,6 +1099,9 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
     let mut corridors: Vec<(usize, f64, [f64; 2])> = Vec::new(); // axis, sign, lateral range
     let mut cpw_meta: Vec<Value> = Vec::new();
     for (si, s) in sides.iter().enumerate() {
+        if !s.pads.is_empty() {
+            continue;
+        }
         let la = 1 - s.axis;
         let lo = s.kept.iter().map(|k| k.2 - k.1 / 2.0).fold(f64::INFINITY, f64::min);
         let hi = s.kept.iter().map(|k| k.2 + k.1 / 2.0).fold(f64::NEG_INFINITY, f64::max);
@@ -1058,7 +1355,7 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
         }
     }
     planes_meta.dedup();
-    let approx = vec![
+    let mut approx: Vec<String> = [
         "copper has zero thickness; layer heights are kisi's (dielectric plus half the copper on each side)",
         "fills, pads and tracks outside the window are left out; copper that reaches the window edge continues through the PML",
         "on the feed layers only the keep box is taken from the board: outside it the own trace(s) run straight along the nearest axis to the port, without pour or other copper",
@@ -1066,7 +1363,20 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
         "other vias and traces of the own net (and of the partner net) are left out",
         "solder mask, plating thickness and the barrel's hole wall are not modelled; the barrel is a solid cylinder of the drill radius",
         "dielectric loss: a conductivity fixed at fmax/2 (tanδ exact there); lossless copper",
-    ];
+    ]
+    .map(String::from)
+    .to_vec();
+    for (si, s) in sides.iter().enumerate() {
+        for p in &s.pads {
+            approx.push(format!(
+                "the {} side ends at the pad {} on {}: its port is a lumped 50 Ω port from the pad to {} (the device side, no feed line, not de-embedded, no 2×thru)",
+                if si == 0 { "in" } else { "out" },
+                p.name,
+                lname(s.layer),
+                lname(s.ref_layer)
+            ));
+        }
+    }
     let title = format!(
         "{} via {}→{} at ({:.3}, {:.3}){}",
         b.net_name(net),
@@ -1078,6 +1388,8 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
     );
     let su_title = format!("{} from the board file{}", stem, if o.with_config { " and its kisi.json" } else { "" });
     let thru_names = [format!("thru_{name}_in"), format!("thru_{name}_out")];
+    let thru_meta: Vec<Value> =
+        thru_names.iter().zip(&sides).map(|(t, s)| if s.pads.is_empty() { json!(t) } else { Value::Null }).collect();
     let mut case = json!({
         "name": name, "domain": domain, "board": [win[0], win[1], win[2], win[3]], "layers": layers,
         "sheets": sheets, "vias": vias_out, "ports": ports, "monitors": mons,
@@ -1098,7 +1410,7 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
         "extensions": ext_meta,
         "coplanar": cpw_meta,
         "kisi_returns": rets.iter().map(|r| [r6(r.1[0]), r6(r.1[1])]).collect::<Vec<_>>(),
-        "thru": thru_names,
+        "thru": thru_meta,
         "approximations": approx,
     });
     if pair {
@@ -1118,17 +1430,21 @@ pub fn export(b: &Board, an: &Analysis, o: &Opts) -> Result<Output, String> {
     Ok(Output { name, case, notes: NOTES.with(|n| std::mem::take(&mut *n.borrow_mut())), fix })
 }
 
-/// Reference layers (kisi's extraction) of the track piece of `net` on `layer` nearest to `q`.
+/// Reference layers (kisi's extraction) of the track piece of `net` on `layer` nearest to `q` (the distance to the
+/// piece, not to its middle) among the pieces whose cross-section has a reference.
 fn piece_refs(b: &Board, an: &Analysis, net: u32, layer: u16, q: P) -> Vec<u16> {
     let mut best: Option<(f64, usize)> = None;
     for k in 0..an.pieces.len() / 4 {
         let t = &b.tracks[an.pieces[4 * k] as usize];
-        if t.layer != layer || t.net != net {
+        let x = &an.cross_sections[an.pieces[4 * k + 3] as usize];
+        if t.layer != layer || t.net != net || (x.ref_up.is_none() && x.ref_dn.is_none()) {
             continue;
         }
         let (t0, t1) = (an.pieces[4 * k + 1], an.pieces[4 * k + 2]);
-        let m = geom::lerp(t.a, t.b, 0.5 * (t0 + t1));
-        let d = geom::len(geom::sub(m, q));
+        let (a, c) = (geom::lerp(t.a, t.b, t0), geom::lerp(t.a, t.b, t1));
+        let e = geom::sub(c, a);
+        let s = (geom::dot(geom::sub(q, a), e) / geom::dot(e, e).max(1e-18)).clamp(0.0, 1.0);
+        let d = geom::len(geom::sub(geom::lerp(a, c, s), q));
         if best.is_none_or(|x| d < x.0) {
             best = Some((d, k));
         }

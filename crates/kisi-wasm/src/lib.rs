@@ -1285,7 +1285,8 @@ pub extern "C" fn kisi_via_case(p: *const u8, n: usize) -> i32 {
             margin: f("margin", d.margin),
             ..d
         };
-        let r = kisi_core::viacase::export(b, an, &o)?;
+        // the reason in plain words (the CLI's option hints are not for the viewer)
+        let r = kisi_core::viacase::export(b, an, &o).map_err(|e| e.msg)?;
         Ok(serde_json::json!({ "name": r.name, "case": r.case, "notes": r.notes }).to_string())
     });
     reply(r)

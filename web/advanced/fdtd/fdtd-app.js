@@ -331,7 +331,9 @@
     kb.title = "The via kisi.html handed over";
     if (m.theme && window.forkTheme) window.forkTheme.set(m.theme);
     renderChips((m.freqs || []).map((f) => ({ ghz: f.ghz, label: `${+f.ghz.toFixed(3)} GHz`, title: f.label || "" })));
-    const mesh = m.mesh || (c.meta.kind === "pair" ? (DEF.board_mesh || {}).pair : (DEF.board_mesh || {}).single) || "standard";
+    const dflt = (c.meta.kind === "pair" ? (DEF.board_mesh || {}).pair : (DEF.board_mesh || {}).single) || "standard";
+    const mesh = m.mesh || KVF.boardMesh(c, dflt);
+    if (mesh !== dflt) $("k3-board-from").textContent += ` Mesh ${mesh}: the narrowest signal trace is ${KVF.minTrace(c)} mm (a cell of at most half of it).`;
     $("k3-mesh").value = mesh;
     setKind("board");
     setMode("3d");

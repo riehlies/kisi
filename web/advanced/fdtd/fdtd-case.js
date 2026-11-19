@@ -157,6 +157,22 @@
     m.title = m.title || c.name;
     return c;
   };
+  // the narrowest signal trace of a board case (mm): the exporter's round-ended traces (18-point outlines, the width
+  // between points 0 and 8) and the feeds. A mesh coarser than half of it can break a diagonal trace into cells that
+  // do not touch (measured: a 0.127 mm BGA fan-out on the 0.07 mm mesh reflected everything, on 0.05 mm it is right)
+  KVF.minTrace = function (c) {
+    let w = Infinity;
+    for (const s of c.sheets) if (s.net === "SIG" && s.polys && s.polys[0].length === 18) w = Math.min(w, Math.hypot(s.polys[0][0][0] - s.polys[0][8][0], s.polys[0][0][1] - s.polys[0][8][1]));
+    for (const e of (c.meta && c.meta.extensions) || []) w = Math.min(w, e.w);
+    return isFinite(w) ? Math.round(w * 1e4) / 1e4 : null;
+  };
+  // the mesh for a board case: the default of its kind, finer while its cell is more than half the narrowest trace
+  KVF.boardMesh = function (c, dflt) {
+    const w = KVF.minTrace(c), order = ["coarse", "standard", "fine"];
+    let i = Math.max(0, order.indexOf(dflt));
+    while (w != null && i < order.length - 1 && KVF.MESH[order[i]] > w / 2 + 1e-9) i++;
+    return order[i];
+  };
   // feeds along y (a port with x1: the port's width along x, at y0 = y1)
   KVF.alongY = (p) => p.x1 != null;
 

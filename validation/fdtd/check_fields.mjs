@@ -4,7 +4,7 @@
 //   node validation/fdtd/check_fields.mjs <kisi-fdtd> <work dir> [--json out.json] [--board case.json …]
 // Cases: the page's default single via (10/20/30 GHz, ports 1 and 2 excited), the default differential pair (20 GHz,
 // ports 1 and 2 excited) and board vias cut out by kisi's exporter (default: validation/fdtd/board_cases/
-// BV_ts_refinout2.json on the page's coarse mesh at 10 GHz, port 1). Runs are cached in the work dir by the case and
+// BV_ts_refinout2.json and BV_vna_clkin_pad.json – its out side a pad port – on the page's mesh at 10 GHz, port 1). Runs are cached in the work dir by the case and
 // the solver binary. Exit code 1 if a check fails. Tolerances and what limits them: next to each check;
 // validation/vias.md "3D field view".
 import vm from "node:vm";
@@ -196,13 +196,17 @@ for (const mb of [10, 7]) {
 }
 // ---------------------------------------------------------------------------------------------------------------
 // board vias (kisi's exporter, kisi_core::viacase): port voltages against S, the closed balance and the conductor
-// estimate's split (signal copper, return copper) on the page's coarse mesh at 10 GHz, port 1 excited
+// estimate's split (signal copper, return copper) on the page's mesh for a single via (coarse, finer for narrow traces,
+// KVF.boardMesh) at 10 GHz, port 1 excited
 const boards = args.flatMap((a, i) => (a === "--board" ? [args[i + 1]] : []));
-if (!boards.length) boards.push(path.join(dir, "board_cases", "BV_ts_refinout2.json"));
+// the second: a via whose trace ends at a capacitor pad inside the keep box (a pad port, kisi_core::viacase)
+if (!boards.length) boards.push(...["BV_ts_refinout2.json", "BV_vna_clkin_pad.json"].map((f) => path.join(dir, "board_cases", f)));
 for (const bp of boards) {
   const name = path.basename(bp, ".json");
-  console.log(`board via ${name} (coarse mesh, 10 GHz, port 1)`);
-  const bv = runCase({ mesh: "coarse" }, [10e9], [0], JSON.parse(fs.readFileSync(bp, "utf8")));
+  // the page's mesh for it: coarse, or finer for narrow traces (KVF.boardMesh)
+  const given = KVF.prepareCase(JSON.parse(fs.readFileSync(bp, "utf8"))), mesh = KVF.boardMesh(given, "coarse");
+  console.log(`board via ${name} (${mesh} mesh, 10 GHz, port 1)`);
+  const bv = runCase({ mesh }, [10e9], [0], given);
   const w = [[0, 1]], F = KVF.fieldsOf(bv, 0, w), s = KVF.summary(bv, 0, w, SIGMA_CU), b = s.b;
   const far = bv.case.meta.ports.findIndex((q) => q.side > 0);
   const v1 = KVF.portVoltage(bv, F, 0), v2 = KVF.portVoltage(bv, F, far);

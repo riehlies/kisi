@@ -15,7 +15,8 @@
 #   cli                 Node CLI against the native CLI on the example boards (compare_cli.py)
 #   solver              2D field solver against HFSS / baseline (validate_field.sh)
 #   models              stored results of the example boards and kisi's models on the 3D via references
-#                       (tools/golden.py; an intended change updates validation/golden in the same commit) ·
+#                       (tools/golden.py; an intended change updates validation/golden in the same commit), the
+#                       board vias the 3D view's exporter can cut out (golden.py viacase) ·
 #                       passivity and causality of the example boards' lanes (crates/kisi-core/tests/causality.rs)
 #   export              the channel export (kisi export) in ngspice against kisi's S-parameters, scikit-rf reads
 #                       the Touchstone files (validation/channel_export/compare.py; the KiCad project check with
@@ -203,12 +204,13 @@ jobs:
       - name: Passivity and causality of the example boards' lanes
         if: env.MODELS == 'true'
         run: cargo test --release -p kisi-core --test causality -- --nocapture
-      - name: Stored results (example boards, 3D via references)
+      - name: Stored results (example boards, 3D via references, the board vias the 3D view can cut out)
         if: env.MODELS == 'true'
         run: |
           python3 -c "import numpy" 2>/dev/null || python3 -m pip install --quiet numpy
           python3 tools/golden.py boards target/release/kisi examples
           python3 tools/golden.py vias target/release/kisi
+          python3 tools/golden.py viacase target/release/kisi-validate examples
       # the install in its own step (package downloads varied a lot between runs); the KiCad project check
       # (compare.py --kicad, kicad-cli and ERC) runs locally only – the KiCad PPA download stalled too often in CI
       - name: Package cache (ngspice)

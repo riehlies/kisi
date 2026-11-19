@@ -362,11 +362,27 @@ own it starts with the 2D page and offers the built-in 3D examples.
 **What goes along with a via**: the via cut out of the board as analysed (assembly variant, kisi.json, active stackup)
 by kisi's exporter – the one of the 3D references, `kisi-validate via-case` ([validation/vias.md](../validation/vias.md)):
 the real zone fills, pads, tracks and vias around it, kisi's layer heights, a pair's partner via; a keep box of
-±1.2 mm in which the feeds are taken as routed, then straight 2.5 mm feeds to lumped 50 Ω ports, a 1.5 mm margin. The
+±1.2 mm in which the feeds are taken as routed, then straight 2.5 mm feeds to lumped 50 Ω ports, a 1.5 mm margin.
+- A trace leaves the keep box where it crosses its edge; a pair's two traces by the same edge. When a trace leaves at
+  a corner or along an edge, or the two by different edges, the exporter tries a keep box of ±1.0 and ±1.5 mm and
+  the rotations 0° and 45°, then takes the corner as it is; the page's notes say what it used.
+- **Pad ports**: a trace that ends inside the keep box at a pad of its net (a BGA fan-out, a via next to a capacitor)
+  ends there in the case – the routed trace and the pad as on the board, and on that side a lumped 50 Ω port from the
+  pad to the nearest plane under or over it (the trace's reference plane first). That port is the device side: no
+  feed line, nothing de-embedded, no 2×thru fixture; its name carries the pad ("3 P out (pad U18.D11)"), the page's
+  list of approximations says so. The other copper of a pad-port layer stays as on the board in the whole window.
+- When a via cannot be cut out the viewer says why in one line: its trace ends inside the keep box at no pad, at a
+  through-hole pad or at another via of the net, branches there, has no plane where it leaves the box (or under the
+  pad), or the via joins tracks on more than two layers and is on no channel that tells which two.
+
+`tools/golden.py viacase` counts what it can cut out on the example boards (`validation/golden/viacase.json`): 266 of
+272 signal vias on ThunderScope, 381 of 397 on LibreVNA (before the pad ports and the edge rules 83 and 162). The
 page lists what the cut-out approximates (zero-thickness copper, no solder mask, the window's edge, …). The frequency
 is chosen as for a segment and offered beside the page's presets (5, 10, 20, 30 GHz; any other can be typed in; several
 per run). The page runs it at once with the mesh chosen for it – *coarse* (0.07 mm at metal) for a single via,
-*standard* (0.05 mm) for a pair; *fine* (0.035 mm) is the 3D references' mesh – and shows the cells, the memory and
+*standard* (0.05 mm) for a pair, the next finer one while the cell is more than half the narrowest signal trace (a
+0.127 mm BGA fan-out gets *standard*: on *coarse* its diagonal trace fell apart into cells that do not touch and the
+via reflected everything); *fine* (0.035 mm) is the 3D references' mesh – and shows the cells, the memory and
 the time it expects before a run. A run can be cancelled. Phones and tablets are warned (they may stop a page that
 needs much memory); no limit is enforced.
 

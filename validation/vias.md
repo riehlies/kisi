@@ -204,14 +204,18 @@ capacitor variant are warned, the bridged and GND/GND cases not.
 The 3D view of `kisi-advanced.html` ([docs/reference.md, "Field views"](../docs/reference.md#field-views)) runs the
 same solver with volume field output (`kisi_fdtd::simulate_volume`: a DFT of E and H at chosen frequencies on the
 domain's nodes) on a board via cut out by the same exporter (`kisi_core::viacase`, shorter feeds) or on a built-in
-example. What the page derives from the fields is checked against native runs by `fdtd/check_fields.mjs` (73 checks;
+example. What the page derives from the fields is checked against native runs by `fdtd/check_fields.mjs` (79 checks;
 the page's case builder and field code, `web/advanced/fdtd/`): the port voltages from Ez against 1 + S11 and S21
 (within 0.2 %, also for ports along y), ∫S·dA through planes between the ports against the S-parameter powers (3 %,
 the lumped port's near field at 30 GHz 5 %), the closed balance incident − reflected − transmitted = dielectric loss +
 radiation into the PML (0.8 % of the incident power on the examples, 1.5 % on the even mode of a pair and on the board
-via `board_cases/BV_ts_refinout2.json` at the page's coarse mesh), half boxes with conformal cuts, the animation's
+via `board_cases/BV_ts_refinout2.json` at the page's coarse mesh, 1.1 % on `BV_vna_clkin_pad.json`, a via whose
+trace ends at a capacitor pad inside the keep box – a pad port, no 2×thru), half boxes with conformal cuts, the animation's
 period mean against ½Re(E×H\*), odd + even = port 1 + port 2 for every quadratic total, the conductor-loss estimate
 against closed-form image-current and barrel formulas (30 / 50 %, an estimate), the `.kvf` storage (0.07 % at 7 bits).
+A BGA fan-out (ThunderScope /ADC/D2A_P/N, In3.Cu → F.Cu ending at the FPGA's pads, 0.127 mm traces) closes within
+0.5 % on the standard mesh; on the coarse one its diagonal trace fell apart and the via reflected everything, so the
+page takes a mesh no coarser than half the narrowest signal trace (`KVF.boardMesh`).
 
 ## Reproduce and extend
 

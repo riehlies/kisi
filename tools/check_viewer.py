@@ -35,12 +35,6 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   transform (drawBoardLabels), none in board units
 * a KiCad 5 board file is refused with kisi's message: on the start screen of a build without example boards (the
   given one, or kisi.html next to it) and, with a board loaded, in the warnings with the board kept (light run)
-* the Export menu (light, dark, phone; on every example board): enabled with a board, the table entry disabled with
-  its reason in a view without a table; the CSV (BOM, file name) of the impedance view – the Nets card's rows – and
-  of the power tree's components table – the values shown, one unit per column – against the page; Data (kisi.json)
-  with progress, parsed, the top-level keys of `kisi report`; Report (print / PDF): the page in a new window with its
-  sections and no script, and as a download when the window is blocked (light: every board; dark: the first;
-  --quick: the last board in the light run)
 * exit code 1 on page errors or console errors (failed loads of external resources
   such as web fonts are only reported); screenshots go to --out (default: a temp dir)
 """
@@ -1045,125 +1039,6 @@ THERM_KEY = """(() => ({ t_max: S.therm.t_max_c, parts: S.therm.parts.map((p) =>
   rails_ok: S.therm.rails.filter((r) => !r.error).length, rails: S.therm.rails.length, warnings: S.therm.warnings }))()"""
 
 
-REPORT_KEYS = {"tool", "version", "board_file", "options", "variant", "config", "impedance", "overview", "interfaces", "channels",
-               "power", "thermal", "stackup_used", "gaps"}
-REPORT_SECTIONS = ["At a glance", "The five worst items", "Impedance per net class", "Channel: worst lane per interface",
-                   "Failing lanes", "Power: largest DC drop per rail", "Assumptions and gaps", "Left out on purpose"]
-
-
-def export_csv(pg):
-    """Export → Table (CSV) as the browser downloads it: (file name, [section: (title, header, rows)])."""
-    import csv, io
-    pg.click("#xp-btn")
-    with pg.expect_download(timeout=30000) as dl:
-        pg.click("#xp-csv")
-    raw = open(dl.value.path(), "rb").read()
-    text = raw.decode("utf-8")
-    secs = []
-    for block in text.lstrip("﻿").split("\r\n\r\n"):
-        rows = list(csv.reader(io.StringIO(block.strip("\r\n"))))
-        if rows:
-            secs.append((rows[0][0], rows[1], rows[2:]))
-    return dl.value.suggested_filename, raw.startswith(b"\xef\xbb\xbf"), secs
-
-
-def export_menu(pg, tag, step, json_boards):
-    """The Export menu: its states (enabled with a board, the table entry disabled with its reason where a view has
-    no table), the CSV of the impedance view (the Nets card's rows) and of the power tree's components table (the
-    values shown, in one unit per column) against the page, the file name; Data (kisi.json): the report as JSON
-    with the top-level keys of `kisi report` (on the boards in json_boards)."""
-    import datetime
-    board = pg.evaluate("S.name")
-    if pg.is_disabled("#xp-btn"):
-        problems.append(f"{tag}: Export disabled with a board loaded")
-        return
-    pg.click("#view-si"); pg.wait_for_timeout(200)
-    pg.click("#xp-btn"); pg.wait_for_timeout(200)
-    if pg.is_hidden("#xp-menu"):
-        problems.append(f"{tag}: the Export menu does not open")
-    step(f"export_menu_{board}")
-    pg.keyboard.press("Escape"); pg.wait_for_timeout(100)
-    if not pg.is_hidden("#xp-menu"):
-        problems.append(f"{tag}: Escape does not close the Export menu")
-    if tag == "phone":
-        pass
-    elif pg.evaluate("S.an.nets.some((n) => n.target)"):
-        name, bom, secs = export_csv(pg)
-        if name != f"{re.sub(r'[^\w.-]+', '_', board)}_impedance_{datetime.date.today().isoformat()}.csv" or not bom:
-            problems.append(f"{tag}: impedance CSV named {name}, BOM {bom}")
-        shown = pg.evaluate("[...document.querySelectorAll('#nets .net')].map((b) => [b.title, b.querySelector('.zz').textContent.split(' ')[0]])")
-        head, rows = secs[0][1], secs[0][2]
-        got = [[r[0], r[head.index("Z mean (Ω)")]] for r in rows]
-        if got != shown:
-            problems.append(f"{tag}: impedance CSV is not the Nets card: {got[:2]} vs {shown[:2]} ({len(got)}/{len(shown)} rows)")
-    # the power tree's components table: every row, consumption in one unit
-    pg.click("#view-pi"); pg.click("#pim-b"); pg.wait_for_timeout(400)
-    if tag != "phone" and pg.locator(".bal-comp tbody tr").count():
-        pg.evaluate("{ const b = document.querySelector('.bal-comp [data-cm=p]'); if (b) b.click(); }"); pg.wait_for_timeout(200)
-        name, _, secs = export_csv(pg)
-        shown = pg.evaluate("[...document.querySelectorAll('.bal-comp tbody tr')].map((tr) => [tr.cells[0].innerText.trim(), parseSI(tr.cells[2].innerText.replace(/\\s+/g, ''), 'W')])")
-        head, rows = secs[0][1], secs[0][2]
-        col = next((i for i, h in enumerate(head) if h.startswith("consumption (")), None)
-        if col is None or not name.endswith(f"_power-tree_{datetime.date.today().isoformat()}.csv"):
-            problems.append(f"{tag}: power tree CSV {name}: header {head}")
-        else:
-            f = {"W": 1, "mW": 1e-3, "µW": 1e-6, "kW": 1e3}[head[col][len("consumption ("):-1]]
-            got = [[r[0], float(r[col]) * f if r[col] else None] for r in rows]
-            ok = len(got) == len(shown) and all(g[0] == s[0] and ((g[1] is None and s[1] != s[1]) or (g[1] is not None and abs(g[1] - s[1]) <= 1e-9 + 1e-6 * abs(s[1]))) for g, s in zip(got, shown))
-            if not ok:
-                problems.append(f"{tag}: power tree CSV is not the components table: {got[:3]} vs {shown[:3]}")
-    # a view without a table: the entry is disabled and says why
-    pg.click("#view-ch"); pg.wait_for_timeout(300)
-    pg.click("#chm-m"); pg.wait_for_timeout(300)
-    pg.click("#xp-btn"); pg.wait_for_timeout(100)
-    if not pg.evaluate("!!S.check") and not (pg.is_disabled("#xp-csv") and "channel check" in (pg.get_attribute("#xp-csv", "title") or "")):
-        problems.append(f"{tag}: Table (CSV) not disabled with its reason in the channel map before the check")
-    pg.keyboard.press("Escape")
-    pg.click("#chm-o"); pg.wait_for_timeout(200)
-    pg.click("#view-si"); pg.wait_for_timeout(200)
-    if board in json_boards:
-        t0 = time.time()
-        pg.click("#xp-btn")
-        with pg.expect_download(timeout=900000) as dl:
-            pg.click("#xp-json")
-            pg.wait_for_timeout(1000)
-            if "kisi report" not in pg.inner_text("#xp-status"):
-                problems.append(f"{tag}: no progress shown while the report runs")
-            step(f"export_progress_{board}")
-        try:
-            rep = json.load(open(dl.value.path(), encoding="utf-8"))
-        except Exception as e:
-            problems.append(f"{tag}: Data (kisi.json) of {board} does not parse: {e}")
-            return
-        if not REPORT_KEYS <= set(rep):
-            problems.append(f"{tag}: Data (kisi.json) of {board}: keys {sorted(rep)}")
-        notes.append(f"{tag}: Data (kisi.json) of {board}: {time.time() - t0:.0f} s, {len(rep['channels'].get('rows', []))} channel rows")
-        # Report (print / PDF): the same report (kept) as a page in a new window; with the window blocked, a download
-        pg.click("#xp-btn")
-        with pg.context.expect_page(timeout=120000) as pi:
-            pg.click("#xp-html")
-        win = pi.value
-        try:
-            win.wait_for_function("document.querySelector('h1') && document.querySelector('h1').textContent.startsWith('kisi report')", timeout=120000)
-            html = win.content()
-            miss = [x for x in REPORT_SECTIONS if x not in html]
-            if miss or "<script" in html or rep["overview"]["board"] not in html:
-                problems.append(f"{tag}: Report of {board}: sections missing {miss} or a script in it")
-            win.screenshot(path=f"{out}/{tag}_report_{board}.png", full_page=True)
-        except Exception as e:
-            problems.append(f"{tag}: Report of {board} not shown in the new window: {e}")
-        win.close()
-        pg.evaluate("window.__open = window.open; window.open = () => null")
-        pg.click("#xp-btn")
-        with pg.expect_download(timeout=120000) as dl:
-            pg.click("#xp-html")
-        pg.evaluate("window.open = window.__open")
-        if not (dl.value.suggested_filename.endswith(".html") and "Left out on purpose" in open(dl.value.path(), encoding="utf-8").read()
-                and "downloaded" in pg.inner_text("#xp-status")):
-            problems.append(f"{tag}: Report with the window blocked: {dl.value.suggested_filename}, status {pg.inner_text('#xp-status')!r}")
-        pg.evaluate("xpStatus('')")
-
-
 def run(pg, tag, desktop):
     errs = []
     therm_first = None  # the first temperature of the first board: computed again after switching boards and back
@@ -1462,19 +1337,6 @@ def run(pg, tag, desktop):
                 problems.append(f"{tag}: temperature after switching boards and back differs: {therm_first['t_max']} → {again['t_max']} °C, rails at temperature {therm_first['rails_ok']} → {again['rails_ok']}, warnings {again['warnings'][:2]}")
             else:
                 notes.append(f"{tag}: temperature after switching boards and back: identical ({again['t_max']:.2f} °C, {again['rails_ok']} rails at temperature)")
-    # the Export menu on every example board of the build (back to the first one afterwards)
-    if not a.board and pg.evaluate("Object.keys(SAMPLES).length"):
-        keys = pg.evaluate("Object.keys(SAMPLES)")
-        for key in keys:
-            pg.evaluate(f"loadSample({json.dumps(key)})"); pg.wait_for_function(f"S.scene && {BUSY}", timeout=90000)
-            pg.click("#view-si"); pg.wait_for_timeout(200)
-            if not pg.evaluate("S.full"):
-                pg.click("#an-start"); pg.wait_for_function(f"S.full && {BUSY}", timeout=90000)
-            want = tag == "light" and (key == keys[-1] or not a.quick) or tag == "dark" and key == keys[0] and not a.quick
-            export_menu(pg, tag, step, [pg.evaluate("S.name")] if want else [])
-        pg.evaluate(f"loadSample({json.dumps(keys[0])})"); pg.wait_for_function(f"S.scene && {BUSY}", timeout=90000)
-    else:
-        export_menu(pg, tag, step, [] if a.quick or tag == "phone" else [pg.evaluate("S.name")])
     if pg.evaluate("document.documentElement.scrollWidth > window.innerWidth + 1"):
         problems.append(f"{tag}: horizontal scroll")
     prepare_all(pg, tag, step, errs)

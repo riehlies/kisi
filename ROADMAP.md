@@ -64,15 +64,10 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   the via they leave through yet; the transmit direction of lanes from an IC to a connector is a guess.
 - **Skills on real boards.** Run kisi-prepare and kisi-si-pi-review on a few more real projects and sharpen the
   research guidance (datasheet sections, typical vs. maximum, efficiency read from curves).
-- **Report export** – **done** (2026-11-13): the viewer's Export menu in the top bar – the table of the view shown as
-  CSV, the content of `kisi report` as JSON (in Web Workers, with the browser's field results), the printable report
-  (one to two pages, print to PDF) –, `kisi report --html FILE --csv DIR` in both CLIs, one renderer for both
-  (`kisi_core::report_html`, stored as `validation/golden/<board>.report.html`). Possible next steps: a DC drop
-  limit per rail (a kisi guide value in `data/`, shown in the Power view too, then highlighted in the report); the
-  viewer's own results in the report (edits kept in the browser, the check already computed) instead of running
-  `kisi report` again; the PDN impedance (`--pdn`) and the crosstalk scan as report sections; a CSV of the net
-  detail tabs; the report as Markdown as well (`--md FILE`, from the same renderer) for automation pipelines that
-  store it with their outputs (KiCad forum request, 2026-11-12).
+- **Report export** from the viewer and the CLIs: a findings list with the place of each finding (layer,
+  coordinates, part) and jumps to it in the viewer, the printable report (HTML/PDF), the tables as CSV, the results
+  as JSON and the report as Markdown too, for automation pipelines that store it with their outputs (KiCad forum
+  request, 2026-11-12). In development; the design is still open.
 - **Smaller downloads:** separate WASM builds for viewer and CLI (the viewer does not need the CLI commands).
 - **Faster field solver in the CLI:** better scheduling across threads, optional larger time budget presets.
 - **KiCad plugin** (decided 2026-10-26: IPC API plugin, no local server; revised 2026-11-05 for saving) –
@@ -231,7 +226,7 @@ validation, and every result says which level it used and how uncertain it is.
   power maps (voltage drop, current density, losses, temperature) interpolated and clipped to the copper, narrow
   tracks as strokes, isolines for the voltage drop and arrows for the current direction (display only).
 - **Power:** via current capacity – in the viewer's Losses view (via markers) and in `kisi power` (per rail the
-  vias with the most current against an IPC-2152 estimate, a warning above it, one line in the printable report);
+  vias with the most current against an IPC-2152 estimate, a warning above it);
   next: split of regulator losses between IC and inductor (also a second heat source in the temperature estimate).
 - **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`):
   - **Heat sinks**: a heat sink on a part (`theta_sa`, area, or a sink touching several parts), thermal pads to a

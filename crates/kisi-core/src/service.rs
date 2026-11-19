@@ -42,8 +42,6 @@ pub struct Project {
     /// kisi.json `tolerances` entry; off, no band is computed or reported
     pub tol_on: bool,
     pub windows: HashMap<String, (f64, String)>,
-    /// SHA-256 of the board file's text (hex; empty for a board built from one already read)
-    pub pcb_sha256: String,
     /// lanes grouped into buses, found once (`buses`)
     buses: std::sync::OnceLock<Vec<topology::Bus>>,
 }
@@ -183,8 +181,7 @@ impl Project {
                 board.warnings.push(format!("project file: {e}"));
             }
         }
-        let sha = crate::report_html::sha256_hex(inp.pcb.as_bytes());
-        Self::from_board(board, inp).map(|p| Project { pcb_sha256: sha, ..p })
+        Self::from_board(board, inp)
     }
 
     /// Build a project from a board already read (with its project file applied); `inp.pcb` and
@@ -269,7 +266,6 @@ impl Project {
             tolerances,
             tol_on,
             windows,
-            pcb_sha256: String::new(),
             buses: Default::default(),
         };
         // dismissals that cannot apply on this board (needs the analysed project)
@@ -1481,57 +1477,21 @@ pub fn pdn_ic_json(r: &crate::pdn_ic::IcPdnResult) -> Value {
 }
 
 /// Everything in one document, written as `analysis/kisi.json` next to the board
-/// (layout of kicad-happy's analysis folder). `rp`: the channel options (`--via-cavity`,
-/// `--via-returns`); `check_rows`: the channel check's rows computed in parts elsewhere (worker
-/// engines of the Node CLI and the viewer, `channel_check_rows`) – the result is the same.
-pub fn report(
-    p: &Project,
-    profiles: &Profiles,
-    rp: &RfParams,
-    check_rows: Option<Vec<(usize, Value)>>,
-) -> Result<Value, String> {
-    let none = HashMap::new();
-    let channels = match check_rows {
-        Some(rows) => channel_check_merge(p, profiles, &none, None, rp, rows)?,
-        None => channel_check(p, profiles, &none, None, rp),
-    };
+/// (layout of kicad-happy's analysis folder).
+pub fn report(p: &Project, profiles: &Profiles) -> Value {
+    let rp = RfParams::default();
     let run = power_run(p, None);
-    let ov = overview(p);
-    Ok(json!({
+    json!({
         "tool": "kisi", "version": env!("CARGO_PKG_VERSION"),
-        "board_file": {"name": p.pcb_path.file_name().map(|f| f.to_string_lossy().to_string()), "sha256": p.pcb_sha256},
-        "options": {"tolerances": p.tol_on, "via_cavity": rp.via_cavity, "via_returns": rp.via_returns},
         "variant": p.variant.summary(),
         "config": p.config_summary(),
-        "impedance": class_verdicts(p, &ov),
-        "overview": ov,
-        "interfaces": interfaces(p, profiles, &none),
-        "channels": channels,
+        "overview": overview(p),
+        "interfaces": interfaces(p, profiles, &HashMap::new()),
+        "channels": channel_check(p, profiles, &HashMap::new(), None, &rp),
         "power": run.as_ref().map_err(|e| e.clone()).and_then(|r| power_from(p, r, None)).unwrap_or_else(|e| json!({"error": e})),
         "thermal": run.as_ref().map_err(|e| e.clone()).and_then(|r| thermal_from(p, r, &crate::thermal::ThermalParams::default())).unwrap_or_else(|e| json!({"error": e})),
         "stackup_used": stackup_used(p),
-        "gaps": crate::gaps::gaps(p, profiles),
-    }))
-}
-
-/// Per net class with a target: the worst net's mean impedance against the class's target window
-/// (the interface profile's tolerance, else the default window, `Project::windows`), judged as the
-/// channel check's impedance criterion (`profile::judge`).
-fn class_verdicts(p: &Project, ov: &Value) -> Value {
-    let mut out = Vec::new();
-    for c in ov["classes"].as_array().into_iter().flatten() {
-        let (Some(name), Some(t)) = (c["class"].as_str(), c["target_ohm"].as_f64()) else { continue };
-        let w = &c["worst"][0];
-        let (win, src) = p.windows.get(name).cloned().unwrap_or((10.0, "default".into()));
-        let pr = crate::profile::Profile { z: t, z_tol_pct: win, rate_gbps: 1.0, ..Default::default() };
-        let m = crate::profile::Metrics { z_mean: w["z_mean"].as_f64(), ..Default::default() };
-        let v = crate::profile::judge(&m, &pr, &Default::default());
-        let z = v.criteria.iter().find(|x| x.key == "z");
-        out.push(json!({"class": name, "target_ohm": t, "diff": c["diff"], "worst_net": w["net"], "z_ohm": w["z_mean"],
-            "window_pct": win, "window_source": src, "lo_ohm": z.and_then(|z| z.lo), "hi_ohm": z.and_then(|z| z.hi),
-            "status": z.map(|z| z.status), "within_5pct": c["within_5pct"], "z_tol_rss_ohm": w["z_tol_rss_ohm"], "z_tol_status": w["z_tol_status"]}));
-    }
-    json!(out)
+    })
 }
 
 /// The stackup the analyses used, with the source of every value (report, exports).
@@ -1641,7 +1601,7 @@ mod tests {
 
     /// `kisi power` lists a rail's vias: 3 A from a pour on F.Cu through one via (0.3 mm drill, capacity
     /// estimate about 1.5 A) and 0.1 A through a second one into pours on B.Cu – the loaded via first, over
-    /// its estimate, as the rail's warning and in the printable report's power line.
+    /// its estimate, as the rail's warning.
     #[test]
     fn power_lists_the_vias_over_their_capacity() {
         let pcb = r#"(kicad_pcb (version 20241229) (generator "pcbnew")
@@ -1702,13 +1662,5 @@ mod tests {
             "{w:?}"
         );
         assert_eq!(v["via_capacity"]["estimate"], true);
-        let rep = json!({"power": v});
-        let ts = crate::report_html::tables(&rep);
-        let t = ts.iter().find(|t| t.id == "power").unwrap();
-        assert!(
-            t.note.contains("Vias over their current capacity estimate (IPC-2152 at ΔT 10 K): 1 on +3V3"),
-            "{}",
-            t.note
-        );
     }
 }

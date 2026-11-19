@@ -28,7 +28,6 @@
   "pi-thermal.js",
   "views.js",
   "prepare.js",
-  "export.js",
   "main.js"
  ]
 }

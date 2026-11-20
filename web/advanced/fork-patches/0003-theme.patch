@@ -1,8 +1,7 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: riehlies <118917105+riehlies@users.noreply.github.com>
 Date: Tue, 17 Nov 2026 22:09:45 +0000
-Subject: [PATCH] Light and dark theme (src/fork/theme.css,
- src/fork/theme.js)
+Subject: [PATCH] Light and dark theme (src/fork/theme.css, src/fork/theme.js)
 
 Proposed by kisi (riehlies/kisi, web/advanced/fork-patches/): the page follows the
 browser's preference (prefers-color-scheme), the link key theme=light|dark or
@@ -90,10 +89,10 @@ index 1f1968e..4d0e136 100644
  <body>
  
 diff --git a/src/fork/handover.js b/src/fork/handover.js
-index c732a22..9e14988 100644
+index a1fd408..f26fffa 100644
 --- a/src/fork/handover.js
 +++ b/src/fork/handover.js
-@@ -19,6 +19,7 @@
+@@ -21,6 +21,7 @@
  //   exc=          kind:value[:peak|rms], kind V | Vd | I | P (the fork's excitation)
  //   title=        a line shown above the plot (where the cross-section comes from)
  //   editor=hide   collapse the geometry editor under the plot (more room for the field view)

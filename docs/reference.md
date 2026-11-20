@@ -340,6 +340,14 @@ few seconds counts as missing); over http(s) the viewer asks the server first. W
 in one line. The browser must allow the viewer's pop-up window. The page loads nothing from the web; opened on its
 own it starts with the 2D page and offers the built-in 3D examples.
 
+**"Fields…" loads, it does not solve.** The page opens (or the open window is reused) with the case in place – the
+geometry, its layers, the frequency and the mesh filled in from the hand-over – and says so in one line: *Case
+loaded – check the settings, then Solve* (2D) or *… then Run* (3D, the cells, memory and time estimate beside it);
+Solve or Run has the keyboard focus. The viewer's status line says the same. The next "Fields…" replaces the loaded
+case and does not start anything either. A run already going on goes on: in 3D it finishes the case it started with
+(its fields are shown, its result reported to the viewer as that hand-over's) and Run is available again after it;
+in 2D the page's own solve finishes on the geometry it started with.
+
 **What goes along with a segment** (in the URL fragment, which never reaches a server; values with their sources in
 `data/field_views.json`):
 - the cross-section's geometry as kisi's field solver solves it (layer, widths, gaps, planes and their cut-outs,
@@ -383,11 +391,11 @@ the real zone fills, pads, tracks and vias around it, kisi's layer heights, a pa
 272 signal vias on ThunderScope, 381 of 397 on LibreVNA (before the pad ports and the edge rules 83 and 162). The
 page lists what the cut-out approximates (zero-thickness copper, no solder mask, the window's edge, …). The frequency
 is chosen as for a segment and offered beside the page's presets (5, 10, 20, 30 GHz; any other can be typed in; several
-per run). The page runs it at once with the mesh chosen for it – *coarse* (0.07 mm at metal) for a single via,
+per run). The page fills in the mesh chosen for it – *coarse* (0.07 mm at metal) for a single via,
 *standard* (0.05 mm) for a pair, the next finer one while the cell is more than half the narrowest signal trace (a
 0.127 mm BGA fan-out gets *standard*: on *coarse* its diagonal trace fell apart into cells that do not touch and the
 via reflected everything); *fine* (0.035 mm) is the 3D references' mesh – and shows the cells, the memory and
-the time it expects before a run. A run can be cancelled. Phones and tablets are warned (they may stop a page that
+the time it expects; the run starts with *Run*. A run can be cancelled. Phones and tablets are warned (they may stop a page that
 needs much memory); no limit is enforced.
 
 **S-parameters and TDR of a 3D run.** Next to *Fields* the 3D view has two sub-views, drawn with kisi.html's own

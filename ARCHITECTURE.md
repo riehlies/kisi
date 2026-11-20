@@ -92,8 +92,8 @@ to one thread.
     disk: `web/advanced/runtime.js` serves the embedded files (gzip + base64) to `fetch` and the module worker, the
     modules run as one classic script from a `blob:` URL, kisi-sparse stands in for the original's Eigen solves; with
     the full-wave modules of `tools/build_forsten_fullwave.sh` the release's build, without them a quasi-static build
-    (local work, CI). The fork's `handover.js` (patch 0002) solves and shows the handed-over cross-section and reports
-    each step. Upstream's `third_party/js_2d_fields` is not part of it.
+    (local work, CI). The fork's `handover.js` (patch 0002) loads the handed-over cross-section (and, with
+    `solve=1`, solves it; kisi's "Fields…" does not send it), shows the view after the solve and reports each step. Upstream's `third_party/js_2d_fields` is not part of it.
   - 3D (`web/advanced/fdtd/`: classic scripts over the fork's page, its own markup and stylesheet): `kisi_fdtd.wasm`
     (feature `field-view`: `fd_run_volume` with a progress import, `fd_mesh`) in Web Workers from a `blob:` URL, one
     per excited port; `fdtd-case.js` the built-in examples and the run's settings (mesh, pulse, f_loss),

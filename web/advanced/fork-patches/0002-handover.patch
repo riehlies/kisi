@@ -12,12 +12,12 @@ original's #params= link plus solve=1, view=, mode=, exc=, title=, editor=hide; 
 reported to the opening page by postMessage. Uses the page's DOM and window.forkPlot only;
 one hook (the module's script tag).
 ---
- FORK.md                    |  15 ++++-
+ FORK.md                    |  15 +++-
  deploy/make_site.mjs       |   1 +
  src/field_solver.html      |   1 +
- src/fork/handover.js       | 121 +++++++++++++++++++++++++++++++++++++
+ src/fork/handover.js       | 149 +++++++++++++++++++++++++++++++++++++
  tests/fork/check_hooks.mjs |   3 +-
- 5 files changed, 137 insertions(+), 4 deletions(-)
+ 5 files changed, 165 insertions(+), 4 deletions(-)
  create mode 100644 src/fork/handover.js
 
 diff --git a/FORK.md b/FORK.md
@@ -92,25 +92,27 @@ index 249636b..1f1968e 100644
  </html>
 diff --git a/src/fork/handover.js b/src/fork/handover.js
 new file mode 100644
-index 0000000..c732a22
+index 0000000..a1fd408
 --- /dev/null
 +++ b/src/fork/handover.js
-@@ -0,0 +1,121 @@
+@@ -0,0 +1,149 @@
 +// Copyright (C) 2026 David Riehl
 +// Part of a modified version (fork) of js_2d_fields by Henrik Forstén,
 +// https://github.com/Ttl/js_2d_fields. This file is new in the fork and is licensed
 +// under the GNU General Public License v3, like the rest of the project (see
 +// LICENSE). See FORK.md for the list of changes.
 +//
-+// Link hand-over: a cross-section handed over in the URL fragment is solved and shown in
-+// a chosen view without further clicks.
++// Link hand-over: a cross-section handed over in the URL fragment is loaded – and, with
++// solve=1, solved and shown in a chosen view without further clicks.
 +//
 +//   field_solver.html#params=<the original's link form>&solve=1&view=sfield&mode=odd&exc=Vd:1:peak&title=<text>
 +//
 +// `params=` is the original's own link format (app_solver.js: settings as deflate-raw +
 +// base64url, "z." prefix; the original reads only that key and applies it on load and on
 +// every hashchange). The other keys are read here:
-+//   solve=1       start the solve once the link's settings are in place
++//   solve=1       start the solve once the link's settings are in place; without it the page
++//                 says the case is loaded, focuses Solve and waits: the view and the reports follow
++//                 the user's own solve
 +//   view=         geometry | potential | efield | hfield | jfield | sfield | lossfield, after the solve (|E| where
 +//                 the solver does not offer the view)
 +//   mode=         odd | even (pairs)
@@ -169,6 +171,19 @@ index 0000000..c732a22
 +    el.textContent = text;
 +    window.dispatchEvent(new Event('resize'));   // the plot takes the room left
 +}
++// one line under the title: where the hand-over stands (null: gone)
++function showState(text) {
++    let el = document.getElementById('handover-state');
++    if (!el && text) {
++        const host = document.getElementById('handover-title') || document.getElementById('tab-geometry');
++        if (!host) return;
++        el = document.createElement('div');
++        el.id = 'handover-state';
++        el.style.cssText = 'padding:2px 10px;font-size:0.9em;font-weight:600';
++        host.after(el);
++    }
++    if (el) { el.textContent = text || ''; el.hidden = !text; }
++}
 +const plot = () => window.forkPlot || null;
 +
 +async function apply(req) {
@@ -190,13 +205,25 @@ index 0000000..c732a22
 +            if (value) setValue('fork-exc-value', value);
 +            if (form) setValue('fork-exc-rms', form);
 +        }
-+        if (!req.solve) { report({ phase: 'ready' }); return; }
 +        const btn = document.getElementById('btn_solve');
-+        await until(() => btn && !btn.classList.contains('stop-mode'), 600000, seq);
-+        const t = performance.now();
-+        report({ phase: 'solving' });
-+        btn.click();
-+        await until(() => btn.classList.contains('stop-mode') || performance.now() - t > 1000, 5000, seq);
++        let t;
++        if (!req.solve) {
++            // loaded only: the user checks the settings and presses Solve (a solve already running goes on)
++            showState('Case loaded – check the settings, then Solve.');
++            report({ phase: 'ready' });
++            if (btn) btn.focus();
++            await until(() => btn && !btn.classList.contains('stop-mode'), 3600000, seq);
++            await until(() => btn.classList.contains('stop-mode'), 7 * 24 * 3600e3, seq);
++            t = performance.now();
++            showState('Solving…');
++            report({ phase: 'solving' });
++        } else {
++            await until(() => btn && !btn.classList.contains('stop-mode'), 600000, seq);
++            t = performance.now();
++            report({ phase: 'solving' });
++            btn.click();
++            await until(() => btn.classList.contains('stop-mode') || performance.now() - t > 1000, 5000, seq);
++        }
 +        await until(() => !btn.classList.contains('stop-mode'), 3600000, seq);
 +        report({ phase: 'solved', solveMs: Math.round(performance.now() - t) });
 +        // the view once the solve offers it, the axes fitted to the new cross-section; a view this solver does not
@@ -205,6 +232,7 @@ index 0000000..c732a22
 +        const fallback = () => performance.now() - t1 > 3000 && plot() && plot().views().includes('efield');
 +        await until(() => plot() && (plot().views().includes(want) || fallback()), 20000, seq);
 +        plot().setView(plot().views().includes(want) ? want : 'efield', { fit: true });
++        showState(null);
 +        report({ phase: 'shown', shownMs: Math.round(performance.now() - t), view: plot().view() });
 +    } catch (e) {
 +        if (String(e && e.message) !== 'superseded') report({ phase: 'error', error: String((e && e.message) || e) });

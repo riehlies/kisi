@@ -100,8 +100,8 @@
   try { const r = +localStorage.getItem("kisi.fdtd.rate"); if (r > 1e6) RATE = r; } catch (e) { /* storage unavailable */ }
   const measuredRate = () => { try { return !!localStorage.getItem("kisi.fdtd.rate"); } catch (e) { return false; } };
   const fmtS = (s) => (s < 90 ? `${Math.max(1, Math.round(s))} s` : `${(s / 60).toFixed(1)} min`);
-  const tell = (phase, extra) => {
-    const seq = st.board && st.board.seq;
+  // seq: the hand-over a step belongs to (a run reports for the case it started with)
+  const tell = (phase, extra, seq = st.board && st.board.seq) => {
     if (seq == null || !window.opener) return;
     try { window.opener.postMessage(Object.assign({ type: "field3d", seq, phase }, extra || {}), "*"); } catch (e) { /* opener gone */ }
   };
@@ -218,10 +218,11 @@
     const pname = (p) => kase.meta.ports[p].name;
     prog.innerHTML = ports.map((p) => `<div class="prog" id="k3-pl${p}">port ${esc(pname(p))}: waiting</div><progress id="k3-pb${p}" max="1" value="0"></progress>`).join("");
     const t0 = performance.now();
-    st.running = { jobs: [], cancelled: false };
+    st.running = { jobs: [], cancelled: false, seq: st.kind === "board" && st.board ? st.board.seq : null };
+    loaded(null);
     $("k3-run").disabled = true;
     $("k3-cancel").disabled = false;
-    tell("running", { ports: ports.length });
+    tell("running", { ports: ports.length }, st.running.seq);
     const results = {};
     const estSteps = st.estimate ? st.estimate.steps : 3000;
     try {
@@ -255,18 +256,23 @@
       window.KVF_LAST_RUN = { wall_s: wall, runs: ds.runs.map((r) => ({ port: r.port, seconds: r.seconds, wasm_mb: r.wasm_mb, steps: r.steps, cells: r.cells })), nodes: ds.n, freqs: ds.freqs };
       setDataset(ds);
       prog.insertAdjacentHTML("beforeend", `<div class="prog">All runs: ${wall.toFixed(1)} s wall time.</div>`);
-      tell("shown", { seconds: wall });
+      tell("shown", { seconds: wall }, st.running.seq);
     } catch (e) {
       const c = e.message === "cancelled";
       prog.insertAdjacentHTML("beforeend", `<div class="k3-warn">${c ? "Run cancelled." : "Run failed: " + esc(e.message)}</div>`);
       window.KVF_LAST_RUN = { error: e.message };
-      tell(c ? "cancelled" : "error", { error: e.message });
+      tell(c ? "cancelled" : "error", { error: e.message }, st.running.seq);
     } finally {
       st.running = null;
       $("k3-run").disabled = false;
       $("k3-cancel").disabled = true;
       estimate();
     }
+  }
+  // the line under the estimate: where a hand-over stands (null: gone)
+  function loaded(text) {
+    $("k3-state").textContent = text || "";
+    $("k3-state").hidden = !text;
   }
   function cancel() {
     if (!st.running) return;
@@ -358,7 +364,13 @@
     setKind("board");
     setMode("3d");
     tell("received", {});
+    // loaded, not run: the user checks the settings and presses Run (a run in progress goes on with its own case)
     if (m.run) doEstimate().then((E) => { if (E) run(); else tell("error", { error: $("k3-estimate").textContent }); });
+    else {
+      loaded(st.running ? "Case loaded – a run of the previous case is in progress; when it has finished, check the settings and press Run." :
+        "Case loaded – check the settings, then Run.");
+      if (!st.running) $("k3-run").focus();
+    }
   }
   function takeInbox() {
     const m = window.__kisi3dInbox;

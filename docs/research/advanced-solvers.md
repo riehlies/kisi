@@ -234,5 +234,8 @@ it ([`docs/reference.md`, "Field views"](../reference.md#field-views) for users)
    "Fields…" per cross-section in the *Impedance* tab (the clicked segment's marked and always listed) and per line
    row in a path table, beside the via buttons; the page opens on the power flow and its own view tabs switch views.
 
+6. **"Fields…" loads, it does not solve** (2026-11-20): the field page opens with the case and its settings in place
+   and waits for Solve (2D) or Run (3D); the viewer no longer sends `solve=1` or `run`.
+
 Patch 0002 gained one rule for the quasi-static build: a view the solver does not offer (|H|, J, S, losses) is shown
 as |E| after a short wait, instead of an error.

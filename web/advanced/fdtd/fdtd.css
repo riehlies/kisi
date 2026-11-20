@@ -110,3 +110,4 @@ html.kisi3d-on body > :not(#kisi3d):not(script):not(style) { display: none !impo
 #kisi3d .k3-tbl { border-collapse: collapse; font-size: 12px; margin: 4px 0; }
 #kisi3d .k3-tbl td, #kisi3d .k3-tbl th { padding: 2px 8px 2px 0; text-align: left; border-bottom: 1px solid var(--line); }
 @media (max-width: 600px) { #kisi3d .k3-spane .chart canvas { height: 220px; } }
+#kisi3d .k3-state { font-weight: 600; font-size: 13px; margin: 6px 0; }

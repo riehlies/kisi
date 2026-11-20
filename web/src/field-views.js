@@ -64,7 +64,7 @@ async function fvHandover(net, xi) {
     (!pair ? `${ex.single_v} V` : even ? `common mode ${ex.pair_even_vcm} V` : `${ex.pair_odd_vdiff} V differential`) +
     ` · copper ${rough.selectedOptions[0].textContent}${rq > 0 ? ` (Rq ${fmt(rq, 2)} µm, estimate)` : ""}${act ? ` · stackup ${act} (what-if)` : ""} · kisi's adaptive mesh · kisi, ${S.name}`;
   const exc = !pair ? `V:${ex.single_v}:peak` : even ? `V:${ex.pair_even_vcm}:peak` : `Vd:${ex.pair_odd_vdiff}:peak`;
-  return { at: `${fvHz(ghz)} (${esc(why)})`, frag: `#params=${await fvB64(JSON.stringify(set))}&solve=1&view=${qs ? "efield" : "sfield"}${pair ? `&mode=${even ? "even" : "odd"}` : ""}` +
+  return { at: `${fvHz(ghz)} (${esc(why)})`, frag: `#params=${await fvB64(JSON.stringify(set))}&view=${qs ? "efield" : "sfield"}${pair ? `&mode=${even ? "even" : "odd"}` : ""}` +
     `&exc=${exc}&editor=hide&theme=${fvTheme()}&title=${encodeURIComponent(title)}&n=${++FV.n}` };
 }
 
@@ -76,8 +76,10 @@ window.addEventListener("message", (e) => {
   else if (d.type === "field-handover" && d.phase === "shown") fvStatus(`Shown in the field window, solved in ${fmt(d.solveMs / 1000, 1)} s.`);
   else if (d.type === "field-handover" && d.phase === "error") fvStatus(`The field page reports: ${esc(d.error)}`, true);
   else if (d.type === "field-handover" && d.phase === "solving") fvStatus(`Solving in ${FV_FILE}…`);
+  else if (d.type === "field-handover" && d.phase === "ready") fvStatus("Loaded in the field window: check the settings there, then Solve.");
   else if (d.type === "field3d" && d.seq === FV.seq3) {
-    if (d.phase === "running") fvStatus(`Running kisi-fdtd in the field window (${d.ports} run${d.ports > 1 ? "s" : ""})…`);
+    if (d.phase === "received") fvStatus("Loaded in the field window: check the settings there, then Run.");
+    else if (d.phase === "running") fvStatus(`Running kisi-fdtd in the field window (${d.ports} run${d.ports > 1 ? "s" : ""})…`);
     else if (d.phase === "shown") fvStatus(`Shown in the field window, computed in ${fmt(d.seconds, 1)} s.`);
     else if (d.phase === "cancelled") fvStatus("The run was cancelled in the field window.");
     else if (d.phase === "error") fvStatus(`The field page reports: ${esc(d.error)}`, true);
@@ -144,7 +146,7 @@ async function fv3Open(net0, info) {
   const { ghz, why } = fvFreq(net), act = fabOn() && stkActiveLabel();
   const title = `${c.meta.title}${act ? ` · stackup ${act} (what-if)` : ""} · kisi, ${S.name}`;
   const from = `Cut out of ${S.name} by kisi's exporter (kisi-validate via-case): ${c.sheets.length} copper pieces, ${c.vias.length} vias, ports ${c.ports.length}; ` +
-    `${fvHz(ghz)}: ${why}.${r.notes.filter((n) => !/^board_|sheets \(/.test(n)).map((n) => " " + n).join("")}`;
+    `${fvHz(ghz)}: ${why}.${r.notes.filter((n) => !/^board_|sheets \(/.test(n)).map((n) => ` ${n[0].toUpperCase()}${n.slice(1)}${/[.)]$/.test(n) ? "" : "."}`).join("")}`;
   // kisi's model of the via between its lines of the case's feed lengths (rf::via_s), the TDR's rise time, the
   // target and the loss marks: the page's S-parameter and TDR comparison
   const t = classTarget(net), q = pathReq(net);
@@ -154,8 +156,8 @@ async function fv3Open(net0, info) {
   const w = await fvWindow(fvStatus);
   if (!w) return;
   FV.seq3 = ++FV.n;
-  w.postMessage({ type: "kisi-3d-case", seq: FV.seq3, case: c, title, from, freqs: [{ ghz, label: why }], run: true, theme: fvTheme(),
+  w.postMessage({ type: "kisi-3d-case", seq: FV.seq3, case: c, title, from, freqs: [{ ghz, label: why }], theme: fvTheme(),
     model, rise: rfParams().rise, target: t, marks: mo && mo.channel ? mo.channel.il_marks.map((x) => x[0]) : null }, "*");
-  fvStatus(`Handed over at ${fvHz(ghz)} (${esc(why)}); the field window computes it…`);
+  fvStatus(`Handed over at ${fvHz(ghz)} (${esc(why)})…`);
   w.focus();
 }

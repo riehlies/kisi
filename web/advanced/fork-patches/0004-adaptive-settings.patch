@@ -1,8 +1,8 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: riehlies <118917105+riehlies@users.noreply.github.com>
 Date: Thu, 19 Nov 2026 12:00:00 +0000
-Subject: [PATCH] Solver Settings: Parameter Tolerance and Initial Grid of
- the adaptive solve
+Subject: [PATCH] Solver Settings: Parameter Tolerance and Initial Grid of the
+ adaptive solve
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit

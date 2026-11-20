@@ -150,6 +150,10 @@ def fields(ctx, pg, tag):
     popup = pinfo.value
     popup.on("pageerror", lambda e: errs.append(f"field page error: {e}"))
     popup.on("console", lambda m: errs.append(f"field page console {m.type}: {m.text[:300]}") if m.type == "error" else None)
+    # "Fields…" loads the case; the solve is the user's click
+    if check(poll(pg, "/Loaded in the field window|reports|No field page/.test(document.getElementById('fv-msg').textContent)", 300) and
+             poll(popup, "window.__fieldHandover && window.__fieldHandover.phase === 'ready'", 60), f"{tag}: Fields… did not load the case"):
+        popup.click("#btn_solve")
     ok = poll(pg, "/Shown in the field window|reports|No field page/.test(document.getElementById('fv-msg').textContent)", 900)
     msg = pg.evaluate("() => document.getElementById('fv-msg').textContent")
     check(ok and "Shown in the field window" in msg, f"{tag}: Fields…: {msg!r}")
@@ -164,6 +168,10 @@ def fields(ctx, pg, tag):
         pg.click("#detail [data-tab='via']")
         if check(poll(pg, "document.querySelector('button[data-fv3]')", 180), f"{tag}: no Fields… button in the Vias tab of {net}"):
             pg.click("button[data-fv3='0']")
+            if check(poll(pg, "/Loaded in the field window|reports|cannot|No field page/.test(document.getElementById('fv-msg').textContent)", 300) and
+                     poll(popup, "!document.getElementById('k3-run').disabled && !/Estimating/.test(document.getElementById('k3-estimate').textContent)", 120),
+                     f"{tag}: Fields… on a via did not load the case"):
+                popup.click("#k3-run")
             ok = poll(pg, "/Shown in the field window|reports|cannot|No field page/.test(document.getElementById('fv-msg').textContent)", 1200)
             msg = pg.evaluate("() => document.getElementById('fv-msg').textContent")
             check(ok and "Shown in the field window" in msg, f"{tag}: Fields… on a via: {msg!r}")

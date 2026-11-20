@@ -152,6 +152,23 @@ PAGE_INFO = """() => { const gd = document.getElementById('sim_canvas'), log = d
 CLICKED = "#tab-body tr.clicked [data-fv2]"
 
 
+def solve_loaded(popup, pg, tag, n0):
+    """a 2D hand-over after seq n0 loads the case without solving ("Fields…" does not solve): the page's state line,
+    Solve focused, no solve within a second; then Solve is clicked here"""
+    popup.wait_for_function("(n) => window.__fieldHandover && window.__fieldHandover.seq > n && ['ready', 'error'].includes(window.__fieldHandover.phase)",
+                            arg=n0, timeout=120000, polling=200)
+    popup.wait_for_timeout(1000)
+    st = popup.evaluate("""() => ({ phase: window.__fieldHandover.phase, line: (document.getElementById('handover-state') || {}).textContent || '',
+      focus: document.activeElement && document.activeElement.id, busy: document.getElementById('btn_solve').classList.contains('stop-mode') })""")
+    check(st["phase"] == "ready" and not st["busy"] and "Case loaded" in st["line"] and st["focus"] == "btn_solve",
+          f"{tag}: the hand-over did not just load the case: {st}")
+    try:
+        pg.wait_for_function("/Loaded in the field window/.test(document.getElementById('fv-msg').textContent)", timeout=10000)
+    except Exception:
+        check(False, f"{tag}: the viewer's status line after loading: {pg.inner_text('#fv-msg')!r}")
+    popup.click("#btn_solve")
+
+
 def fields(ctx, pg, popup, tag, errs, button=CLICKED):
     """Fields… of a cross-section (the clicked segment's row of the Impedance tab): the field window, the page's
     answer and the view; returns (popup, info)"""
@@ -161,10 +178,11 @@ def fields(ctx, pg, popup, tag, errs, button=CLICKED):
             pg.click(button)
         popup = pinfo.value
         watch(popup, "field page", errs)
+        n0 = 0
     else:
         n0 = popup.evaluate("window.__fieldHandover ? window.__fieldHandover.seq : 0")
         pg.click(button)
-        popup.wait_for_function("(n) => window.__fieldHandover && window.__fieldHandover.seq > n", arg=n0, timeout=60000)
+    solve_loaded(popup, pg, tag, n0)
     popup.wait_for_function("window.__fieldHandover && ['shown', 'error'].includes(window.__fieldHandover.phase)", timeout=1800000, polling=200)
     h = popup.evaluate("({ ...window.__fieldHandover, request: undefined })")
     check(h.get("phase") == "shown", f"{tag}: hand-over ended in {h.get('phase')}: {h.get('error')}")
@@ -271,6 +289,7 @@ def run_2d(ctx, pg, tag0, errs, quick):
             break
         n0 = popup.evaluate("window.__fieldHandover ? window.__fieldHandover.seq : 0")
         pg.click(CLICKED)   # the segment's hand-over again (at_1ghz replaced it) for the views
+        solve_loaded(popup, pg, tag + " again", n0)
         popup.wait_for_function("(n) => window.__fieldHandover && window.__fieldHandover.seq > n && ['shown', 'error'].includes(window.__fieldHandover.phase)",
                                 arg=n0, timeout=600000, polling=200)
         views(popup, tag, f"{theme}_2d_{seg[0]}")
@@ -329,6 +348,21 @@ def exporter(pg):
         results["exporter"]["reason"] = {"via": bad[0], "message": e}
 
 
+def run_loaded(p, pg, tag):
+    """a 3D hand-over loads the case without running: the state line, the estimate, Run focused and enabled, no run"""
+    p.wait_for_function("!/Estimating/.test(document.getElementById('k3-estimate').textContent) && !document.getElementById('k3-run').disabled", timeout=120000)
+    p.wait_for_timeout(1000)
+    st = p.evaluate("""() => ({ line: document.getElementById('k3-state').hidden ? '' : document.getElementById('k3-state').textContent,
+      est: document.getElementById('k3-estimate').textContent, focus: document.activeElement && document.activeElement.id,
+      running: !!window.KVF_STATE.running, last: window.KVF_LAST_RUN })""")
+    check("Case loaded" in st["line"] and "cells" in st["est"] and st["focus"] == "k3-run" and not st["running"] and st["last"] is None,
+          f"{tag}: the hand-over did not just load the case: {st}")
+    try:
+        pg.wait_for_function("/Loaded in the field window/.test(document.getElementById('fv-msg').textContent)", timeout=10000)
+    except Exception:
+        check(False, f"{tag}: the viewer's status line after loading: {pg.inner_text('#fv-msg')!r}")
+
+
 def run_3d(ctx, pg, popup, theme, errs, first):
     """Fields… on a board via: the field window's 3D view runs the exported case"""
     n = pg.evaluate("(nm) => S.scene.nets.indexOf(nm)", VIA_NET)
@@ -352,6 +386,12 @@ def run_3d(ctx, pg, popup, theme, errs, first):
         popup.evaluate("window.KVF_LAST_RUN = null")
         pg.click("button[data-fv3='0']")
     popup.wait_for_function("window.KVF_STATE && window.KVF_STATE.mode === '3d' && window.KVF_STATE.kind === 'board'", timeout=120000)
+    run_loaded(popup, pg, f"3D {theme}")
+    # a second "Fields…" on the via replaces the loaded case and does not run either
+    pg.click("button[data-fv3='0']")
+    popup.wait_for_timeout(500)
+    run_loaded(popup, pg, f"3D {theme} again")
+    popup.click("#k3-run")
     popup.wait_for_function("window.KVF_LAST_RUN", timeout=1800000, polling=1000)
     lr = popup.evaluate("window.KVF_LAST_RUN")
     if not check(not lr.get("error"), f"3D {theme}: the run failed: {lr.get('error')}"):

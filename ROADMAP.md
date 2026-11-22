@@ -1,9 +1,15 @@
 # kisi – roadmap
 
-Planned and possible work after 0.3.3, in three development blocks plus work across them. Within a block the items
+Planned and possible work after 0.3.4, in three development blocks plus work across them. Within a block the items
 are roughly in order of priority; each says why it matters, "Decide first" marks items that need a decision before
 work starts. One rule holds for all of them: `main` always has a clean, mostly self-explanatory build – new features
 come with a small, clear UI and without option combinatorics.
+
+In 0.3.4 (details in the items below): the field views of a segment (2D, full-wave) and of a via (3D, kisi-fdtd in
+the browser) in the field page `kisi-advanced.html`, with the 3D run's S-parameters and TDR next to kisi's via model;
+the via current capacity in `kisi power` and the Losses view; the via models at the refined 3D references and the
+reference page de-embedded with the matched 2×-thru; the validation documentation rewritten (`validation/README.md`);
+js_2d_fields at upstream b5ea9eb.
 
 Block 1 comes first: better solvers and channel models help little while the inputs (stackup, targets, loads,
 models) are missing or wrong, and the setup effort is the main risk of block 3. Block 2 runs alongside, because
@@ -81,8 +87,9 @@ well; the challenge is preparing a new design for a meaningful analysis – miss
   `<board>.kisi.json` directly next to the board through a temporary loopback host of the plugin (per board,
   token-protected, revision check, backups in `analysis/`; `kisi_server.py`, workflow `local-config.yml` saves from
   Chromium, Firefox and WebKit on Linux, Windows and macOS), the early error replies read the request body first
-  and a briefly locked file (Windows) is retried. Open: a test in KiCad 10 on Linux and macOS
-  (checklist in the design note; their code paths are reviewed and unit-tested), then status `stable`; KiCad 9
+  and a briefly locked file (Windows) is retried. In 0.3.4: the package carries the field page `kisi-advanced.html`,
+  written next to the viewer's copy in `analysis/` and served by the loopback host. Open: a test in KiCad 10 on Linux
+  and macOS (checklist in the design note; their code paths are reviewed and unit-tested), then status `stable`; KiCad 9
   (untested); the "unsaved changes" notice once KiCad's API reports them (`GetDocumentModifiedState`, KiCad's
   development branch – the plugin uses it when kicad-python has it).
 - **Decide first: live link to KiCad** (cross-probing, reload on save). Needs a local helper process; only worth it if
@@ -122,8 +129,11 @@ validation, and every result says which level it used and how uncertain it is.
     (|S11| ≠ |S22| by 0.045);
   - above 12 GHz neither ladder follows the 3D results, and the first board mode comes out 1.6–2.5 % low;
   - **a 3D check in the viewer** (export a selected via or structure, run kisi-fdtd in a worker, compare with the
-    ladder at the via centre; about 8 days, a minimal version 4; design note
-    [`docs/research/board-via-3d.md`](docs/research/board-via-3d.md));
+    ladder at the via centre; design note [`docs/research/board-via-3d.md`](docs/research/board-via-3d.md)) – first
+    step released in 0.3.4: the via cut out by the exporter in WebAssembly (pad ports, 650+ of 669 signal vias on
+    the example boards), run in the field page's workers, its S-parameters and TDR next to kisi's via model, both
+    with the cut-out's feeds and lumped ports; next: the matched de-embedding in Rust, so that the two compare at
+    the via centre;
   - the ladder in WebAssembly is about 2 × slower than native.
 - **3D references cross-checked** (done, released in 0.3.2): every one of the 106 reference cases also in openEMS
   and in CST Studio Suite (`validation/vias.md`); the cross-check found the
@@ -135,7 +145,8 @@ validation, and every result says which level it used and how uncertain it is.
   via references scored with the matched de-embedding: the pairs' "7–10 % high" was their first-order de-embedding
   (now 1.5 / 3.3 % median / p90 against kisi-fdtd, `data/accuracy.json` pairs 4.0 / 5.7 %), the s8 L1→L3 exits are
   within −4 … +0.5 %. The validation was then cleaned up to its current state (`validation/README.md`; the test log
-  and the Python prototype of the ladder in the git history).
+  and the Python prototype of the ladder in the git history). The stripline feed trim, the matched de-embedding and
+  the cleaned-up validation were released in 0.3.4.
 - **Causal and passive models** (`feat/accuracy`, done): the via pairs' modes and the plane-pair matrix passive by
   construction, Djordjevic-Sarkar everywhere, the causal Huray roughness with its inductance, microstrip
   dispersion below a resonance; every example lane passive and causal in a test
@@ -195,9 +206,9 @@ validation, and every result says which level it used and how uncertain it is.
 - **Field views of a selected segment or via.** Click a line segment or a via on the board and look at its fields
   in detail – why a segment comes out at its impedance, where its current and losses sit, what a via's antipad and
   return path do. Wanted for teaching (Advanced PCB Design) and for design reviews.
-  **Done** (option "Advanced solvers: field views", `docs/reference.md` "Field views"; design notes
-  `docs/research/advanced-solvers.md`, `docs/research/fdtd-field-view.md`), one file `kisi-advanced.html` with two
-  views one click apart, on the release, GitHub Pages and in the KiCad plugin:
+  **Done, released in 0.3.4** (option "Advanced solvers: field views", on by default; `docs/reference.md` "Field
+  views"; design notes `docs/research/advanced-solvers.md`, `docs/research/fdtd-field-view.md`), one file
+  `kisi-advanced.html` with two views one click apart, on the release, GitHub Pages and in the KiCad plugin:
   - **2D, a line segment:** the segment's cross-section in the field views of the fork
     [riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) – potential, |E|, |H| with field lines, current
     density J, power flow S with the 50 / 90 / 99 % lines and the ∫S dA check, losses split into signal conductor,
@@ -206,8 +217,9 @@ validation, and every result says which level it used and how uncertain it is.
   - **3D, a via:** the via cut out of the board by kisi's exporter (`kisi_core::viacase`, as for the board-via
     references) and run by kisi-fdtd in Web Workers with volume field output at chosen frequencies: |E|, |H|, the
     Poynting vector and the loss density (conductor loss as an estimate) on a cut plane moved through x, y, z, the
-    phase animated, the power balance, the ports' waves and mixed-mode S; the parametric single via and pair as
-    built-in examples.
+    phase animated, the power balance, the ports' waves and mixed-mode S, the run's S-parameters and TDR next to
+    kisi's via model; "Fields…" loads the case, Run starts it; the parametric single via and pair as built-in
+    examples.
   - Open: the fork taking the patches over by hand; a 3D view in WebGL (conductors, the cut plane in 3D, streamlines
     of S; three.js ≈ 141 KB gzip, `docs/research/fdtd-field-view.md` option b-lean) if courses ask for it; the 3D check
     against kisi's ladder (de-embedded S-parameters and TDR, the matched de-embedding in Rust) – the item above, which
@@ -229,8 +241,8 @@ validation, and every result says which level it used and how uncertain it is.
   21 rails on 7 boards: error of the largest drop median 6.9 → 1.0 %, max 28 → 10 %; `kisi-validate pi-dc`); the
   power maps (voltage drop, current density, losses, temperature) interpolated and clipped to the copper, narrow
   tracks as strokes, isolines for the voltage drop and arrows for the current direction (display only).
-- **Power:** via current capacity – in the viewer's Losses view (via markers) and in `kisi power` (per rail the
-  vias with the most current against an IPC-2152 estimate, a warning above it);
+- **Power:** via current capacity (released in 0.3.4) – in the viewer's Losses view (via markers) and in `kisi power`
+  (per rail the vias with the most current against an IPC-2152 estimate, a warning above it);
   next: split of regulator losses between IC and inductor (also a second heat source in the temperature estimate).
 - **Temperature, follow-ups** (the steady state is in `kisi thermal` and the viewer, `docs/research/thermal.md`):
   - **Heat sinks**: a heat sink on a part (`theta_sa`, area, or a sink touching several parts), thermal pads to a

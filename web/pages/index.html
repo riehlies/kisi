@@ -87,7 +87,8 @@ footer p { margin: 0; max-width: 90ch }
   <div class="wrap hero">
     <h1>Check impedance, channels and power of a KiCad board – in the browser</h1>
     <p>Drop a <code>.kicad_pcb</code> and get target impedance per track, loss, TDR, vias, crosstalk and interface
-      checks, the power tree, voltage drop and PDN impedance. Nothing to install, no setup; the board is processed
+      checks, the power tree, voltage drop and PDN impedance – and the fields of a segment or a via in 2D and 3D.
+      Nothing to install, no setup; the board is processed
       on your computer and never uploaded.</p>
     <div class="actions">
       <a class="btn primary" href="kisi-examples.html">Open with example boards</a>
@@ -101,7 +102,7 @@ footer p { margin: 0; max-width: 90ch }
       <h2>What it checks</h2>
       <div class="cols">
         <div class="card"><h3>Impedance</h3>
-          <ul><li>Targets from net class names (<code>50Z</code>, <code>90Z_Diff</code>)</li><li>Formulas in a second, the 2D field solver on demand</li><li>Impedance along the path, loss, TDR, vias, crosstalk</li><li>Each result with its accuracy level and typical deviation (± %)</li><li>Optional: fab stackup templates as a what-if for all views, the impedance band for manufacturing tolerances</li></ul></div>
+          <ul><li>Targets from net class names (<code>50Z</code>, <code>90Z_Diff</code>)</li><li>Formulas in a second, the 2D field solver on demand</li><li>Impedance along the path, loss, TDR, vias, crosstalk</li><li>Each result with its accuracy level and typical deviation (± %)</li><li>Field views: a segment's cross-section (2D, full-wave) and a via in 3D, from "Fields…"</li><li>Optional: fab stackup templates as a what-if for all views, the impedance band for manufacturing tolerances</li></ul></div>
         <div class="card"><h3>Channel</h3>
           <ul><li>Buses and lanes through series parts and AC caps, per assembly variant</li><li>Profiles: PCIe, USB, DDR, LVDS, Ethernet, HDMI, MIPI …</li><li>Loss, return loss, skew and a linear eye, also at connectors with the channel behind them</li><li>Differential pairs as 4-ports, multi-drop lines at every receiver</li><li>Export of a lane or a whole bus: SPICE subcircuits with test benches, Touchstone, a KiCad project</li></ul></div>
         <div class="card"><h3>Power</h3>
@@ -110,6 +111,8 @@ footer p { margin: 0; max-width: 90ch }
       <div class="pair">
         <figure><img src="img/net.png" width="1600" height="1000" alt="Net detail with the TDR of a differential pair"><figcaption><b>Net detail:</b> impedance along the path, loss, TDR with physics-based via models, skew and crosstalk for every net with a target</figcaption></figure>
         <figure><img src="img/channel.png" width="1600" height="1000" alt="Channel view: interfaces of the board with their verdicts"><figcaption><b>Channel check:</b> lanes from IC to IC or to a connector through series parts, judged against interface profiles on loss, return loss, skew and a linear eye</figcaption></figure>
+        <figure><img src="img/fields-2d.png" width="1600" height="1000" alt="Field page: the electric field and its field lines in a differential pair's cross-section"><figcaption><b>Field views, 2D:</b> "Fields…" on a segment opens its cross-section in the <a href="kisi-advanced.html">field page</a> – potential, fields, current density, power flow and losses at the lane's Nyquist frequency</figcaption></figure>
+        <figure><img src="img/fields-3d.png" width="1600" height="1000" alt="Field page: a via of the board in 3D with a cut plane of the electric field"><figcaption><b>Field views, 3D:</b> "Fields…" on a via cuts it out of the board and runs it in 3D in the browser – cut planes of the fields, power flow and losses, the power balance, S-parameters and TDR (the page alone offers built-in examples)</figcaption></figure>
         <figure><img src="img/flow.png" width="1600" height="1000" alt="Power flow from the inputs through the regulators to the loads"><figcaption><b>Power flow:</b> from the supply inputs through every regulator to the loads, with regulator, shunt and copper losses</figcaption></figure>
         <figure><img src="img/power.png" width="1600" height="1000" alt="Voltage drop of a rail and its impedance seen from an IC"><figcaption><b>Voltage drop and PDN:</b> DC drop on every layer of a rail, and its impedance seen from an IC with the decoupling capacitors ranked by loop inductance</figcaption></figure>
         <figure><img src="img/temperature.png" width="1600" height="1000" alt="Temperature estimate of the board with the hottest parts"><figcaption><b>Temperature (estimate):</b> the board's temperature per layer from the losses, the hottest parts with their junction temperature and the heat through the vias</figcaption></figure>

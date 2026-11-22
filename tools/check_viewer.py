@@ -20,8 +20,8 @@ Usage: check_viewer.py <kisi.html> [--board board.kicad_pcb [board.kicad_pro]] [
   views' edits into the draft, a stale dismissal; light run: the acceptance run on the bare ThunderScope –
   its kisi.json entered through the forms, saved, reloaded)
 * --accept BOARD REF [--accept-dismiss GAP=REASON …]: the acceptance run on another bare board (light run)
-* the option "Advanced solvers: field views" (light run, also with --quick): off by default; on, the Fields row in a
-  net's detail and its tooltip line, the 3D column of its Vias tab; "Fields…" with no field page next to the file: the
+* the option "Advanced solvers: field views" (light run, also with --quick): on in a fresh browser, turned off it
+  stays off (stored); on, the Fields row in a net's detail and its tooltip line, the 3D column of its Vias tab; "Fields…" with no field page next to the file: the
   field window closed again and the one line that names kisi-advanced.html (with the page next to the file: only the
   row – tools/check_advanced.py checks the hand-overs); off again, no row
 * the channel check in parallel (workers with engines of their own) gives the same rows as on one thread

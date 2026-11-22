@@ -333,6 +333,10 @@ opens on its power flow S (|E| in the quasi-static build), the page's view tabs 
 | 2D cross-section | the field views of the fork [riehlies/js_2d_fields](https://github.com/riehlies/js_2d_fields) of Henrik Forstén's js_2d_fields, full-wave (FEM, gmsh) | potential, \|E\|, \|H\| with field lines, current density J, power flow S with the 50 / 90 / 99 % lines and the ∫S dA check, losses split into signal conductor, ground and dielectric |
 | 3D via | kisi's 3D FDTD solver kisi-fdtd, in Web Workers of the page | a cut plane x / y / z moved through the via: \|E\|, \|H\| (magnitude or a component, arrows, log or linear), the power flow S = ½Re(E×H\*), the loss density; the phase animated (the instantaneous fields over one period); a small 3D sketch of where the plane is; ∫S dA through the plane; the power balance (incident, reflected, transmitted, dielectric loss per layer, radiated into the boundary, the conductor-loss estimate); the outgoing waves of every port and, for a pair, Sdd11, Sdd21, Scd21, Scc21 |
 
+![The 2D view: |E| and its field lines in the cross-section of a PCIe pair on the ThunderScope, odd mode at the lane's Nyquist frequency](img/fields-2d.png)
+
+![The 3D view: a via of the ThunderScope cut out of the board and run in the browser, |E| on a cut plane, the power balance beside it](img/fields-3d.png)
+
 **Where the page comes from.** The release carries `kisi-advanced.html` (about 9.5 MB; GitHub Pages serves it next to
 the viewers, the KiCad plugin carries it, [Getting started](getting-started.md#the-files-of-a-release)). Put it next to
 `kisi.html`. "Fields…" looks for it there: from disk the page that answers decides (one that does not answer within a

@@ -7,8 +7,8 @@ on which they rest: numbers marked **measured** come from runs then (`fdtd-field
 marked **estimate** is a judgement, not a measurement.
 
 ROADMAP: "Field views of a selected segment or via" (3D part) and "Advanced: 3D check with kisi-fdtd"; the board-via
-exporter and its cost: the design notes of the board vias in the git history (`git show 1c5575f^:validation/fdtd/BOARD_VIAS.md`,
-sections 1, 3, 4 and 5.6).
+exporter and its cost: the board-via design note [board-via-3d.md](board-via-3d.md) (from sections 1, 3, 4 and 5.6
+of the former `validation/fdtd/BOARD_VIAS.md`; "BOARD_VIAS" below refers to it).
 
 ## Summary
 - **Field output is cheap in kisi-fdtd.** A running DFT of all six components on the domain nodes, sampled every

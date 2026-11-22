@@ -409,8 +409,9 @@ def field_views(pg, tag, step):
     """the option "Advanced solvers: field views" (field-views.js)"""
     here = os.path.dirname(os.path.abspath(a.html))
     present = [n for n in ("kisi-advanced.html",) if os.path.exists(os.path.join(here, n))]
-    if pg.evaluate("FV.on || !!document.querySelector('[data-fv2], [data-fv3]')"):
-        problems.append(f"{tag}: field views: the option is on by default")
+    # on by default (a fresh browser: no stored choice)
+    if not pg.evaluate("FV.on && $('fv-on').checked && !lsGet('kisi.fields.v1')"):
+        problems.append(f"{tag}: field views: the option is not on by default")
     if not pg.evaluate("$('fs-opts').open"):
         pg.click("#fs-opts > summary")
     pg.check("#fv-on")
@@ -467,7 +468,11 @@ def field_views(pg, tag, step):
     pg.uncheck("#fv-on"); pg.wait_for_timeout(200)
     if pg.evaluate("!!document.querySelector('[data-fv2], [data-fv3], #fv-msg')"):
         problems.append(f"{tag}: field views: the Fields… column stays with the option off")
+    # turned off, it stays off: the stored choice the next start reads
+    if (pg.evaluate("lsGet('kisi.fields.v1')") or {}).get("on") is not False:
+        problems.append(f"{tag}: field views: turning the option off is not stored")
     pg.evaluate("selectNet(-1)")
+    pg.check("#fv-on"); pg.wait_for_timeout(200)   # on again, as a new user has it, for the steps after this one
 
 
 def board_box(pg):

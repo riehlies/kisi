@@ -313,8 +313,8 @@ dismissed.
   ([Preparing a board](preparing-a-board.md#in-the-viewer-prepare-pcb)); its other edits stay in the browser.
 
 ## Field views
-The viewer's option *Advanced solvers: field views* (field solver → Solver options; off by default, kept in the
-browser) adds a column of "Fields…" buttons to three tables:
+The viewer's option *Advanced solvers: field views* (field solver → Solver options; on by default, turned off it
+stays off in that browser) adds a column of "Fields…" buttons to three tables:
 - **a cross-section (2D):** the net's *Impedance* tab – one button per cross-section row; the table shows the six
   longest and, marked, the clicked segment's (kept in even when it is not among them);
 - **a via (3D):** the net's *Vias* tab – one button per via;

@@ -4,7 +4,8 @@
 // cut out of the board (kisi_via_case) by postMessage. docs/reference.md "Field views"; data/field_views.json.
 const FV_FILE = "kisi-advanced.html";
 const FVD = DATA.field_views;
-const FV = Object.assign({ on: false }, lsGet("kisi.fields.v1") || {},
+// on by default; a stored choice (turned off) is kept
+const FV = Object.assign({ on: true }, lsGet("kisi.fields.v1") || {},
   { win: null, base: null, build: null, n: 0, msg: "", msgNet: -1, err: false, probeMs: 6000, waiters: [], seq3: 0 });
 const fvSave = () => lsSet("kisi.fields.v1", { on: FV.on });
 const fvOn = () => FV.on && (S.tab === "si" || S.tab === "ch") && S.an && !S.an.skeleton;
@@ -101,7 +102,7 @@ async function fvConnect(w, reload, status) {
   Object.assign(FV, { base, build: d.build });
   return true;
 }
-const FV_MISSING = `No field page next to this file: put <b>${FV_FILE}</b> (2D cross-section and 3D via views, about 9 MB) from <a href="https://github.com/riehlies/kisi/releases/latest" target="_blank" rel="noopener">the release</a> into its folder.`;
+const FV_MISSING = `No field page next to this file: put <b>${FV_FILE}</b> (2D cross-section and 3D via views, about 9.5 MB) from <a href="https://github.com/riehlies/kisi/releases/latest" target="_blank" rel="noopener">the release</a> into its folder, or turn the option off (Solver options).`;
 // the window, opened in the click (pop-up blockers); a fresh one is about:blank
 async function fvWindow(status) {
   let w = FV.win && !FV.win.closed ? FV.win : null, fresh = false;

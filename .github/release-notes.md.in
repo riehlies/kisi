@@ -1,3 +1,14 @@
+## Known limits of the field views
+
+* 3D view: the dielectric loss is right at f_loss (the geometric mean of the chosen field frequencies) only; at other
+  frequencies of the broadband S-parameters it is an estimate (too high below f_loss, too low above).
+* 3D view: the step and time estimate before a run is too low for pad-port cases at BGA fan-outs (a fan-out on the
+  standard mesh: about 42 s estimated, 447 s in the browser).
+* 3D view: a cut-out has lumped 50 Ω ports (pad ports where a trace ends at a pad) and its feed lines; its
+  S-parameters and TDR are not de-embedded.
+* The 2D full-wave views and the 3D view need a recent Chromium or Firefox (WebAssembly with SIMD, Web Workers,
+  compression streams). Phones and tablets are not refused; the 3D view only warns that they may stop a large run.
+
 ## Corresponding source of the field page
 
 `kisi-advanced.html` (the 2D cross-section views, full-wave, and the 3D view of a via) is GPL-3.0 and built by the

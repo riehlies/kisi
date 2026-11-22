@@ -1,3 +1,10 @@
+## The field views: a second file
+
+The field views come as a second file, `kisi-advanced.html` (about 9.5 MB), which must be in the same folder as
+`kisi.html`. This is a deliberate trade-off: `kisi.html` stays small (about 3.8 MB) and quick to open, and the full-wave 2D
+solver and the 3D view load only when "Fields…" is used. The field page's interface (the 2D page from the js_2d_fields
+fork, the 3D view) may be unified with kisi's viewer and optimised in a future release.
+
 ## Known limits of the field views
 
 * 3D view: the dielectric loss is right at f_loss (the geometric mean of the chosen field frequencies) only; at other

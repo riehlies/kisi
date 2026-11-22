@@ -282,7 +282,7 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             # a release made by hand keeps its text; the source offer is added once
             gh release view "$GITHUB_REF_NAME" --json body -q .body > body.md
-            grep -q "Corresponding source of the field pages" body.md || { printf '\n\n' >> body.md; cat notes.md >> body.md; gh release edit "$GITHUB_REF_NAME" --notes-file body.md; }
+            grep -q "Corresponding source of the field page" body.md || { printf '\n\n' >> body.md; cat notes.md >> body.md; gh release edit "$GITHUB_REF_NAME" --notes-file body.md; }
           else
             gh release create "$GITHUB_REF_NAME" --title "kisi $GITHUB_REF_NAME" --generate-notes --notes-file notes.md
           fi
